@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/project-config.php';
 
-project_load_env_file(__DIR__ . '/.env');
+project_load_env_file(__DIR__ . '/.env', true);
 
 function dam_env(string $key, ?string $default = null): ?string
 {
-    $value = getenv($key);
-
-    return $value === false ? $default : $value;
+    return project_env_value($key, $default);
 }
 
 return [

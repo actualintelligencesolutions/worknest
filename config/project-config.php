@@ -23,7 +23,7 @@ function project_config_root(): string
     return __DIR__;
 }
 
-function project_load_env_file(string $path): void
+function project_load_env_file(string $path, bool $override = false): void
 {
     if (!is_file($path) || !is_readable($path)) {
         return;
@@ -36,13 +36,13 @@ function project_load_env_file(string $path): void
 
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) {
             continue;
         }
 
         [$key, $value] = explode('=', $line, 2);
         $key = trim($key);
-        if ($key === '' || getenv($key) !== false) {
+        if ($key === '' || (!$override && project_env_value($key) !== null)) {
             continue;
         }
 
@@ -54,10 +54,30 @@ function project_load_env_file(string $path): void
             $value = substr($value, 1, -1);
         }
 
-        putenv($key . '=' . $value);
+        if (function_exists('putenv')) {
+            putenv($key . '=' . $value);
+        }
         $_ENV[$key] = $value;
         $_SERVER[$key] = $value;
     }
+}
+
+function project_env_value(string $key, ?string $default = null): ?string
+{
+    $value = getenv($key);
+    if ($value !== false) {
+        return $value;
+    }
+
+    if (array_key_exists($key, $_ENV)) {
+        return (string) $_ENV[$key];
+    }
+
+    if (array_key_exists($key, $_SERVER)) {
+        return (string) $_SERVER[$key];
+    }
+
+    return $default;
 }
 
 function project_environment_config(): array
