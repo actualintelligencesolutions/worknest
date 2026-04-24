@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import { AppHeader } from '../../components/organisms/AppHeader';
+import { Header } from '../../components/organisms/Header';
 import type { TenantConfig } from '../../config/tenants';
 import './style.scss';
 
@@ -10,21 +9,11 @@ type AppLayoutProps = {
 };
 
 export function AppLayout({ tenant, children }: AppLayoutProps) {
-  const { t } = useTranslation();
-  const navigation = Object.values(tenant.pages)
-    .filter((page) => page.enabled)
-    .map((page) => ({
-      label: t(page.navLabelKey),
-      path: page.path,
-    }));
+  void tenant;
 
   return (
     <div className="app-shell">
-      <AppHeader
-        title={t(tenant.branding.appNameKey)}
-        subtitle={t(tenant.branding.taglineKey)}
-        navigation={navigation}
-      />
+      <Header />
       <main className="app-main">{children}</main>
     </div>
   );

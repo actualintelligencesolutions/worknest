@@ -20,6 +20,18 @@
     "contact": "Support",
     "items": "Payroll"
   },
+  "header": {
+    "navigation": {
+      "label": "Primary navigation",
+      "service": "Service",
+      "portfolio": "Portfolio",
+      "pricing": "Pricing",
+      "contact": "Contact"
+    },
+    "signUp": "Sign up",
+    "notifications": "Notifications",
+    "notificationCount": "0"
+  },
   "common": {
     "loading": "Loading",
     "error": "Something went wrong",
