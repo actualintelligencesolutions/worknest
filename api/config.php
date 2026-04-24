@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/project-config.php';
 
+project_load_env_file(__DIR__ . '/.env');
+
 function api_env(string $key, ?string $default = null): ?string
 {
     $value = getenv($key);
