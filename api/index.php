@@ -681,7 +681,7 @@ try {
             $summary['total_rows']++;
             $summary[$status === 'valid' ? 'valid_rows' : 'error_rows']++;
             array_push($summary['critical_errors'], ...$errors);
-            $pdo->prepare('INSERT INTO payroll_import_rows (tenant_id, payroll_import_id, row_number, raw_json, normalized_json, status, errors_json) VALUES (:tenant_id, :import_id, :row_number, :raw_json, :normalized_json, :status, :errors_json)')
+            $pdo->prepare('INSERT INTO payroll_import_rows (tenant_id, payroll_import_id, `row_number`, raw_json, normalized_json, status, errors_json) VALUES (:tenant_id, :import_id, :row_number, :raw_json, :normalized_json, :status, :errors_json)')
                 ->execute([
                     'tenant_id' => $tenant,
                     'import_id' => $processImportId,

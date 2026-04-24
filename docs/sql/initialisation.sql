@@ -271,7 +271,7 @@ CREATE TABLE IF NOT EXISTS payroll_import_rows (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tenant_id VARCHAR(80) NOT NULL,
   payroll_import_id BIGINT UNSIGNED NOT NULL,
-  row_number INT UNSIGNED NOT NULL,
+  `row_number` INT UNSIGNED NOT NULL,
   raw_json JSON NOT NULL,
   normalized_json JSON NULL DEFAULT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'pending',
