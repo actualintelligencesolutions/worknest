@@ -22,11 +22,8 @@ RewriteRule ^dam(?:/(.*))?$ dam/index.php [QSA,L]
 RewriteRule ^$ ui/dist/index.html [L]
 
 # Serve Vite build files from their public URLs before the SPA fallback.
-RewriteCond %{DOCUMENT_ROOT}/ui/dist/assets/$1 -f
 RewriteRule ^assets/(.+)$ ui/dist/assets/$1 [L]
-RewriteCond %{DOCUMENT_ROOT}/ui/dist/favicon.svg -f
 RewriteRule ^favicon\.svg$ ui/dist/favicon.svg [L]
-RewriteRule ^assets/ - [R=404,L]
 
 # Let actual project-root files resolve if they are explicitly public.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
