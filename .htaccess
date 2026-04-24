@@ -17,6 +17,10 @@ RewriteRule ^api(?:/(.*))?$ api/index.php [QSA,L]
 RewriteRule ^dam/([0-9]+)$ dam/index.php [QSA,L]
 RewriteRule ^dam(?:/(.*))?$ dam/index.php [QSA,L]
 
+# Base domain serves the React build. Keep this before the directory
+# short-circuit below because the document root itself is a directory.
+RewriteRule ^$ ui/dist/index.html [L]
+
 # Let actual project-root files resolve if they are explicitly public.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
@@ -26,6 +30,5 @@ RewriteRule ^ - [L]
 RewriteCond ui/dist/$1 -f
 RewriteRule ^(.+)$ ui/dist/$1 [L]
 
-# Base domain and frontend deep links serve the React build.
-RewriteRule ^$ ui/dist/index.html [L]
+# Frontend deep links serve the React build.
 RewriteRule ^.*$ ui/dist/index.html [L]
