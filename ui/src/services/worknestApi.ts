@@ -104,7 +104,8 @@ export async function uploadPayrollImport(
       body: formData,
     },
   );
-  const envelope = (await response.json()) as ApiEnvelope<PayrollImportResponse>;
+  const envelope =
+    (await response.json()) as ApiEnvelope<PayrollImportResponse>;
   if (!response.ok || !envelope.success || envelope.data === null) {
     throw new Error(envelope.error?.message ?? 'Payroll upload failed');
   }
@@ -136,22 +137,28 @@ export function processImport(session: AuthSession, importId: number) {
       error_rows: number;
       critical_errors: string[];
     };
-  }>(`/payroll-imports/${importId}/process?tenant=${encodeURIComponent(session.tenantId)}`, {
-    method: 'POST',
-    headers: authHeaders(session),
-    body: JSON.stringify({}),
-  });
+  }>(
+    `/payroll-imports/${importId}/process?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export function publishPeriod(session: AuthSession, periodId: number) {
   return apiRequest<{
     period: { id: number; status: string };
     generated_files: number;
-  }>(`/payroll-periods/${periodId}/publish?tenant=${encodeURIComponent(session.tenantId)}`, {
-    method: 'POST',
-    headers: authHeaders(session),
-    body: JSON.stringify({}),
-  });
+  }>(
+    `/payroll-periods/${periodId}/publish?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export function requestEmployeeOtp(tenantId: string, phone: string) {
@@ -171,7 +178,12 @@ export function verifyEmployeeOtp(
 ) {
   return apiRequest<{
     token: string;
-    employee: { id: number; employee_code: string; name: string; phone: string };
+    employee: {
+      id: number;
+      employee_code: string;
+      name: string;
+      phone: string;
+    };
   }>(`/auth/employee/verify-otp?tenant=${encodeURIComponent(tenantId)}`, {
     method: 'POST',
     body: JSON.stringify({ challenge_id: challengeId, otp_code: otpCode }),

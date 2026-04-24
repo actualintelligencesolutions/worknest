@@ -71,7 +71,9 @@ export function WorknestPage() {
     listPlans()
       .then(({ plans: availablePlans }) => {
         setPlans(availablePlans);
-        const freePlan = availablePlans.find((plan) => plan.plan_code === 'free');
+        const freePlan = availablePlans.find(
+          (plan) => plan.plan_code === 'free',
+        );
         setSelectedPlanId(freePlan?.id ?? availablePlans[0]?.id ?? null);
       })
       .catch((error: Error) =>
@@ -84,10 +86,9 @@ export function WorknestPage() {
       return;
     }
     const suggested = Object.fromEntries(
-      Object.entries(payrollImport.mapping_suggestions).map(([field, value]) => [
-        field,
-        value.source,
-      ]),
+      Object.entries(payrollImport.mapping_suggestions).map(
+        ([field, value]) => [field, value.source],
+      ),
     );
     setMapping(suggested);
   }, [payrollImport]);
@@ -114,7 +115,10 @@ export function WorknestPage() {
         admin_phone: String(form.get('admin_phone') ?? ''),
         admin_password: String(form.get('admin_password') ?? ''),
       });
-      setHrSession({ token: response.token, tenantId: response.tenant.tenant_id });
+      setHrSession({
+        token: response.token,
+        tenantId: response.tenant.tenant_id,
+      });
       setEmployeeTenant(response.tenant.tenant_id);
       setNotice({ kind: 'success', message: t('notices.workspaceCreated') });
     } catch (error) {
@@ -140,7 +144,11 @@ export function WorknestPage() {
         period_year: Number(form.get('period_year')),
       });
       setPeriodId(period.period.id);
-      const upload = await uploadPayrollImport(hrSession, period.period.id, file);
+      const upload = await uploadPayrollImport(
+        hrSession,
+        period.period.id,
+        file,
+      );
       setPayrollImport(upload);
       setSummary(null);
       setNotice({ kind: 'success', message: t('notices.uploadReady') });
@@ -267,7 +275,10 @@ export function WorknestPage() {
           </label>
           <label>
             {t('fields.tenantSlug')}
-            <input name="tenant_id" placeholder={t('fields.tenantSlugPlaceholder')} />
+            <input
+              name="tenant_id"
+              placeholder={t('fields.tenantSlugPlaceholder')}
+            />
           </label>
           <label>
             {t('fields.adminName')}
@@ -283,13 +294,20 @@ export function WorknestPage() {
           </label>
           <label>
             {t('fields.adminPassword')}
-            <input name="admin_password" type="password" minLength={8} required />
+            <input
+              name="admin_password"
+              type="password"
+              minLength={8}
+              required
+            />
           </label>
           <div className="plan-row">
             {freePlan ? (
               <button
                 className={
-                  selectedPlanId === freePlan.id ? 'plan-card selected' : 'plan-card'
+                  selectedPlanId === freePlan.id
+                    ? 'plan-card selected'
+                    : 'plan-card'
                 }
                 type="button"
                 onClick={() => setSelectedPlanId(freePlan.id)}
@@ -313,7 +331,13 @@ export function WorknestPage() {
           <div className="inline-fields">
             <label>
               {t('fields.month')}
-              <input name="period_month" type="number" min={1} max={12} required />
+              <input
+                name="period_month"
+                type="number"
+                min={1}
+                max={12}
+                required
+              />
             </label>
             <label>
               {t('fields.year')}
@@ -322,9 +346,18 @@ export function WorknestPage() {
           </div>
           <label>
             {t('fields.payrollFile')}
-            <input name="payroll_file" type="file" accept=".csv,.xlsx" required />
+            <input
+              name="payroll_file"
+              type="file"
+              accept=".csv,.xlsx"
+              required
+            />
           </label>
-          <button className="primary-action" type="submit" disabled={!hrSession}>
+          <button
+            className="primary-action"
+            type="submit"
+            disabled={!hrSession}
+          >
             {t('pages.workspace.payroll.upload')}
           </button>
         </form>
@@ -359,7 +392,11 @@ export function WorknestPage() {
               </label>
             ))}
           </div>
-          <button className="primary-action" type="button" onClick={handleProcess}>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={handleProcess}
+          >
             {t('pages.workspace.mapping.process')}
           </button>
         </section>

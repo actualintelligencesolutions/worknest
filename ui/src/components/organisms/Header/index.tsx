@@ -31,7 +31,11 @@ export function Header() {
         <a className="header-signup" href="/">
           {t('header.signUp')}
         </a>
-        <button className="header-notifications" type="button" aria-label={t('header.notifications')}>
+        <button
+          className="header-notifications"
+          type="button"
+          aria-label={t('header.notifications')}
+        >
           <span className="header-bell" aria-hidden="true" />
           <span className="header-badge">{t('header.notificationCount')}</span>
         </button>
