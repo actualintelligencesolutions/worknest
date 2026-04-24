@@ -1,0 +1,34 @@
+{
+  "tenant_id": "client-a",
+  "config_version": 2,
+  "hostnames": ["client-a.example.com"],
+  "branding": {
+    "app_name_key": "brand.clientA.name",
+    "tagline_key": "brand.clientA.tagline"
+  },
+  "pages": {
+    "workspace": {
+      "enabled": true,
+      "path": "/",
+      "nav_label_key": "navigation.workspace",
+      "title_key": "pages.workspace.title",
+      "description_key": "pages.workspace.description",
+      "components": ["registration", "hrPayroll", "employeeAccess"]
+    }
+  },
+  "components": {
+    "registration": { "enabled": true, "order": 10 },
+    "hrPayroll": { "enabled": true, "order": 20 },
+    "employeeAccess": { "enabled": true, "order": 30 }
+  },
+  "feature_flags": {
+    "enablePayroll": true,
+    "enableReports": false,
+    "enableDAM": true,
+    "enableAnalytics": false
+  },
+  "translation_keys": {
+    "brand_name": "brand.clientA.name",
+    "brand_tagline": "brand.clientA.tagline"
+  }
+}

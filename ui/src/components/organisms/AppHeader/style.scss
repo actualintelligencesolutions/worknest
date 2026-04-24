@@ -1,0 +1,42 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid #dfe4ee;
+  background: #ffffff;
+  padding: 22px 32px;
+}
+
+.app-header-brand h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-nav a {
+  border-radius: 6px;
+  color: #344054;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.app-nav a.active,
+.app-nav a:hover {
+  background: #eef4ff;
+  color: #175cd3;
+}
+
+@media (max-width: 760px) {
+  .app-header {
+    display: grid;
+    padding: 22px;
+  }
+}

@@ -1,0 +1,31 @@
+Options -Indexes
+RewriteEngine On
+
+# Keep project internals out of the public web surface.
+RewriteRule (^|/)\. - [F]
+RewriteRule ^(config|docs|deployment|ai-gaurdrails)(/|$) - [F]
+RewriteRule ^(api|dam)/.*\.(env|example|md|json|log|sql)$ - [F]
+RewriteRule ^setup\.md$ - [F]
+
+# Public API: https://example.com/api/...
+RewriteRule ^api(?:/(.*))?$ api/index.php [QSA,L]
+
+# Public DAM asset streaming and management routes:
+#   https://example.com/dam/{asset-id}
+#   https://example.com/dam/assets
+#   https://example.com/dam/health
+RewriteRule ^dam/([0-9]+)$ dam/index.php [QSA,L]
+RewriteRule ^dam(?:/(.*))?$ dam/index.php [QSA,L]
+
+# Let actual project-root files resolve if they are explicitly public.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Serve Vite build assets from ui/dist without committing ui/dist.
+RewriteCond ui/dist/$1 -f
+RewriteRule ^(.+)$ ui/dist/$1 [L]
+
+# Base domain and frontend deep links serve the React build.
+RewriteRule ^$ ui/dist/index.html [L]
+RewriteRule ^.*$ ui/dist/index.html [L]

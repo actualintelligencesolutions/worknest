@@ -1,0 +1,59 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - stage
+      - publish
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  UI_DIR: ui
+  NODE_VERSION: 22
+
+jobs:
+  build:
+    name: Build React UI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.UI_DIR }}
+        run: npm ci
+
+      - name: Check formatting
+        working-directory: ${{ env.UI_DIR }}
+        run: npm run format
+
+      - name: Run lint
+        working-directory: ${{ env.UI_DIR }}
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: ${{ env.UI_DIR }}
+        run: npm run test
+
+      - name: Build
+        working-directory: ${{ env.UI_DIR }}
+        run: npm run build
+
+      - name: Upload UI build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist-${{ github.ref_name }}
+          path: ${{ env.UI_DIR }}/dist
+          if-no-files-found: error
+          retention-days: 14

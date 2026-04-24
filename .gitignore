@@ -1,0 +1,14 @@
+/.DS_Store
+*.log
+.env
+.env.local
+
+ui/node_modules/
+ui/dist/
+
+dam/.env
+dam/logs/*.log
+dam/dam/*
+!dam/dam/.gitkeep
+!dam/dam/default/
+!dam/dam/default/.gitkeep

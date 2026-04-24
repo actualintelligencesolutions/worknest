@@ -1,0 +1,384 @@
+{
+  "version": 2,
+  "response_envelope": {
+    "success": "boolean",
+    "data": "object | array | null",
+    "error": "object | null"
+  },
+  "endpoints": [
+    {
+      "id": "api.health",
+      "method": "GET",
+      "path": "/api/health",
+      "status": "active",
+      "purpose": "Confirm the API server is reachable.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": { "params": {}, "body": {} },
+      "response": {
+        "success": { "status": "ok", "service": "api" },
+        "error": { "code": "SERVER_ERROR", "message": "Unexpected API failure." }
+      },
+      "database": { "related_tables": [] },
+      "notes": {
+        "auth_rules": "No auth required.",
+        "tenant_behavior": "No tenant context required."
+      }
+    },
+    {
+      "id": "api.endpoints.search",
+      "method": "GET",
+      "path": "/api/endpoints",
+      "status": "active",
+      "purpose": "Search the machine-readable endpoint registry by query text.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": { "params": { "query": "optional search phrase" }, "body": {} },
+      "response": {
+        "success": { "matches": [], "reuse_prompt": "string" },
+        "error": { "code": "REGISTRY_UNAVAILABLE", "message": "Endpoint registry could not be read." }
+      },
+      "database": { "related_tables": [] },
+      "notes": {
+        "auth_rules": "No auth required.",
+        "tenant_behavior": "No tenant context required."
+      }
+    },
+    {
+      "id": "api.plans.index",
+      "method": "GET",
+      "path": "/api/plans",
+      "status": "active",
+      "purpose": "List active plans available during company registration.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": { "params": {}, "body": {} },
+      "response": {
+        "success": { "plans": [] },
+        "error": { "code": "DATABASE_ERROR", "message": "The API database operation failed." }
+      },
+      "database": { "related_tables": ["plans"] },
+      "notes": {
+        "auth_rules": "No auth required.",
+        "tenant_behavior": "Plans are global for v1 and seeded under the default tenant."
+      }
+    },
+    {
+      "id": "api.companies.register",
+      "method": "POST",
+      "path": "/api/companies/register",
+      "status": "active",
+      "purpose": "Create a tenant/company, selected plan subscription, and first HR admin.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": {
+        "params": {},
+        "body": {
+          "company_name": "required string",
+          "tenant_id": "optional slug",
+          "plan_id": "required numeric active plan id",
+          "admin_name": "required string",
+          "admin_email": "required email",
+          "admin_phone": "required phone",
+          "admin_password": "required string"
+        }
+      },
+      "response": {
+        "success": { "tenant": {}, "plan": {}, "user": {}, "next_step": "upload_payroll" },
+        "error": { "code": "VALIDATION_ERROR", "message": "Registration data is incomplete." }
+      },
+      "database": { "related_tables": ["tenants", "plans", "tenant_plan_subscriptions", "users"] },
+      "notes": {
+        "auth_rules": "No auth required because this creates the first HR admin.",
+        "tenant_behavior": "Creates a new tenant slug and keeps all records scoped to it."
+      }
+    },
+    {
+      "id": "api.auth.hr-login",
+      "method": "POST",
+      "path": "/api/auth/hr-login",
+      "status": "active",
+      "purpose": "Authenticate an HR admin for a tenant.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "email": "required email", "password": "required string" }
+      },
+      "response": {
+        "success": { "token": "string", "user": {} },
+        "error": { "code": "INVALID_CREDENTIALS", "message": "Invalid email or password." }
+      },
+      "database": { "related_tables": ["users"] },
+      "notes": {
+        "auth_rules": "Only active users with role hr_admin may log in.",
+        "tenant_behavior": "Login is scoped to the resolved tenant."
+      }
+    },
+    {
+      "id": "api.auth.employee.request-otp",
+      "method": "POST",
+      "path": "/api/auth/employee/request-otp",
+      "status": "active",
+      "purpose": "Create a dev-mode OTP challenge for an employee phone number.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "phone": "required phone number" }
+      },
+      "response": {
+        "success": { "challenge_id": 1, "dev_otp": "123456" },
+        "error": { "code": "EMPLOYEE_NOT_FOUND", "message": "No employee exists for this phone number." }
+      },
+      "database": { "related_tables": ["employee_profiles", "employee_otp_challenges"] },
+      "notes": {
+        "auth_rules": "No auth required; OTP proves phone ownership.",
+        "tenant_behavior": "Phone lookup is scoped to the resolved tenant."
+      }
+    },
+    {
+      "id": "api.auth.employee.verify-otp",
+      "method": "POST",
+      "path": "/api/auth/employee/verify-otp",
+      "status": "active",
+      "purpose": "Verify an employee OTP challenge and return an employee token.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "challenge_id": "required numeric id", "otp_code": "required string" }
+      },
+      "response": {
+        "success": { "token": "string", "employee": {} },
+        "error": { "code": "INVALID_OTP", "message": "The OTP is invalid or expired." }
+      },
+      "database": { "related_tables": ["employee_profiles", "employee_otp_challenges"] },
+      "notes": {
+        "auth_rules": "Returns an employee-scoped token after successful verification.",
+        "tenant_behavior": "Challenge and employee must belong to the resolved tenant."
+      }
+    },
+    {
+      "id": "api.auth.me",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": "active",
+      "purpose": "Return the current HR admin or employee session.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {}
+      },
+      "response": {
+        "success": { "actor": {} },
+        "error": { "code": "UNAUTHORIZED", "message": "A valid bearer token is required." }
+      },
+      "database": { "related_tables": ["users", "employee_profiles"] },
+      "notes": {
+        "auth_rules": "Requires Authorization: Bearer token.",
+        "tenant_behavior": "Token tenant must match requested tenant."
+      }
+    },
+    {
+      "id": "api.employees.index",
+      "method": "GET",
+      "path": "/api/employees",
+      "status": "active",
+      "purpose": "List tenant employees created from payroll imports.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": { "params": { "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
+      "response": {
+        "success": { "employees": [] },
+        "error": { "code": "UNAUTHORIZED", "message": "A valid HR token is required." }
+      },
+      "database": { "related_tables": ["employee_profiles"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only lists employees for the resolved tenant."
+      }
+    },
+    {
+      "id": "api.payroll-periods.store",
+      "method": "POST",
+      "path": "/api/payroll-periods",
+      "status": "active",
+      "purpose": "Create or return a draft payroll period for a tenant.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "period_month": "1-12", "period_year": "four digit year" }
+      },
+      "response": {
+        "success": { "period": {} },
+        "error": { "code": "VALIDATION_ERROR", "message": "Payroll period is invalid." }
+      },
+      "database": { "related_tables": ["payroll_periods"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Period uniqueness is tenant scoped."
+      }
+    },
+    {
+      "id": "api.payroll-imports.store",
+      "method": "POST",
+      "path": "/api/payroll-imports",
+      "status": "active",
+      "purpose": "Upload a CSV/XLSX payroll source file and return detected headers with mapping suggestions.",
+      "handler": "api/index.php",
+      "consumes": "multipart/form-data",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "payroll_period_id": "required id", "payroll_file": "required CSV/XLSX file" }
+      },
+      "response": {
+        "success": { "import": {}, "headers": [], "mapping_suggestions": {} },
+        "error": { "code": "INVALID_FILE", "message": "Upload must be CSV or XLSX." }
+      },
+      "database": { "related_tables": ["payroll_imports"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Upload is scoped to the resolved tenant."
+      }
+    },
+    {
+      "id": "api.payroll-imports.mapping.update",
+      "method": "PUT",
+      "path": "/api/payroll-imports/{id}/mapping",
+      "status": "active",
+      "purpose": "Save mapping for an uploaded payroll import and tenant mapping template reuse.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "id": "numeric import id", "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": { "mapping": "object keyed by Worknest field" }
+      },
+      "response": {
+        "success": { "import": {} },
+        "error": { "code": "INVALID_MAPPING", "message": "Required mappings are missing." }
+      },
+      "database": { "related_tables": ["payroll_imports", "payroll_mapping_templates"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only updates tenant-owned imports."
+      }
+    },
+    {
+      "id": "api.payroll-imports.process",
+      "method": "POST",
+      "path": "/api/payroll-imports/{id}/process",
+      "status": "active",
+      "purpose": "Normalize mapped payroll rows, validate exceptions, and create draft payslip records.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "id": "numeric import id", "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {}
+      },
+      "response": {
+        "success": { "import": {}, "summary": {} },
+        "error": { "code": "INVALID_IMPORT_STATE", "message": "Import must be mapped before processing." }
+      },
+      "database": { "related_tables": ["payroll_import_rows", "employee_profiles", "payslip_records"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only processes tenant-owned imports."
+      }
+    },
+    {
+      "id": "api.payroll-periods.publish",
+      "method": "POST",
+      "path": "/api/payroll-periods/{id}/publish",
+      "status": "active",
+      "purpose": "Publish a payroll period, lock its records, and generate payslip PDF files.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "id": "numeric period id", "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {}
+      },
+      "response": {
+        "success": { "period": {}, "generated_files": 0 },
+        "error": { "code": "PUBLISH_BLOCKED", "message": "Critical payroll errors must be fixed before publishing." }
+      },
+      "database": { "related_tables": ["payroll_periods", "payslip_records", "payslip_files"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only publishes tenant-owned periods."
+      }
+    },
+    {
+      "id": "api.payslips.index",
+      "method": "GET",
+      "path": "/api/payslips",
+      "status": "active",
+      "purpose": "List payslips visible to the current employee or HR admin.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": { "params": { "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
+      "response": {
+        "success": { "payslips": [] },
+        "error": { "code": "UNAUTHORIZED", "message": "A valid token is required." }
+      },
+      "database": { "related_tables": ["payslip_records", "payroll_periods"] },
+      "notes": {
+        "auth_rules": "HR can see tenant payslips; employees only see their own published payslips.",
+        "tenant_behavior": "All results are tenant scoped."
+      }
+    },
+    {
+      "id": "api.payslips.download",
+      "method": "GET",
+      "path": "/api/payslips/{id}/download",
+      "status": "active",
+      "purpose": "Download a generated payslip PDF.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/pdf",
+      "tenant_required": true,
+      "request": { "params": { "id": "numeric payslip id", "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
+      "response": {
+        "success": "Binary PDF stream",
+        "error": { "code": "PAYSLIP_NOT_FOUND", "message": "No accessible payslip was found." }
+      },
+      "database": { "related_tables": ["payslip_records", "payslip_files"] },
+      "notes": {
+        "auth_rules": "Requires HR admin or matching employee token.",
+        "tenant_behavior": "Only serves tenant-owned generated files."
+      }
+    }
+  ]
+}

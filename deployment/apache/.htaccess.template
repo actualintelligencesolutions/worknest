@@ -1,0 +1,30 @@
+# Generated from canonical config.
+# Source of truth: config/environments.json
+#
+# Placeholders:
+#   {{UI_DIST}} -> ui/dist
+#   {{API_BASE}} -> api
+#   {{DAM_BASE}} -> dam
+
+Options -Indexes
+RewriteEngine On
+
+RewriteRule (^|/)\. - [F]
+RewriteRule ^(config|docs|deployment|ai-gaurdrails)(/|$) - [F]
+RewriteRule ^(api|dam)/.*\.(env|example|md|json|log|sql)$ - [F]
+RewriteRule ^setup\.md$ - [F]
+
+RewriteRule ^api(?:/(.*))?$ {{API_BASE}}/index.php [QSA,L]
+
+RewriteRule ^dam/([0-9]+)$ {{DAM_BASE}}/index.php [QSA,L]
+RewriteRule ^dam(?:/(.*))?$ {{DAM_BASE}}/index.php [QSA,L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteCond {{UI_DIST}}/$1 -f
+RewriteRule ^(.+)$ {{UI_DIST}}/$1 [L]
+
+RewriteRule ^$ {{UI_DIST}}/index.html [L]
+RewriteRule ^.*$ {{UI_DIST}}/index.html [L]

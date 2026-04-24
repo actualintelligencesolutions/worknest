@@ -1,0 +1,44 @@
+{
+  "tenant_id": "default",
+  "config_version": 2,
+  "hostnames": ["localhost", "127.0.0.1", "example.com"],
+  "branding": {
+    "app_name_key": "brand.default.name",
+    "tagline_key": "brand.default.tagline"
+  },
+  "pages": {
+    "workspace": {
+      "enabled": true,
+      "path": "/",
+      "nav_label_key": "navigation.workspace",
+      "title_key": "pages.workspace.title",
+      "description_key": "pages.workspace.description",
+      "components": ["registration", "hrPayroll", "employeeAccess"]
+    }
+  },
+  "components": {
+    "registration": {
+      "enabled": true,
+      "order": 10
+    },
+    "hrPayroll": {
+      "enabled": true,
+      "order": 20
+    },
+    "employeeAccess": {
+      "enabled": true,
+      "order": 30
+    }
+  },
+  "feature_flags": {
+    "enablePayroll": true,
+    "enableReports": false,
+    "enableDAM": true,
+    "enableAnalytics": false
+  },
+  "translation_keys": {
+    "brand_name": "brand.default.name",
+    "brand_tagline": "brand.default.tagline",
+    "primary_action": "pages.workspace.registration.createWorkspace"
+  }
+}

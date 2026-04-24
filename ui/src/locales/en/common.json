@@ -1,0 +1,130 @@
+{
+  "brand": {
+    "default": {
+      "name": "Worknest",
+      "tagline": "Payroll ingestion and payslip distribution for growing teams."
+    },
+    "clientA": {
+      "name": "Worknest",
+      "tagline": "Tenant-ready payroll operations."
+    },
+    "clientB": {
+      "name": "Worknest",
+      "tagline": "Tenant-ready payroll operations."
+    }
+  },
+  "navigation": {
+    "workspace": "Workspace",
+    "home": "Workspace",
+    "about": "Setup",
+    "contact": "Support",
+    "items": "Payroll"
+  },
+  "common": {
+    "loading": "Loading",
+    "error": "Something went wrong",
+    "empty": "No records found",
+    "save": "Save",
+    "delete": "Delete",
+    "title": "Title",
+    "description": "Description"
+  },
+  "fields": {
+    "companyName": "Company name",
+    "tenantSlug": "Workspace slug",
+    "tenantSlugPlaceholder": "acme-payroll",
+    "adminName": "HR admin name",
+    "adminEmail": "HR admin email",
+    "adminPhone": "HR admin phone",
+    "adminPassword": "HR admin password",
+    "month": "Payroll month",
+    "year": "Payroll year",
+    "payrollFile": "Payroll CSV/XLSX file",
+    "notMapped": "Not mapped",
+    "employeeTenant": "Company workspace",
+    "employeePhone": "Employee phone number",
+    "otpCode": "OTP code"
+  },
+  "payrollFields": {
+    "employee_code": "Employee code",
+    "employee_name": "Employee name",
+    "phone": "Phone number",
+    "basic": "Basic",
+    "hra": "HRA",
+    "allowances": "Allowances",
+    "gross_pay": "Gross pay",
+    "pf": "PF",
+    "esi": "ESI",
+    "professional_tax": "Professional tax",
+    "tds": "TDS",
+    "total_deductions": "Total deductions",
+    "net_pay": "Net pay"
+  },
+  "notices": {
+    "planRequired": "Select the Free Plan before creating the workspace.",
+    "workspaceCreated": "Workspace created. Upload the first payroll file to activate Worknest.",
+    "hrRequired": "Create a company workspace before uploading payroll.",
+    "fileRequired": "Choose a CSV or XLSX payroll file.",
+    "uploadReady": "Payroll file uploaded. Review the suggested mapping.",
+    "importProcessed": "Import processed. Review exceptions before publishing.",
+    "periodPublished": "Payroll period published and {{count}} payslip PDFs generated.",
+    "otpCreated": "Dev OTP created. Use the shown OTP to verify employee access.",
+    "employeeVerified": "Employee verified. Published payslips are listed below."
+  },
+  "pages": {
+    "workspace": {
+      "title": "Turn messy payroll files into published payslips",
+      "description": "Register a company, explicitly select the Free Plan, map payroll columns, validate exceptions, publish the month, and let employees access payslips with phone OTP.",
+      "eyebrow": "Payslip Organiser MVP",
+      "activationLabel": "Activation moment",
+      "activationValue": "Upload first payroll",
+      "registration": {
+        "step": "Step 1",
+        "title": "Create company workspace",
+        "freePrice": "₹0 / month",
+        "createWorkspace": "Create workspace"
+      },
+      "payroll": {
+        "step": "Step 2",
+        "title": "Upload first payroll file",
+        "upload": "Upload and detect columns"
+      },
+      "mapping": {
+        "step": "Step 3",
+        "title": "Map payroll columns",
+        "process": "Save mapping and validate"
+      },
+      "review": {
+        "step": "Step 4",
+        "title": "Review exceptions and publish",
+        "totalRows": "Total rows",
+        "validRows": "Valid rows",
+        "errorRows": "Error rows",
+        "publish": "Publish payroll period"
+      },
+      "employee": {
+        "step": "Employee access",
+        "title": "Phone OTP payslip portal",
+        "requestOtp": "Request OTP",
+        "verifyOtp": "Verify and view payslips",
+        "empty": "No published payslips are available for this employee."
+      }
+    },
+    "home": {
+      "title": "Worknest",
+      "description": "Payroll ingestion and payslip distribution."
+    },
+    "about": {
+      "title": "Setup",
+      "description": "Company setup and plan selection."
+    },
+    "contact": {
+      "title": "Support",
+      "description": "Worknest support."
+    },
+    "items": {
+      "title": "Payroll",
+      "description": "Payroll import workflow."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+.panel {
+  display: grid;
+  gap: 24px;
+  border: 1px solid #dfe4ee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.panel h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
