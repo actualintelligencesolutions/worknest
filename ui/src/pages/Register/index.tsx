@@ -96,6 +96,7 @@ export function RegisterPage() {
       : `${window.location.origin}/`;
   const [companyName, setCompanyName] = useState('');
   const [workspaceSlug, setWorkspaceSlug] = useState('');
+  const [hasEditedWorkspaceSlug, setHasEditedWorkspaceSlug] = useState(false);
   const [adminTitle, setAdminTitle] = useState('Mr.');
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -298,14 +299,25 @@ export function RegisterPage() {
                         autoComplete="organization"
                         name="companyName"
                         onChange={(event) => {
-                          setCompanyName(event.target.value);
+                          const nextCompanyName = event.target.value;
+                          setCompanyName(nextCompanyName);
+                          if (!hasEditedWorkspaceSlug) {
+                            setWorkspaceSlug(
+                              workspaceAddressPart(nextCompanyName),
+                            );
+                          }
                           setErrors((current) => ({
                             ...current,
                             companyName: undefined,
+                            workspaceSlug: undefined,
                           }));
                         }}
                         onBlur={() => {
-                          setWorkspaceSlug(workspaceAddressPart(companyName));
+                          if (!hasEditedWorkspaceSlug) {
+                            setWorkspaceSlug(
+                              workspaceAddressPart(companyName),
+                            );
+                          }
                           setErrors((current) => ({
                             ...current,
                             workspaceSlug: undefined,
@@ -324,6 +336,7 @@ export function RegisterPage() {
                         autoComplete="off"
                         name="workspaceSlug"
                         onChange={(event) => {
+                          setHasEditedWorkspaceSlug(true);
                           setWorkspaceSlug(
                             workspaceAddressPart(event.target.value),
                           );
