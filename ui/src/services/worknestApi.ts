@@ -57,9 +57,7 @@ export function checkWorkspaceAvailability(tenantId: string) {
     tenant_id: string;
     available: boolean;
     reason: 'reserved' | 'taken' | null;
-  }>(
-    `/companies/check-workspace?tenant_id=${encodeURIComponent(tenantId)}`,
-  );
+  }>(`/companies/check-workspace?tenant_id=${encodeURIComponent(tenantId)}`);
 }
 
 export function registerCompany(payload: {

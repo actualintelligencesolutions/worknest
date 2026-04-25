@@ -314,9 +314,7 @@ export function RegisterPage() {
                         }}
                         onBlur={() => {
                           if (!hasEditedWorkspaceSlug) {
-                            setWorkspaceSlug(
-                              workspaceAddressPart(companyName),
-                            );
+                            setWorkspaceSlug(workspaceAddressPart(companyName));
                           }
                           setErrors((current) => ({
                             ...current,
