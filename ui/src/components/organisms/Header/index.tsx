@@ -33,7 +33,7 @@ export function Header() {
 
       <div className="header-actions">
         <NavLink className="header-signup" to="/register">
-          Create company
+          Register Now
         </NavLink>
       </div>
     </header>
