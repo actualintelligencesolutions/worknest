@@ -77,7 +77,9 @@ function workspaceAvailability(slug: string) {
 export function RegisterPage() {
   const tenant = useTenantStore((state) => state.tenant);
   const workspaceBaseAddress =
-    typeof window === 'undefined' ? 'worknest.local/' : `${window.location.origin}/`;
+    typeof window === 'undefined'
+      ? 'worknest.local/'
+      : `${window.location.origin}/`;
   const [companyName, setCompanyName] = useState('');
   const [workspaceSlug, setWorkspaceSlug] = useState('');
   const [adminTitle, setAdminTitle] = useState('Mr.');
@@ -209,275 +211,284 @@ export function RegisterPage() {
             ) : null}
 
             <div className="register-panel">
-            {view === 'company' ? (
-              <form className="company-form" onSubmit={handleCompanyContinue}>
-                <div className="panel-heading">
-                  <ol className="register-stepper" aria-label="Registration progress">
-                    {setupSteps.map((step, index) => (
-                      <li
-                        className={index <= currentStepIndex ? 'active' : ''}
-                        key={step}
-                      >
-                        <span>{index + 1}</span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                  <h2>Company details</h2>
-                </div>
-
-                <Field label="Company name" error={errors.companyName}>
-                  <div className="company-name-control">
-                    <span>M/s</span>
-                    <input
-                      autoComplete="organization"
-                      name="companyName"
-                      onChange={(event) => {
-                        setCompanyName(event.target.value);
-                        setErrors((current) => ({
-                          ...current,
-                          companyName: undefined,
-                        }));
-                      }}
-                      onBlur={() => {
-                        setWorkspaceSlug(workspaceAddressPart(companyName));
-                        setErrors((current) => ({
-                          ...current,
-                          workspaceSlug: undefined,
-                        }));
-                      }}
-                      placeholder="Example Private Limited"
-                      value={companyName}
-                    />
-                  </div>
-                </Field>
-
-                <Field label="Workspace address" error={errors.workspaceSlug}>
-                  <div className="workspace-address-control">
-                    <span>{workspaceBaseAddress}</span>
-                    <input
-                      autoComplete="off"
-                      name="workspaceSlug"
-                      onChange={(event) => {
-                        setWorkspaceSlug(
-                          workspaceAddressPart(event.target.value),
-                        );
-                        setErrors((current) => ({
-                          ...current,
-                          workspaceSlug: undefined,
-                        }));
-                      }}
-                      placeholder="acme"
-                      value={workspaceSlug}
-                    />
-                  </div>
-                  {!errors.workspaceSlug ? (
-                    <span
-                      className={`workspace-availability ${workspaceStatus.kind}`}
+              {view === 'company' ? (
+                <form className="company-form" onSubmit={handleCompanyContinue}>
+                  <div className="panel-heading">
+                    <ol
+                      className="register-stepper"
+                      aria-label="Registration progress"
                     >
-                      {workspaceStatus.message}
-                    </span>
-                  ) : null}
-                </Field>
+                      {setupSteps.map((step, index) => (
+                        <li
+                          className={index <= currentStepIndex ? 'active' : ''}
+                          key={step}
+                        >
+                          <span>{index + 1}</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                    <h2>Company details</h2>
+                  </div>
 
-                <div className="register-actions">
-                  <Button type="submit">Continue</Button>
-                </div>
-              </form>
-            ) : null}
+                  <Field label="Company name" error={errors.companyName}>
+                    <div className="company-name-control">
+                      <span>M/s</span>
+                      <input
+                        autoComplete="organization"
+                        name="companyName"
+                        onChange={(event) => {
+                          setCompanyName(event.target.value);
+                          setErrors((current) => ({
+                            ...current,
+                            companyName: undefined,
+                          }));
+                        }}
+                        onBlur={() => {
+                          setWorkspaceSlug(workspaceAddressPart(companyName));
+                          setErrors((current) => ({
+                            ...current,
+                            workspaceSlug: undefined,
+                          }));
+                        }}
+                        placeholder="Example Private Limited"
+                        value={companyName}
+                      />
+                    </div>
+                  </Field>
 
-            {view === 'admin' ? (
-              <form className="admin-form" onSubmit={handleCreateCompany}>
-                <div className="panel-heading">
-                  <ol className="register-stepper" aria-label="Registration progress">
-                    {setupSteps.map((step, index) => (
-                      <li
-                        className={index <= currentStepIndex ? 'active' : ''}
-                        key={step}
+                  <Field label="Workspace address" error={errors.workspaceSlug}>
+                    <div className="workspace-address-control">
+                      <span>{workspaceBaseAddress}</span>
+                      <input
+                        autoComplete="off"
+                        name="workspaceSlug"
+                        onChange={(event) => {
+                          setWorkspaceSlug(
+                            workspaceAddressPart(event.target.value),
+                          );
+                          setErrors((current) => ({
+                            ...current,
+                            workspaceSlug: undefined,
+                          }));
+                        }}
+                        placeholder="acme"
+                        value={workspaceSlug}
+                      />
+                    </div>
+                    {!errors.workspaceSlug ? (
+                      <span
+                        className={`workspace-availability ${workspaceStatus.kind}`}
                       >
-                        <span>{index + 1}</span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                  <h2>Admin details</h2>
-                </div>
+                        {workspaceStatus.message}
+                      </span>
+                    ) : null}
+                  </Field>
 
-                <Field label="Admin name" error={errors.adminName}>
-                  <div className="admin-name-control">
-                    <select
-                      aria-label="Admin title"
-                      name="adminTitle"
-                      onChange={(event) => setAdminTitle(event.target.value)}
-                      value={adminTitle}
+                  <div className="register-actions">
+                    <Button type="submit">Continue</Button>
+                  </div>
+                </form>
+              ) : null}
+
+              {view === 'admin' ? (
+                <form className="admin-form" onSubmit={handleCreateCompany}>
+                  <div className="panel-heading">
+                    <ol
+                      className="register-stepper"
+                      aria-label="Registration progress"
                     >
-                      <option>Mr.</option>
-                      <option>Mrs.</option>
-                      <option>Ms.</option>
-                      <option>Dr.</option>
-                      <option>Mx.</option>
-                    </select>
+                      {setupSteps.map((step, index) => (
+                        <li
+                          className={index <= currentStepIndex ? 'active' : ''}
+                          key={step}
+                        >
+                          <span>{index + 1}</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                    <h2>Admin details</h2>
+                  </div>
+
+                  <Field label="Admin name" error={errors.adminName}>
+                    <div className="admin-name-control">
+                      <select
+                        aria-label="Admin title"
+                        name="adminTitle"
+                        onChange={(event) => setAdminTitle(event.target.value)}
+                        value={adminTitle}
+                      >
+                        <option>Mr.</option>
+                        <option>Mrs.</option>
+                        <option>Ms.</option>
+                        <option>Dr.</option>
+                        <option>Mx.</option>
+                      </select>
+                      <input
+                        autoComplete="name"
+                        name="adminName"
+                        onChange={(event) => {
+                          setAdminName(event.target.value);
+                          setErrors((current) => ({
+                            ...current,
+                            adminName: undefined,
+                          }));
+                        }}
+                        placeholder="Priya Sharma"
+                        value={adminName}
+                      />
+                    </div>
+                  </Field>
+
+                  <Field label="Admin email" error={errors.adminEmail}>
                     <input
-                      autoComplete="name"
-                      name="adminName"
+                      autoComplete="email"
+                      name="adminEmail"
                       onChange={(event) => {
-                        setAdminName(event.target.value);
+                        setAdminEmail(event.target.value);
                         setErrors((current) => ({
                           ...current,
-                          adminName: undefined,
+                          adminEmail: undefined,
                         }));
                       }}
-                      placeholder="Priya Sharma"
-                      value={adminName}
+                      placeholder="admin@example.com"
+                      type="email"
+                      value={adminEmail}
                     />
-                  </div>
-                </Field>
+                  </Field>
 
-                <Field label="Admin email" error={errors.adminEmail}>
-                  <input
-                    autoComplete="email"
-                    name="adminEmail"
-                    onChange={(event) => {
-                      setAdminEmail(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        adminEmail: undefined,
-                      }));
-                    }}
-                    placeholder="admin@example.com"
-                    type="email"
-                    value={adminEmail}
-                  />
-                </Field>
+                  <Field label="Admin phone" error={errors.adminPhone}>
+                    <div className="phone-number-control">
+                      <span>+91</span>
+                      <input
+                        autoComplete="tel"
+                        inputMode="numeric"
+                        name="adminPhone"
+                        onChange={(event) => {
+                          setAdminPhone(phoneNumberPart(event.target.value));
+                          setErrors((current) => ({
+                            ...current,
+                            adminPhone: undefined,
+                          }));
+                        }}
+                        placeholder="9876543210"
+                        value={adminPhone}
+                      />
+                    </div>
+                  </Field>
 
-                <Field label="Admin phone" error={errors.adminPhone}>
-                  <div className="phone-number-control">
-                    <span>+91</span>
+                  <div className="register-divider" />
+
+                  <Field label="Admin password" error={errors.adminPassword}>
                     <input
-                      autoComplete="tel"
+                      autoComplete="new-password"
+                      name="adminPassword"
+                      onChange={(event) => {
+                        setAdminPassword(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          adminPassword: undefined,
+                        }));
+                      }}
+                      placeholder="Minimum 8 characters"
+                      type="password"
+                      value={adminPassword}
+                    />
+                  </Field>
+
+                  <Field
+                    label="Confirm admin password"
+                    error={errors.adminConfirmPassword}
+                  >
+                    <input
+                      autoComplete="new-password"
+                      name="adminConfirmPassword"
+                      onChange={(event) => {
+                        setAdminConfirmPassword(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          adminConfirmPassword: undefined,
+                        }));
+                      }}
+                      placeholder="Re-enter password"
+                      type="password"
+                      value={adminConfirmPassword}
+                    />
+                  </Field>
+
+                  <div className="register-actions">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setView('company')}
+                    >
+                      Back
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Continuing...' : 'Continue'}
+                    </Button>
+                  </div>
+                </form>
+              ) : null}
+
+              {view === 'otp' ? (
+                <form className="otp-form" onSubmit={handleVerifyOtp}>
+                  <div className="panel-heading">
+                    <ol
+                      className="register-stepper"
+                      aria-label="Registration progress"
+                    >
+                      {setupSteps.map((step, index) => (
+                        <li
+                          className={index <= currentStepIndex ? 'active' : ''}
+                          key={step}
+                        >
+                          <span>{index + 1}</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                    <h2>Enter OTP</h2>
+                    <p>
+                      We sent a verification code to {adminPhone || adminEmail}.
+                    </p>
+                  </div>
+
+                  <Field label="OTP code" error={errors.otpCode}>
+                    <input
+                      autoComplete="one-time-code"
                       inputMode="numeric"
-                      name="adminPhone"
+                      maxLength={6}
+                      name="otpCode"
                       onChange={(event) => {
-                        setAdminPhone(phoneNumberPart(event.target.value));
+                        setOtpCode(event.target.value.replace(/\D/g, ''));
                         setErrors((current) => ({
                           ...current,
-                          adminPhone: undefined,
+                          otpCode: undefined,
                         }));
                       }}
-                      placeholder="9876543210"
-                      value={adminPhone}
+                      placeholder="Enter OTP"
+                      value={otpCode}
                     />
-                  </div>
-                </Field>
+                  </Field>
 
-                <div className="register-divider" />
-
-                <Field label="Admin password" error={errors.adminPassword}>
-                  <input
-                    autoComplete="new-password"
-                    name="adminPassword"
-                    onChange={(event) => {
-                      setAdminPassword(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        adminPassword: undefined,
-                      }));
-                    }}
-                    placeholder="Minimum 8 characters"
-                    type="password"
-                    value={adminPassword}
-                  />
-                </Field>
-
-                <Field
-                  label="Confirm admin password"
-                  error={errors.adminConfirmPassword}
-                >
-                  <input
-                    autoComplete="new-password"
-                    name="adminConfirmPassword"
-                    onChange={(event) => {
-                      setAdminConfirmPassword(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        adminConfirmPassword: undefined,
-                      }));
-                    }}
-                    placeholder="Re-enter password"
-                    type="password"
-                    value={adminConfirmPassword}
-                  />
-                </Field>
-
-                <div className="register-actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setView('company')}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Continuing...' : 'Continue'}
-                  </Button>
-                </div>
-              </form>
-            ) : null}
-
-            {view === 'otp' ? (
-              <form className="otp-form" onSubmit={handleVerifyOtp}>
-                <div className="panel-heading">
-                  <ol className="register-stepper" aria-label="Registration progress">
-                    {setupSteps.map((step, index) => (
-                      <li
-                        className={index <= currentStepIndex ? 'active' : ''}
-                        key={step}
-                      >
-                        <span>{index + 1}</span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                  <h2>Enter OTP</h2>
-                  <p>
-                    We sent a verification code to {adminPhone || adminEmail}.
+                  <p className="register-next">
+                    Verify the admin account to continue with workspace setup.
                   </p>
-                </div>
 
-                <Field label="OTP code" error={errors.otpCode}>
-                  <input
-                    autoComplete="one-time-code"
-                    inputMode="numeric"
-                    maxLength={6}
-                    name="otpCode"
-                    onChange={(event) => {
-                      setOtpCode(event.target.value.replace(/\D/g, ''));
-                      setErrors((current) => ({
-                        ...current,
-                        otpCode: undefined,
-                      }));
-                    }}
-                    placeholder="Enter OTP"
-                    value={otpCode}
-                  />
-                </Field>
-
-                <p className="register-next">
-                  Verify the admin account to continue with workspace setup.
-                </p>
-
-                <div className="register-actions">
-                  <Button type="submit">Verify OTP</Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setView('admin')}
-                  >
-                    Edit details
-                  </Button>
-                </div>
-              </form>
-            ) : null}
+                  <div className="register-actions">
+                    <Button type="submit">Verify OTP</Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setView('admin')}
+                    >
+                      Edit details
+                    </Button>
+                  </div>
+                </form>
+              ) : null}
             </div>
           </div>
         </section>
