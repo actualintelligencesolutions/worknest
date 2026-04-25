@@ -23,6 +23,7 @@ RewriteRule ^$ ui/dist/index.html [L]
 
 # Serve Vite build files from their public URLs before the SPA fallback.
 RewriteRule ^assets/(.+)$ ui/dist/assets/$1 [L]
+RewriteRule ^images/(.+)$ ui/dist/images/$1 [L]
 RewriteRule ^favicon\.svg$ ui/dist/favicon.svg [L]
 
 # Let actual project-root files resolve if they are explicitly public.

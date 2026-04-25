@@ -19,6 +19,10 @@ RewriteRule ^api(?:/(.*))?$ {{API_BASE}}/index.php [QSA,L]
 RewriteRule ^dam/([0-9]+)$ {{DAM_BASE}}/index.php [QSA,L]
 RewriteRule ^dam(?:/(.*))?$ {{DAM_BASE}}/index.php [QSA,L]
 
+RewriteRule ^assets/(.+)$ {{UI_DIST}}/assets/$1 [L]
+RewriteRule ^images/(.+)$ {{UI_DIST}}/images/$1 [L]
+RewriteRule ^favicon\.svg$ {{UI_DIST}}/favicon.svg [L]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
