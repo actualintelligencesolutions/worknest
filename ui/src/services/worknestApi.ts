@@ -52,6 +52,16 @@ export function listPlans() {
   return apiRequest<{ plans: Plan[] }>('/plans');
 }
 
+export function checkWorkspaceAvailability(tenantId: string) {
+  return apiRequest<{
+    tenant_id: string;
+    available: boolean;
+    reason: 'reserved' | 'taken' | null;
+  }>(
+    `/companies/check-workspace?tenant_id=${encodeURIComponent(tenantId)}`,
+  );
+}
+
 export function registerCompany(payload: {
   company_name: string;
   tenant_id?: string;

@@ -1,8 +1,11 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '../../components/atoms/Button';
 import { Field } from '../../components/atoms/Field';
 import { AppLayout } from '../../layouts/AppLayout';
-import { registerCompany } from '../../services/worknestApi';
+import {
+  checkWorkspaceAvailability,
+  registerCompany,
+} from '../../services/worknestApi';
 import { useTenantStore } from '../../stores/tenantStore';
 import './style.scss';
 
@@ -22,7 +25,19 @@ type Notice = {
   message: string;
 };
 
+type WorkspaceStatus = {
+  kind: 'idle' | 'checking' | 'available' | 'unavailable' | 'error';
+  message: string;
+};
+
 const setupSteps = ['Company', 'Admin', 'OTP'];
+const reservedWorkspaceSlugs = new Set([
+  'admin',
+  'api',
+  'app',
+  'login',
+  'worknest',
+]);
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -48,8 +63,7 @@ function phoneNumberPart(value: string) {
   return value.replace(/\D/g, '').slice(0, 10);
 }
 
-function workspaceAvailability(slug: string) {
-  const reserved = new Set(['admin', 'api', 'app', 'login', 'worknest']);
+function localWorkspaceAvailability(slug: string): WorkspaceStatus {
   if (!slug) {
     return {
       kind: 'idle',
@@ -58,19 +72,19 @@ function workspaceAvailability(slug: string) {
   }
   if (slug.length < 3) {
     return {
-      kind: 'checking',
-      message: 'Checking availability...',
+      kind: 'idle',
+      message: 'Use at least 3 characters.',
     };
   }
-  if (reserved.has(slug)) {
+  if (reservedWorkspaceSlugs.has(slug)) {
     return {
       kind: 'unavailable',
       message: 'This address is already taken.',
     };
   }
   return {
-    kind: 'available',
-    message: 'This address is available.',
+    kind: 'checking',
+    message: 'Checking availability...',
   };
 }
 
@@ -93,8 +107,50 @@ export function RegisterPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const workspaceStatus = workspaceAvailability(workspaceSlug);
+  const [workspaceStatus, setWorkspaceStatus] = useState<WorkspaceStatus>(
+    localWorkspaceAvailability(''),
+  );
   const currentStepIndex = view === 'company' ? 0 : view === 'admin' ? 1 : 2;
+
+  useEffect(() => {
+    const localStatus = localWorkspaceAvailability(workspaceSlug);
+    setWorkspaceStatus(localStatus);
+
+    if (localStatus.kind !== 'checking') {
+      return undefined;
+    }
+
+    let isCurrentCheck = true;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const result = await checkWorkspaceAvailability(workspaceSlug);
+        if (!isCurrentCheck) {
+          return;
+        }
+        setWorkspaceStatus({
+          kind: result.available ? 'available' : 'unavailable',
+          message: result.available
+            ? 'This address is available.'
+            : 'This address is already taken.',
+        });
+      } catch (error) {
+        if (!isCurrentCheck) {
+          return;
+        }
+        setWorkspaceStatus({
+          kind: 'error',
+          message:
+            (error as Error).message ||
+            'Unable to check this address right now.',
+        });
+      }
+    }, 350);
+
+    return () => {
+      isCurrentCheck = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [workspaceSlug]);
 
   function validateCompany() {
     const nextErrors: FormErrors = {};
@@ -103,6 +159,10 @@ export function RegisterPage() {
     }
     if (!workspaceSlug.trim()) {
       nextErrors.workspaceSlug = 'Workspace address is required.';
+    } else if (workspaceStatus.kind === 'checking') {
+      nextErrors.workspaceSlug = 'Please wait while we check this address.';
+    } else if (workspaceStatus.kind !== 'available') {
+      nextErrors.workspaceSlug = 'Choose an available workspace address.';
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -286,7 +346,12 @@ export function RegisterPage() {
                   </Field>
 
                   <div className="register-actions">
-                    <Button type="submit">Continue</Button>
+                    <Button
+                      type="submit"
+                      disabled={workspaceStatus.kind !== 'available'}
+                    >
+                      Continue
+                    </Button>
                   </div>
                 </form>
               ) : null}

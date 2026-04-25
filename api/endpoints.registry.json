@@ -101,6 +101,37 @@
       }
     },
     {
+      "id": "api.companies.check-workspace",
+      "method": "GET",
+      "path": "/api/companies/check-workspace",
+      "status": "active",
+      "purpose": "Check whether a company workspace address is available before registration.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": {
+        "params": { "tenant_id": "required workspace slug" },
+        "body": {}
+      },
+      "response": {
+        "success": {
+          "tenant_id": "acme",
+          "available": true,
+          "reason": null
+        },
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "Workspace address must be at least 3 characters."
+        }
+      },
+      "database": { "related_tables": ["tenants"] },
+      "notes": {
+        "auth_rules": "No auth required because this runs before registration.",
+        "tenant_behavior": "Checks the requested tenant slug against existing tenant records."
+      }
+    },
+    {
       "id": "api.auth.hr-login",
       "method": "POST",
       "path": "/api/auth/hr-login",

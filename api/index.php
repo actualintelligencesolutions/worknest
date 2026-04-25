@@ -89,6 +89,11 @@ function slugify(string $value): string
     return $slug !== '' ? $slug : 'tenant';
 }
 
+function reserved_tenant_ids(): array
+{
+    return ['admin', 'api', 'app', 'login', 'worknest'];
+}
+
 function normalize_phone(string $phone): string
 {
     $digits = preg_replace('/\D+/', '', $phone) ?? '';
@@ -478,6 +483,30 @@ try {
         api_success(['plans' => $stmt->fetchAll()]);
     }
 
+    if ($method === 'GET' && $path === '/companies/check-workspace') {
+        $tenant = slugify((string) ($_GET['tenant_id'] ?? ''));
+        if (strlen($tenant) < 3) {
+            api_error('VALIDATION_ERROR', 'Workspace address must be at least 3 characters.', 422);
+        }
+        if (in_array($tenant, reserved_tenant_ids(), true)) {
+            api_success([
+                'tenant_id' => $tenant,
+                'available' => false,
+                'reason' => 'reserved',
+            ]);
+        }
+
+        $stmt = $pdo->prepare('SELECT id FROM tenants WHERE tenant_id = :tenant_id AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute(['tenant_id' => $tenant]);
+        $tenantExists = $stmt->fetch() !== false;
+
+        api_success([
+            'tenant_id' => $tenant,
+            'available' => !$tenantExists,
+            'reason' => $tenantExists ? 'taken' : null,
+        ]);
+    }
+
     if ($method === 'POST' && $path === '/companies/register') {
         $body = api_body();
         $companyName = trim((string) ($body['company_name'] ?? ''));
@@ -489,6 +518,15 @@ try {
 
         if ($companyName === '' || $adminName === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL) || !valid_phone($adminPhone) || strlen($password) < 8) {
             api_error('VALIDATION_ERROR', 'Company, HR admin details, valid phone, and an 8 character password are required.', 422);
+        }
+        if (strlen($tenant) < 3 || in_array($tenant, reserved_tenant_ids(), true)) {
+            api_error('WORKSPACE_UNAVAILABLE', 'This workspace address is not available.', 409);
+        }
+
+        $stmt = $pdo->prepare('SELECT id FROM tenants WHERE tenant_id = :tenant_id AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute(['tenant_id' => $tenant]);
+        if ($stmt->fetch() !== false) {
+            api_error('WORKSPACE_UNAVAILABLE', 'This workspace address is already taken.', 409);
         }
 
         $pdo->beginTransaction();
