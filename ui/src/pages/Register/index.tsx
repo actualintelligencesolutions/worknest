@@ -5,6 +5,7 @@ import { AppLayout } from '../../layouts/AppLayout';
 import {
   checkWorkspaceAvailability,
   registerCompany,
+  verifyAdminEmailOtp,
 } from '../../services/worknestApi';
 import { useTenantStore } from '../../stores/tenantStore';
 import './style.scss';
@@ -105,6 +106,8 @@ export function RegisterPage() {
   const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
   const [view, setView] = useState<'company' | 'admin' | 'otp'>('company');
   const [otpCode, setOtpCode] = useState('');
+  const [adminVerificationChallengeId, setAdminVerificationChallengeId] =
+    useState<number | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -219,9 +222,11 @@ export function RegisterPage() {
         admin_phone: `+91${adminPhone.trim()}`,
         admin_password: adminPassword,
       });
+      setAdminVerificationChallengeId(response.verification.challenge_id);
+      setOtpCode(response.verification.dev_otp ?? '');
       setNotice({
         kind: 'success',
-        message: `${response.tenant.name} is registered. Enter the OTP to continue.`,
+        message: `${response.tenant.name} is registered. Enter the email OTP to continue.`,
       });
       setView('otp');
     } catch (error) {
@@ -231,7 +236,7 @@ export function RegisterPage() {
     }
   }
 
-  function handleVerifyOtp(event: FormEvent<HTMLFormElement>) {
+  async function handleVerifyOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!/^[0-9]{4,6}$/.test(otpCode.trim())) {
       setErrors((current) => ({
@@ -240,12 +245,28 @@ export function RegisterPage() {
       }));
       return;
     }
+    if (adminVerificationChallengeId === null) {
+      setNotice({
+        kind: 'error',
+        message: 'Start registration again to request an email OTP.',
+      });
+      return;
+    }
 
-    setErrors((current) => ({ ...current, otpCode: undefined }));
-    setNotice({
-      kind: 'success',
-      message: 'OTP verified. Workspace setup is ready.',
-    });
+    setIsSubmitting(true);
+    setNotice(null);
+    try {
+      await verifyAdminEmailOtp(adminVerificationChallengeId, otpCode.trim());
+      setErrors((current) => ({ ...current, otpCode: undefined }));
+      setNotice({
+        kind: 'success',
+        message: 'Email OTP verified. Workspace setup is ready.',
+      });
+    } catch (error) {
+      setNotice({ kind: 'error', message: (error as Error).message });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -526,9 +547,7 @@ export function RegisterPage() {
                       ))}
                     </ol>
                     <h2>Enter OTP</h2>
-                    <p>
-                      We sent a verification code to {adminPhone || adminEmail}.
-                    </p>
+                    <p>We sent a verification code to {adminEmail}.</p>
                   </div>
 
                   <Field label="OTP code" error={errors.otpCode}>
@@ -554,7 +573,9 @@ export function RegisterPage() {
                   </p>
 
                   <div className="register-actions">
-                    <Button type="submit">Verify OTP</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Verifying...' : 'Verify OTP'}
+                    </Button>
                     <Button
                       type="button"
                       variant="secondary"

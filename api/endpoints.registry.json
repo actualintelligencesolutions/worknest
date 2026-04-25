@@ -74,7 +74,7 @@
       "method": "POST",
       "path": "/api/companies/register",
       "status": "active",
-      "purpose": "Create a tenant/company and first HR admin. Branch package selection happens later.",
+      "purpose": "Create a tenant/company, first HR admin, and email OTP verification challenge. Branch package selection happens later.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
@@ -91,13 +91,24 @@
         }
       },
       "response": {
-        "success": { "tenant": {}, "user": {}, "next_step": "setup_company" },
+        "success": {
+          "tenant": {},
+          "user": {},
+          "verification": {
+            "challenge_id": 1,
+            "channel": "email",
+            "destination": "admin@example.com",
+            "email_sent": true,
+            "dev_otp": "3333"
+          },
+          "next_step": "verify_admin_email"
+        },
         "error": { "code": "VALIDATION_ERROR", "message": "Registration data is incomplete." }
       },
-      "database": { "related_tables": ["tenants", "users"] },
+      "database": { "related_tables": ["tenants", "users", "user_verification_challenges", "onboarding_flows"] },
       "notes": {
         "auth_rules": "No auth required because this creates the first HR admin.",
-        "tenant_behavior": "Creates a new tenant slug and keeps all records scoped to it."
+        "tenant_behavior": "Creates a new tenant slug and keeps all records scoped to it. Admin remains pending until email OTP verification succeeds."
       }
     },
     {
@@ -129,6 +140,41 @@
       "notes": {
         "auth_rules": "No auth required because this runs before registration.",
         "tenant_behavior": "Checks the requested tenant slug against existing tenant records."
+      }
+    },
+    {
+      "id": "api.auth.admin.verify-otp",
+      "method": "POST",
+      "path": "/api/auth/admin/verify-otp",
+      "status": "active",
+      "purpose": "Verify the first HR admin email OTP and activate the company workspace.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": false,
+      "request": {
+        "params": {},
+        "body": {
+          "challenge_id": "required numeric id",
+          "otp_code": "required string"
+        }
+      },
+      "response": {
+        "success": {
+          "token": "string",
+          "tenant": {},
+          "user": {},
+          "next_step": "setup_company"
+        },
+        "error": {
+          "code": "INVALID_OTP",
+          "message": "The OTP is invalid or expired."
+        }
+      },
+      "database": { "related_tables": ["tenants", "users", "user_verification_challenges", "onboarding_flows"] },
+      "notes": {
+        "auth_rules": "No auth required because the OTP challenge proves email ownership.",
+        "tenant_behavior": "Activates the tenant and primary HR admin after successful email OTP verification."
       }
     },
     {
@@ -170,7 +216,7 @@
         "body": { "phone": "required phone number" }
       },
       "response": {
-        "success": { "challenge_id": 1, "dev_otp": "123456" },
+        "success": { "challenge_id": 1, "dev_otp": "3333" },
         "error": { "code": "EMPLOYEE_NOT_FOUND", "message": "No employee exists for this phone number." }
       },
       "database": { "related_tables": ["employee_profiles", "employee_otp_challenges"] },

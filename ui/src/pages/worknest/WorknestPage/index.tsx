@@ -87,12 +87,19 @@ export function WorknestPage() {
         admin_phone: String(form.get('admin_phone') ?? ''),
         admin_password: String(form.get('admin_password') ?? ''),
       });
-      setHrSession({
-        token: response.token,
-        tenantId: response.tenant.tenant_id,
-      });
+      if (response.token) {
+        setHrSession({
+          token: response.token,
+          tenantId: response.tenant.tenant_id,
+        });
+      }
       setEmployeeTenant(response.tenant.tenant_id);
-      setNotice({ kind: 'success', message: t('notices.workspaceCreated') });
+      setNotice({
+        kind: 'success',
+        message: response.verification
+          ? `Workspace created. Verify the email OTP sent to ${response.verification.destination}.`
+          : t('notices.workspaceCreated'),
+      });
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     }

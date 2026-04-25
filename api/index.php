@@ -94,6 +94,24 @@ function reserved_tenant_ids(): array
     return ['admin', 'api', 'app', 'login', 'worknest'];
 }
 
+function send_admin_email_otp(string $email, string $otp, string $companyName): bool
+{
+    if (!function_exists('mail')) {
+        return false;
+    }
+
+    $subject = 'Your Worknest admin verification code';
+    $message = "Use this OTP to verify the admin account for {$companyName}: {$otp}\n\nThis code expires in 10 minutes.";
+    $headers = 'From: no-reply@worknest.local';
+
+    return @mail($email, $subject, $message, $headers);
+}
+
+function generate_otp_code(): string
+{
+    return '3333';
+}
+
 function normalize_phone(string $phone): string
 {
     $digits = preg_replace('/\D+/', '', $phone) ?? '';
@@ -529,10 +547,12 @@ try {
             api_error('WORKSPACE_UNAVAILABLE', 'This workspace address is already taken.', 409);
         }
 
+        $otp = generate_otp_code();
+
         $pdo->beginTransaction();
         $stmt = $pdo->prepare('INSERT INTO tenants (tenant_id, name) VALUES (:tenant_id, :name)');
         $stmt->execute(['tenant_id' => $tenant, 'name' => $companyName]);
-        $stmt = $pdo->prepare('INSERT INTO users (tenant_id, name, email, phone, password_hash, role, status) VALUES (:tenant_id, :name, :email, :phone, :password_hash, "hr_admin", "active")');
+        $stmt = $pdo->prepare('INSERT INTO users (tenant_id, name, email, phone, password_hash, role, status) VALUES (:tenant_id, :name, :email, :phone, :password_hash, "hr_admin", "pending_verification")');
         $stmt->execute([
             'tenant_id' => $tenant,
             'name' => $adminName,
@@ -541,14 +561,80 @@ try {
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         ]);
         $userId = (int) $pdo->lastInsertId();
+        $pdo->prepare('UPDATE tenants SET primary_admin_user_id = :user_id WHERE tenant_id = :tenant_id')
+            ->execute(['tenant_id' => $tenant, 'user_id' => $userId]);
+        $stmt = $pdo->prepare('INSERT INTO user_verification_challenges (tenant_id, user_id, channel, destination, otp_code, expires_at) VALUES (:tenant_id, :user_id, "email", :destination, :otp_code, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))');
+        $stmt->execute([
+            'tenant_id' => $tenant,
+            'user_id' => $userId,
+            'destination' => $adminEmail,
+            'otp_code' => $otp,
+        ]);
+        $challengeId = (int) $pdo->lastInsertId();
+        $pdo->prepare('INSERT INTO onboarding_flows (tenant_id, status, current_step) VALUES (:tenant_id, "not_started", "company_profile")')
+            ->execute(['tenant_id' => $tenant]);
         $pdo->commit();
+        $emailSent = send_admin_email_otp($adminEmail, $otp, $companyName);
 
         api_success([
             'tenant' => ['tenant_id' => $tenant, 'name' => $companyName],
-            'user' => ['id' => $userId, 'name' => $adminName, 'email' => $adminEmail, 'role' => 'hr_admin'],
-            'token' => make_token(['tenant_id' => $tenant, 'role' => 'hr_admin', 'user_id' => $userId]),
-            'next_step' => 'setup_company',
+            'user' => ['id' => $userId, 'name' => $adminName, 'email' => $adminEmail, 'role' => 'hr_admin', 'status' => 'pending_verification'],
+            'verification' => [
+                'challenge_id' => $challengeId,
+                'channel' => 'email',
+                'destination' => $adminEmail,
+                'email_sent' => $emailSent,
+                'dev_otp' => $otp,
+            ],
+            'next_step' => 'verify_admin_email',
         ], 201);
+    }
+
+    if ($method === 'POST' && $path === '/auth/admin/verify-otp') {
+        $body = api_body();
+        $challengeId = (int) ($body['challenge_id'] ?? 0);
+        $otpCode = trim((string) ($body['otp_code'] ?? ''));
+
+        $stmt = $pdo->prepare(
+            'SELECT c.id, c.tenant_id, c.user_id, c.otp_code, c.attempt_count, u.name, u.email, u.role
+             FROM user_verification_challenges c
+             JOIN users u ON u.id = c.user_id
+             WHERE c.id = :id
+               AND c.channel = "email"
+               AND c.status = "pending"
+               AND c.expires_at > CURRENT_TIMESTAMP
+               AND c.deleted_at IS NULL
+               AND u.deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['id' => $challengeId]);
+        $challenge = $stmt->fetch();
+
+        if ($challenge === false || !hash_equals((string) $challenge['otp_code'], $otpCode)) {
+            if ($challenge !== false) {
+                $pdo->prepare('UPDATE user_verification_challenges SET attempt_count = attempt_count + 1, last_attempt_at = CURRENT_TIMESTAMP WHERE id = :id')
+                    ->execute(['id' => (int) $challenge['id']]);
+            }
+            api_error('INVALID_OTP', 'The OTP is invalid or expired.', 422);
+        }
+
+        $pdo->beginTransaction();
+        $pdo->prepare('UPDATE user_verification_challenges SET status = "verified", verified_at = CURRENT_TIMESTAMP, last_attempt_at = CURRENT_TIMESTAMP WHERE id = :id')
+            ->execute(['id' => (int) $challenge['id']]);
+        $pdo->prepare('UPDATE users SET status = "active", email_verified_at = CURRENT_TIMESTAMP WHERE id = :id')
+            ->execute(['id' => (int) $challenge['user_id']]);
+        $pdo->prepare('UPDATE tenants SET status = "active", onboarding_status = "in_progress" WHERE tenant_id = :tenant_id')
+            ->execute(['tenant_id' => $challenge['tenant_id']]);
+        $pdo->prepare('UPDATE onboarding_flows SET status = "in_progress", current_step = "company_profile" WHERE tenant_id = :tenant_id')
+            ->execute(['tenant_id' => $challenge['tenant_id']]);
+        $pdo->commit();
+
+        api_success([
+            'token' => make_token(['tenant_id' => $challenge['tenant_id'], 'role' => 'hr_admin', 'user_id' => (int) $challenge['user_id']]),
+            'tenant' => ['tenant_id' => $challenge['tenant_id']],
+            'user' => ['id' => (int) $challenge['user_id'], 'name' => $challenge['name'], 'email' => $challenge['email'], 'role' => $challenge['role'], 'status' => 'active'],
+            'next_step' => 'setup_company',
+        ]);
     }
 
     if ($method === 'POST' && $path === '/auth/hr-login') {
@@ -575,7 +661,7 @@ try {
         if ($employee === false) {
             api_error('EMPLOYEE_NOT_FOUND', 'No employee exists for this phone number.', 404);
         }
-        $otp = (string) random_int(100000, 999999);
+        $otp = generate_otp_code();
         $stmt = $pdo->prepare('INSERT INTO employee_otp_challenges (tenant_id, phone, otp_code, expires_at) VALUES (:tenant_id, :phone, :otp_code, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))');
         $stmt->execute(['tenant_id' => $tenant, 'phone' => $phone, 'otp_code' => $otp]);
         api_success(['challenge_id' => (int) $pdo->lastInsertId(), 'dev_otp' => $otp]);

@@ -70,12 +70,43 @@ export function registerCompany(payload: {
 }) {
   return apiRequest<{
     tenant: { tenant_id: string; name: string };
-    user: { id: number; name: string; email: string; role: string };
-    token: string;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+      status: string;
+    };
+    verification: {
+      challenge_id: number;
+      channel: 'email';
+      destination: string;
+      email_sent: boolean;
+      dev_otp?: string;
+    };
+    token?: string;
     next_step: string;
   }>('/companies/register', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function verifyAdminEmailOtp(challengeId: number, otpCode: string) {
+  return apiRequest<{
+    token: string;
+    tenant: { tenant_id: string };
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+      status: string;
+    };
+    next_step: string;
+  }>('/auth/admin/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ challenge_id: challengeId, otp_code: otpCode }),
   });
 }
 
