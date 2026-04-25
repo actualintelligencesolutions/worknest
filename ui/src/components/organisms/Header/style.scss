@@ -15,6 +15,7 @@
 
 .header-brand,
 .header-nav a,
+.header-login,
 .header-signup {
   color: #111827;
   text-decoration: none;
@@ -65,7 +66,25 @@
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 10px;
   justify-content: end;
+}
+
+.header-login {
+  min-height: 40px;
+  border: 1px solid #d9e1ec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4b5563;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.header-login.active,
+.header-login:hover {
+  border-color: #0f6bff;
+  color: #0f6bff;
 }
 
 .header-signup {
@@ -99,6 +118,7 @@
     overflow-x: auto;
   }
 
+  .header-login,
   .header-signup {
     min-height: 36px;
     padding: 8px 12px;

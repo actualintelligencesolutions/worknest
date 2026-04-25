@@ -130,6 +130,27 @@ export function verifyAdminEmailOtp(challengeId: number, otpCode: string) {
   });
 }
 
+export function loginHrAdmin(
+  tenantId: string,
+  payload: {
+    email: string;
+    password: string;
+  },
+) {
+  return apiRequest<{
+    token: string;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+    };
+  }>(`/auth/hr-login?tenant=${encodeURIComponent(tenantId)}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createMainOffice(
   session: AuthSession,
   payload: {

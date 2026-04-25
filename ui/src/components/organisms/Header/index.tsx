@@ -6,6 +6,7 @@ export function Header() {
   const tenant = useTenantStore((state) => state.tenant);
   const navItems = [
     { label: 'Home', path: '/' },
+    { label: 'Login', path: '/login' },
     { label: 'Register', path: '/register' },
     { label: 'Workspace', path: '/workspace' },
   ];
@@ -32,6 +33,9 @@ export function Header() {
       </nav>
 
       <div className="header-actions">
+        <NavLink className="header-login" to="/login">
+          Login
+        </NavLink>
         <NavLink className="header-signup" to="/register">
           Register Now
         </NavLink>
