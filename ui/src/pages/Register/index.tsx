@@ -4,6 +4,7 @@ import { Button } from '../../components/atoms/Button';
 import { Field } from '../../components/atoms/Field';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { AppLayout } from '../../layouts/AppLayout';
+import { saveHrSession } from '../../services/hrSession';
 import {
   checkWorkspaceAvailability,
   registerCompany,
@@ -260,7 +261,14 @@ export function RegisterPage() {
     setIsSubmitting(true);
     setNotice(null);
     try {
-      await verifyAdminEmailOtp(adminVerificationChallengeId, otpCode.trim());
+      const response = await verifyAdminEmailOtp(
+        adminVerificationChallengeId,
+        otpCode.trim(),
+      );
+      saveHrSession({
+        token: response.token,
+        tenantId: response.tenant.tenant_id,
+      });
       setErrors((current) => ({ ...current, otpCode: undefined }));
       setNotice({
         kind: 'success',
@@ -281,7 +289,7 @@ export function RegisterPage() {
           <div className="register-visual">
             <div className="register-intro">
               <h1 id="register-title">
-                Let&apos;s set up your company workspace
+                Launch your company workspace in minutes.
               </h1>
               <p>
                 Start with your company profile and primary admin. The rest of

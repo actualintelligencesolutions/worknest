@@ -70,6 +70,63 @@
       }
     },
     {
+      "id": "api.main-office.store",
+      "method": "POST",
+      "path": "/api/main-office",
+      "status": "active",
+      "purpose": "Create the tenant Main Office, assign an active plan, and create a pending HR admin for it.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {
+          "admin_name": "required string",
+          "admin_email": "required email",
+          "plan_id": "required active plan id"
+        }
+      },
+      "response": {
+        "success": { "location": {}, "admin": {}, "plan": {} },
+        "error": { "code": "MAIN_OFFICE_EXISTS", "message": "Main Office already exists for this tenant." }
+      },
+      "database": { "related_tables": ["company_locations", "users", "plans"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only one active Main Office can exist per tenant."
+      }
+    },
+    {
+      "id": "api.branches.store",
+      "method": "POST",
+      "path": "/api/branches",
+      "status": "active",
+      "purpose": "Create a tenant branch, assign an active plan, and create a pending HR admin for it.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {
+          "branch_name": "required string",
+          "admin_name": "required string",
+          "admin_email": "required email",
+          "plan_id": "required active plan id"
+        }
+      },
+      "response": {
+        "success": { "location": {}, "admin": {}, "plan": {} },
+        "error": { "code": "BRANCH_EXISTS", "message": "A branch with this name already exists." }
+      },
+      "database": { "related_tables": ["company_locations", "users", "plans"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Branch names are unique within a tenant."
+      }
+    },
+    {
       "id": "api.companies.register",
       "method": "POST",
       "path": "/api/companies/register",

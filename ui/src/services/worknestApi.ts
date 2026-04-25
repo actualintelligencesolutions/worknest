@@ -12,6 +12,26 @@ export type Plan = {
   status: string;
 };
 
+export type CompanyLocation = {
+  id: number;
+  tenant_id: string;
+  location_type: 'main_office' | 'branch';
+  name: string;
+  status: string;
+};
+
+export type LocationSetupResponse = {
+  location: CompanyLocation;
+  admin: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  plan: Plan;
+};
+
 export type PayrollImportResponse = {
   import: {
     id: number;
@@ -108,6 +128,43 @@ export function verifyAdminEmailOtp(challengeId: number, otpCode: string) {
     method: 'POST',
     body: JSON.stringify({ challenge_id: challengeId, otp_code: otpCode }),
   });
+}
+
+export function createMainOffice(
+  session: AuthSession,
+  payload: {
+    admin_name: string;
+    admin_email: string;
+    plan_id: number;
+  },
+) {
+  return apiRequest<LocationSetupResponse>(
+    `/main-office?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function createBranch(
+  session: AuthSession,
+  payload: {
+    branch_name: string;
+    admin_name: string;
+    admin_email: string;
+    plan_id: number;
+  },
+) {
+  return apiRequest<LocationSetupResponse>(
+    `/branches?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function createPayrollPeriod(

@@ -220,6 +220,95 @@ function find_plan(PDO $pdo, int $planId): ?array
     return $plan === false ? null : $plan;
 }
 
+function location_payload(array $location, array $admin, array $plan): array
+{
+    return [
+        'location' => [
+            'id' => (int) $location['id'],
+            'tenant_id' => $location['tenant_id'],
+            'location_type' => $location['location_type'],
+            'name' => $location['name'],
+            'status' => $location['status'],
+        ],
+        'admin' => [
+            'id' => (int) $admin['id'],
+            'name' => $admin['name'],
+            'email' => $admin['email'],
+            'role' => $admin['role'],
+            'status' => $admin['status'],
+        ],
+        'plan' => $plan,
+    ];
+}
+
+function create_company_location(PDO $pdo, string $tenant, string $locationType, string $name, int $planId, string $adminName, string $adminEmail): array
+{
+    if ($name === '' || $adminName === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL) || $planId <= 0) {
+        api_error('VALIDATION_ERROR', 'Location name, admin name, admin email, and active plan are required.', 422);
+    }
+
+    $plan = find_plan($pdo, $planId);
+    if ($plan === null) {
+        api_error('INVALID_PLAN', 'Choose an active plan.', 422);
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE tenant_id = :tenant_id AND email = :email AND deleted_at IS NULL LIMIT 1');
+    $stmt->execute(['tenant_id' => $tenant, 'email' => $adminEmail]);
+    if ($stmt->fetch() !== false) {
+        api_error('ADMIN_EMAIL_EXISTS', 'An admin with this email already exists for this tenant.', 409);
+    }
+
+    if ($locationType === 'main_office') {
+        $stmt = $pdo->prepare('SELECT id FROM company_locations WHERE tenant_id = :tenant_id AND location_type = "main_office" AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute(['tenant_id' => $tenant]);
+        if ($stmt->fetch() !== false) {
+            api_error('MAIN_OFFICE_EXISTS', 'Main Office already exists for this tenant.', 409);
+        }
+    } else {
+        $stmt = $pdo->prepare('SELECT id FROM company_locations WHERE tenant_id = :tenant_id AND location_type = "branch" AND LOWER(name) = LOWER(:name) AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute(['tenant_id' => $tenant, 'name' => $name]);
+        if ($stmt->fetch() !== false) {
+            api_error('BRANCH_EXISTS', 'A branch with this name already exists.', 409);
+        }
+    }
+
+    $pdo->beginTransaction();
+    $stmt = $pdo->prepare('INSERT INTO users (tenant_id, name, email, password_hash, role, status) VALUES (:tenant_id, :name, :email, :password_hash, "hr_admin", "pending_verification")');
+    $stmt->execute([
+        'tenant_id' => $tenant,
+        'name' => $adminName,
+        'email' => $adminEmail,
+        'password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT),
+    ]);
+    $adminId = (int) $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare('INSERT INTO company_locations (tenant_id, location_type, name, plan_id, admin_user_id) VALUES (:tenant_id, :location_type, :name, :plan_id, :admin_user_id)');
+    $stmt->execute([
+        'tenant_id' => $tenant,
+        'location_type' => $locationType,
+        'name' => $name,
+        'plan_id' => $planId,
+        'admin_user_id' => $adminId,
+    ]);
+    $locationId = (int) $pdo->lastInsertId();
+    $pdo->commit();
+
+    $locationStmt = $pdo->prepare('SELECT id, tenant_id, location_type, name, status FROM company_locations WHERE id = :id');
+    $locationStmt->execute(['id' => $locationId]);
+    $location = $locationStmt->fetch();
+    if ($location === false) {
+        api_error('LOCATION_NOT_FOUND', 'The created location could not be loaded.', 500);
+    }
+
+    return location_payload($location, [
+        'id' => $adminId,
+        'name' => $adminName,
+        'email' => $adminEmail,
+        'role' => 'hr_admin',
+        'status' => 'pending_verification',
+    ], $plan);
+}
+
 function ensure_storage_dir(string $tenant, string $area): string
 {
     $dir = __DIR__ . '/storage/' . $area . '/' . $tenant;
@@ -499,6 +588,38 @@ try {
     if ($method === 'GET' && $path === '/plans') {
         $stmt = $pdo->query('SELECT id, plan_code, name, price_cents, currency, description, status FROM plans WHERE status = "active" AND deleted_at IS NULL ORDER BY price_cents ASC');
         api_success(['plans' => $stmt->fetchAll()]);
+    }
+
+    if ($method === 'POST' && $path === '/main-office') {
+        $tenant = api_tenant();
+        require_actor($tenant, 'hr_admin');
+        $body = api_body();
+        $payload = create_company_location(
+            $pdo,
+            $tenant,
+            'main_office',
+            'Main Office',
+            (int) ($body['plan_id'] ?? 0),
+            trim((string) ($body['admin_name'] ?? '')),
+            strtolower(trim((string) ($body['admin_email'] ?? '')))
+        );
+        api_success($payload, 201);
+    }
+
+    if ($method === 'POST' && $path === '/branches') {
+        $tenant = api_tenant();
+        require_actor($tenant, 'hr_admin');
+        $body = api_body();
+        $payload = create_company_location(
+            $pdo,
+            $tenant,
+            'branch',
+            trim((string) ($body['branch_name'] ?? '')),
+            (int) ($body['plan_id'] ?? 0),
+            trim((string) ($body['admin_name'] ?? '')),
+            strtolower(trim((string) ($body['admin_email'] ?? '')))
+        );
+        api_success($payload, 201);
     }
 
     if ($method === 'GET' && $path === '/companies/check-workspace') {
