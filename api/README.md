@@ -13,7 +13,7 @@ Every endpoint must be represented in `endpoints.registry.json` before it is imp
 ## Run Locally
 
 ```sh
-php -S localhost:8080 -t api
+php -S localhost:8080 -t api api/router.php
 ```
 
 When hosted from the project root, Apache routes API requests through:

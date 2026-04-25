@@ -1,44 +1,40 @@
-import { useTranslation } from 'react-i18next';
+import { NavLink } from 'react-router-dom';
+import { useTenantStore } from '../../../stores/tenantStore';
 import './style.scss';
 
 export function Header() {
-  const { t } = useTranslation();
+  const tenant = useTenantStore((state) => state.tenant);
   const navItems = [
-    t('header.navigation.service'),
-    t('header.navigation.portfolio'),
-    t('header.navigation.pricing'),
-    t('header.navigation.contact'),
+    { label: 'Home', path: '/' },
+    { label: 'Register', path: '/register' },
+    { label: 'Workspace', path: '/workspace' },
   ];
 
   return (
     <header className="header">
-      <a className="header-brand" href="/">
+      <NavLink className="header-brand" to="/">
         <span className="header-brand-mark" aria-hidden="true">
           W
         </span>
-        <span>{t('brand.default.name')}</span>
-      </a>
+        <span>{tenant.branding.appName}</span>
+      </NavLink>
 
-      <nav className="header-nav" aria-label={t('header.navigation.label')}>
+      <nav className="header-nav" aria-label="Primary navigation">
         {navItems.map((item) => (
-          <a key={item} href="/">
-            {item}
-          </a>
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) => (isActive ? 'active' : undefined)}
+          >
+            {item.label}
+          </NavLink>
         ))}
       </nav>
 
       <div className="header-actions">
-        <a className="header-signup" href="/">
-          {t('header.signUp')}
-        </a>
-        <button
-          className="header-notifications"
-          type="button"
-          aria-label={t('header.notifications')}
-        >
-          <span className="header-bell" aria-hidden="true" />
-          <span className="header-badge">{t('header.notificationCount')}</span>
-        </button>
+        <NavLink className="header-signup" to="/register">
+          Create company
+        </NavLink>
       </div>
     </header>
   );

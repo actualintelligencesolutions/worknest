@@ -482,22 +482,18 @@ try {
         $body = api_body();
         $companyName = trim((string) ($body['company_name'] ?? ''));
         $tenant = slugify((string) ($body['tenant_id'] ?? $companyName));
-        $planId = (int) ($body['plan_id'] ?? 0);
         $adminName = trim((string) ($body['admin_name'] ?? ''));
         $adminEmail = strtolower(trim((string) ($body['admin_email'] ?? '')));
         $adminPhone = normalize_phone((string) ($body['admin_phone'] ?? ''));
         $password = (string) ($body['admin_password'] ?? '');
-        $plan = find_plan($pdo, $planId);
 
-        if ($companyName === '' || $plan === null || $adminName === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL) || !valid_phone($adminPhone) || strlen($password) < 8) {
-            api_error('VALIDATION_ERROR', 'Company, active plan selection, HR admin details, valid phone, and an 8 character password are required.', 422);
+        if ($companyName === '' || $adminName === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL) || !valid_phone($adminPhone) || strlen($password) < 8) {
+            api_error('VALIDATION_ERROR', 'Company, HR admin details, valid phone, and an 8 character password are required.', 422);
         }
 
         $pdo->beginTransaction();
         $stmt = $pdo->prepare('INSERT INTO tenants (tenant_id, name) VALUES (:tenant_id, :name)');
         $stmt->execute(['tenant_id' => $tenant, 'name' => $companyName]);
-        $stmt = $pdo->prepare('INSERT INTO tenant_plan_subscriptions (tenant_id, plan_id) VALUES (:tenant_id, :plan_id)');
-        $stmt->execute(['tenant_id' => $tenant, 'plan_id' => $planId]);
         $stmt = $pdo->prepare('INSERT INTO users (tenant_id, name, email, phone, password_hash, role, status) VALUES (:tenant_id, :name, :email, :phone, :password_hash, "hr_admin", "active")');
         $stmt->execute([
             'tenant_id' => $tenant,
@@ -511,10 +507,9 @@ try {
 
         api_success([
             'tenant' => ['tenant_id' => $tenant, 'name' => $companyName],
-            'plan' => $plan,
             'user' => ['id' => $userId, 'name' => $adminName, 'email' => $adminEmail, 'role' => 'hr_admin'],
             'token' => make_token(['tenant_id' => $tenant, 'role' => 'hr_admin', 'user_id' => $userId]),
-            'next_step' => 'upload_payroll',
+            'next_step' => 'setup_company',
         ], 201);
     }
 

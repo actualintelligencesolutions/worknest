@@ -1,39 +1,43 @@
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: grid;
+  min-height: 72px;
   grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
   align-items: center;
-  gap: 32px;
-  border-bottom: 1px solid #d7dee8;
-  min-height: 80px;
-  background: #f8f8f7;
-  padding: 16px 48px;
+  gap: 28px;
+  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 14px 48px;
+  backdrop-filter: blur(12px);
 }
 
 .header-brand,
 .header-nav a,
 .header-signup {
-  color: #171717;
+  color: #111827;
   text-decoration: none;
 }
 
 .header-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   justify-self: start;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   font-weight: 800;
 }
 
 .header-brand-mark {
   display: inline-grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border-radius: 8px;
-  background: #047857;
+  background: #0f6bff;
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 900;
 }
 
@@ -41,111 +45,62 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(20px, 3vw, 42px);
+  gap: 8px;
 }
 
 .header-nav a {
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 6px;
+  color: #4b5563;
+  padding: 9px 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.header-nav a.active,
+.header-nav a:hover {
+  background: #eef4ff;
+  color: #0f6bff;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: 22px;
 }
 
 .header-signup {
-  min-width: 148px;
-  border: 1px solid #737373;
-  border-radius: 999px;
-  padding: 14px 28px;
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.header-notifications {
-  position: relative;
-  display: inline-grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.header-bell {
-  position: relative;
-  width: 20px;
-  height: 22px;
-  border: 2px solid #171717;
-  border-bottom: 0;
-  border-radius: 12px 12px 6px 6px;
-}
-
-.header-bell::before {
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #171717;
-  content: '';
-  transform: translateX(-50%);
-}
-
-.header-bell::after {
-  position: absolute;
-  bottom: -7px;
-  left: 50%;
-  width: 10px;
-  height: 2px;
-  border-radius: 999px;
-  background: #171717;
-  content: '';
-  transform: translateX(-50%);
-}
-
-.header-badge {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  display: inline-grid;
-  min-width: 20px;
-  height: 20px;
-  place-items: center;
-  border-radius: 999px;
-  background: #e11d48;
+  min-height: 40px;
+  border: 1px solid #0f6bff;
+  border-radius: 6px;
+  background: #0f6bff;
   color: #ffffff;
-  font-size: 0.75rem;
+  padding: 10px 16px;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
-@media (max-width: 860px) {
+.header-signup.active,
+.header-signup:hover {
+  background: #0958d9;
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
   .header {
     grid-template-columns: 1fr auto;
-    gap: 18px;
-    padding: 16px 22px;
+    gap: 12px;
+    padding: 14px 22px;
   }
 
   .header-nav {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-content: start;
-    gap: 18px;
     overflow-x: auto;
   }
 
-  .header-actions {
-    gap: 12px;
-  }
-
   .header-signup {
-    min-width: 104px;
-    padding: 10px 18px;
+    min-height: 36px;
+    padding: 8px 12px;
   }
 }

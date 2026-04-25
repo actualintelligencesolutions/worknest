@@ -55,7 +55,6 @@ export function listPlans() {
 export function registerCompany(payload: {
   company_name: string;
   tenant_id?: string;
-  plan_id: number;
   admin_name: string;
   admin_email: string;
   admin_phone: string;
@@ -63,7 +62,6 @@ export function registerCompany(payload: {
 }) {
   return apiRequest<{
     tenant: { tenant_id: string; name: string };
-    plan: Plan;
     user: { id: number; name: string; email: string; role: string };
     token: string;
     next_step: string;

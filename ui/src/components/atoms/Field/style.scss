@@ -21,4 +21,16 @@
 
 .field small {
   color: #b42318;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.field-error input,
+.field-error textarea {
+  border-color: #dc2626;
+}
+
+.field-error > span {
+  color: #dc2626;
 }

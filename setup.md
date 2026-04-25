@@ -34,23 +34,23 @@ The MVP focuses on:
 
 1. **Company Details**
 2. **HR Admin Account**
-3. **Plan Selection (Mandatory)**
-4. **Review & Create Workspace**
+3. **Review & Create Workspace**
 
 ---
 
-### Plan Selection (v1)
+### Branch Package Selection (later)
 
-Even though only one plan exists, selection is **explicit and required**.
+Company registration is free and does **not** require plan selection. Packages
+are selected later for company branches during branch setup/onboarding.
 
-#### Free Plan Card
+#### Free Package Card
 
 * **Name**: Free
 * **Price**: ₹0 / month
-* **Use Case**: Getting started with payroll organization
+* **Use Case**: Getting a branch started with payroll organization
 * **Includes**:
 
-  * Company workspace
+  * Branch workspace
   * Employee records
   * Payroll import (CSV/XLSX)
   * Payslip generation
@@ -199,11 +199,9 @@ All endpoints must be defined in the endpoint registry before implementation.
 
 ### Critical Rules
 
-* `POST /api/companies/register` must require `plan_id`
-* Backend must validate:
-
-  * plan exists
-  * plan is active
+* `POST /api/companies/register` must not require `plan_id`
+* Company registration creates only the tenant/company and first HR admin
+* Branch package selection is handled later in onboarding
 
 ---
 
@@ -303,8 +301,8 @@ Example:
 
 ### Registration
 
-* Cannot proceed without plan selection
-* Tenant, plan subscription, and HR user must be created
+* Can proceed without plan selection
+* Tenant and HR user must be created
 
 ---
 
@@ -357,7 +355,7 @@ Example:
 
 ## 11. Assumptions
 
-* Free Plan is the only plan in v1 but explicitly selected
+* Company registration is free and package selection belongs to branch setup
 * CSV/XLSX only (no PDF parsing in v1)
 * India payroll conventions (PF, ESI, PT, TDS)
 * OTP initially works in dev mode (no SMS dependency)

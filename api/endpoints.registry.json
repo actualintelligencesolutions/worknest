@@ -53,7 +53,7 @@
       "method": "GET",
       "path": "/api/plans",
       "status": "active",
-      "purpose": "List active plans available during company registration.",
+      "purpose": "List active plans/packages available for later branch package selection.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
@@ -74,7 +74,7 @@
       "method": "POST",
       "path": "/api/companies/register",
       "status": "active",
-      "purpose": "Create a tenant/company, selected plan subscription, and first HR admin.",
+      "purpose": "Create a tenant/company and first HR admin. Branch package selection happens later.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
@@ -84,7 +84,6 @@
         "body": {
           "company_name": "required string",
           "tenant_id": "optional slug",
-          "plan_id": "required numeric active plan id",
           "admin_name": "required string",
           "admin_email": "required email",
           "admin_phone": "required phone",
@@ -92,10 +91,10 @@
         }
       },
       "response": {
-        "success": { "tenant": {}, "plan": {}, "user": {}, "next_step": "upload_payroll" },
+        "success": { "tenant": {}, "user": {}, "next_step": "setup_company" },
         "error": { "code": "VALIDATION_ERROR", "message": "Registration data is incomplete." }
       },
-      "database": { "related_tables": ["tenants", "plans", "tenant_plan_subscriptions", "users"] },
+      "database": { "related_tables": ["tenants", "users"] },
       "notes": {
         "auth_rules": "No auth required because this creates the first HR admin.",
         "tenant_behavior": "Creates a new tenant slug and keeps all records scoped to it."

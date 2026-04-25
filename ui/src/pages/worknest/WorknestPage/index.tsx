@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../layouts/AppLayout';
 import { useTenantStore } from '../../../stores/tenantStore';
@@ -6,7 +6,6 @@ import {
   createPayrollPeriod,
   downloadPayslip,
   listPayslips,
-  listPlans,
   processImport,
   publishPeriod,
   registerCompany,
@@ -17,7 +16,6 @@ import {
   type AuthSession,
   type PayrollImportResponse,
   type Payslip,
-  type Plan,
 } from '../../../services/worknestApi';
 import './style.scss';
 
@@ -45,8 +43,6 @@ type Notice = {
 export function WorknestPage() {
   const { t } = useTranslation();
   const tenant = useTenantStore((state) => state.tenant);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [hrSession, setHrSession] = useState<AuthSession | null>(null);
   const [employeeSession, setEmployeeSession] = useState<AuthSession | null>(
     null,
@@ -68,20 +64,6 @@ export function WorknestPage() {
   const [payslips, setPayslips] = useState<Payslip[]>([]);
 
   useEffect(() => {
-    listPlans()
-      .then(({ plans: availablePlans }) => {
-        setPlans(availablePlans);
-        const freePlan = availablePlans.find(
-          (plan) => plan.plan_code === 'free',
-        );
-        setSelectedPlanId(freePlan?.id ?? availablePlans[0]?.id ?? null);
-      })
-      .catch((error: Error) =>
-        setNotice({ kind: 'error', message: error.message }),
-      );
-  }, []);
-
-  useEffect(() => {
     if (!payrollImport) {
       return;
     }
@@ -93,23 +75,13 @@ export function WorknestPage() {
     setMapping(suggested);
   }, [payrollImport]);
 
-  const freePlan = useMemo(
-    () => plans.find((plan) => plan.plan_code === 'free') ?? plans[0],
-    [plans],
-  );
-
   async function handleRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (selectedPlanId === null) {
-      setNotice({ kind: 'error', message: t('notices.planRequired') });
-      return;
-    }
     try {
       const response = await registerCompany({
         company_name: String(form.get('company_name') ?? ''),
         tenant_id: String(form.get('tenant_id') ?? ''),
-        plan_id: selectedPlanId,
         admin_name: String(form.get('admin_name') ?? ''),
         admin_email: String(form.get('admin_email') ?? ''),
         admin_phone: String(form.get('admin_phone') ?? ''),
@@ -301,23 +273,6 @@ export function WorknestPage() {
               required
             />
           </label>
-          <div className="plan-row">
-            {freePlan ? (
-              <button
-                className={
-                  selectedPlanId === freePlan.id
-                    ? 'plan-card selected'
-                    : 'plan-card'
-                }
-                type="button"
-                onClick={() => setSelectedPlanId(freePlan.id)}
-              >
-                <span>{freePlan.name}</span>
-                <strong>{t('pages.workspace.registration.freePrice')}</strong>
-                <small>{freePlan.description}</small>
-              </button>
-            ) : null}
-          </div>
           <button className="primary-action" type="submit">
             {t('pages.workspace.registration.createWorkspace')}
           </button>

@@ -9,7 +9,7 @@ type FieldProps = {
 
 export function Field({ label, error, children }: FieldProps) {
   return (
-    <label className="field">
+    <label className={error ? 'field field-error' : 'field'}>
       <span>{label}</span>
       {children}
       {error ? <small>{error}</small> : null}

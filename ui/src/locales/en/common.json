@@ -73,7 +73,6 @@
     "net_pay": "Net pay"
   },
   "notices": {
-    "planRequired": "Select the Free Plan before creating the workspace.",
     "workspaceCreated": "Workspace created. Upload the first payroll file to activate Worknest.",
     "hrRequired": "Create a company workspace before uploading payroll.",
     "fileRequired": "Choose a CSV or XLSX payroll file.",
@@ -86,7 +85,7 @@
   "pages": {
     "workspace": {
       "title": "Turn messy payroll files into published payslips",
-      "description": "Register a company, explicitly select the Free Plan, map payroll columns, validate exceptions, publish the month, and let employees access payslips with phone OTP.",
+      "description": "Register a company, map payroll columns, validate exceptions, publish the month, and let employees access payslips with phone OTP.",
       "eyebrow": "Payslip Organiser MVP",
       "activationLabel": "Activation moment",
       "activationValue": "Upload first payroll",
@@ -128,7 +127,7 @@
     },
     "about": {
       "title": "Setup",
-      "description": "Company setup and plan selection."
+      "description": "Company setup and branch package selection."
     },
     "contact": {
       "title": "Support",
