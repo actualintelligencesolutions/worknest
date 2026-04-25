@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { AppLayout } from '../../../layouts/AppLayout';
 import { useTenantStore } from '../../../stores/tenantStore';
 import {
@@ -43,6 +44,7 @@ type Notice = {
 export function WorknestPage() {
   const { t } = useTranslation();
   const tenant = useTenantStore((state) => state.tenant);
+  usePageTitle('Workspace');
   const [hrSession, setHrSession] = useState<AuthSession | null>(null);
   const [employeeSession, setEmployeeSession] = useState<AuthSession | null>(
     null,

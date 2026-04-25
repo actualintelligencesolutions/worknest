@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { AppLayout } from '../../layouts/AppLayout';
 import { useTenantStore } from '../../stores/tenantStore';
 import './style.scss';
 
 export function Home() {
   const tenant = useTenantStore((state) => state.tenant);
+  usePageTitle('Home');
 
   return (
     <AppLayout tenant={tenant}>

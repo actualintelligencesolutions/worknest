@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ContactSections } from '../../../components/organisms/ContactSections';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { AppLayout } from '../../../layouts/AppLayout';
 import { useTenantStore } from '../../../stores/tenantStore';
 import './style.scss';
@@ -8,6 +9,7 @@ export function ContactPage() {
   const { t } = useTranslation();
   const tenant = useTenantStore((state) => state.tenant);
   const pageConfig = tenant.pages.contact;
+  usePageTitle(t(pageConfig.titleKey));
 
   return (
     <AppLayout tenant={tenant}>

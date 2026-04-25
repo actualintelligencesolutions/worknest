@@ -6,6 +6,7 @@ import {
   useDeleteItem,
   useItems,
 } from '../../../hooks/useItems';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { useTenantStore } from '../../../stores/tenantStore';
 import './style.scss';
 
@@ -13,6 +14,7 @@ export function ItemsPage() {
   const { t } = useTranslation();
   const tenant = useTenantStore((state) => state.tenant);
   const pageConfig = tenant.pages.items;
+  usePageTitle(t(pageConfig.titleKey));
   const itemsQuery = useItems(tenant.tenantId);
   const createItem = useCreateItem(tenant.tenantId);
   const deleteItem = useDeleteItem(tenant.tenantId);

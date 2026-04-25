@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { Field } from '../../components/atoms/Field';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { AppLayout } from '../../layouts/AppLayout';
 import {
   checkWorkspaceAvailability,
@@ -93,6 +94,7 @@ function localWorkspaceAvailability(slug: string): WorkspaceStatus {
 export function RegisterPage() {
   const navigate = useNavigate();
   const tenant = useTenantStore((state) => state.tenant);
+  usePageTitle('Register');
   const workspaceBaseAddress =
     typeof window === 'undefined'
       ? 'worknest.local/'
