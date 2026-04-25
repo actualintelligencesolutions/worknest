@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { Field } from '../../components/atoms/Field';
 import { AppLayout } from '../../layouts/AppLayout';
@@ -90,6 +91,7 @@ function localWorkspaceAvailability(slug: string): WorkspaceStatus {
 }
 
 export function RegisterPage() {
+  const navigate = useNavigate();
   const tenant = useTenantStore((state) => state.tenant);
   const workspaceBaseAddress =
     typeof window === 'undefined'
@@ -262,6 +264,7 @@ export function RegisterPage() {
         kind: 'success',
         message: 'Email OTP verified. Workspace setup is ready.',
       });
+      navigate('/dashboard');
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     } finally {
