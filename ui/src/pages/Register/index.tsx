@@ -268,6 +268,7 @@ export function RegisterPage() {
       saveHrSession({
         token: response.token,
         tenantId: response.tenant.tenant_id,
+        userName: response.user.name,
       });
       setErrors((current) => ({ ...current, otpCode: undefined }));
       setNotice({
@@ -445,7 +446,7 @@ export function RegisterPage() {
                             adminName: undefined,
                           }));
                         }}
-                        placeholder="Priya Sharma"
+                        placeholder="Rohit Sharma"
                         value={adminName}
                       />
                     </div>

@@ -33,6 +33,8 @@ type LocationSetupPageProps = {
   mode: LocationSetupMode;
 };
 
+type SetupStep = 'details' | 'plan';
+
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -50,7 +52,7 @@ function planLabel(plan: Plan) {
 export function LocationSetupPage({ mode }: LocationSetupPageProps) {
   const tenant = useTenantStore((state) => state.tenant);
   const isBranch = mode === 'branch';
-  const pageTitle = isBranch ? 'Create Branch' : 'Create Main Office';
+  const pageTitle = isBranch ? 'Create Branch' : 'Setup Main Office Account';
   usePageTitle(pageTitle);
 
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -63,6 +65,7 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [setupStep, setSetupStep] = useState<SetupStep>('details');
 
   const selectedPlan = useMemo(
     () => plans.find((plan) => String(plan.id) === planId),
@@ -103,7 +106,7 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
     };
   }, []);
 
-  function validateForm() {
+  function validateDetails() {
     const nextErrors: FormErrors = {};
     if (isBranch && !branchName.trim()) {
       nextErrors.branchName = 'Branch name is required.';
@@ -116,12 +119,26 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
     } else if (!isValidEmail(adminEmail)) {
       nextErrors.adminEmail = 'Enter a valid admin email.';
     }
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function validatePlan() {
+    const nextErrors: FormErrors = {};
     if (!selectedPlan) {
       nextErrors.planId = 'Choose an active plan.';
     }
     setErrors(nextErrors);
 
     return Object.keys(nextErrors).length === 0;
+  }
+
+  function handleDetailsSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (validateDetails()) {
+      setSetupStep('plan');
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -134,7 +151,7 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
       });
       return;
     }
-    if (!validateForm() || !selectedPlan) {
+    if (!validatePlan() || !selectedPlan) {
       return;
     }
 
@@ -163,6 +180,7 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
       setAdminName('');
       setAdminEmail('');
       setErrors({});
+      setSetupStep('details');
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     } finally {
@@ -205,94 +223,167 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
           </div>
         ) : null}
 
-        <form className="location-setup-form" onSubmit={handleSubmit}>
-          {isBranch ? (
-            <Field label="Branch name" error={errors.branchName}>
-              <input
-                autoComplete="organization"
-                name="branchName"
-                onChange={(event) => {
-                  setBranchName(event.target.value);
-                  setErrors((current) => ({
-                    ...current,
-                    branchName: undefined,
-                  }));
-                }}
-                placeholder="Bangalore Branch"
-                value={branchName}
-              />
-            </Field>
-          ) : null}
+        <div className="location-setup-card">
+          <ol className="location-setup-stepper" aria-label="Setup progress">
+            <li className={setupStep === 'details' ? 'active' : 'complete'}>
+              <span>1</span>
+              <strong>Details</strong>
+            </li>
+            <li className={setupStep === 'plan' ? 'active' : undefined}>
+              <span>2</span>
+              <strong>Plan</strong>
+            </li>
+          </ol>
 
-          <Field
-            label={isBranch ? 'Branch admin name' : 'Main office admin name'}
-            error={errors.adminName}
-          >
-            <input
-              autoComplete="name"
-              name="adminName"
-              onChange={(event) => {
-                setAdminName(event.target.value);
-                setErrors((current) => ({ ...current, adminName: undefined }));
-              }}
-              placeholder="Priya Sharma"
-              value={adminName}
-            />
-          </Field>
-
-          <Field
-            label={isBranch ? 'Branch admin email' : 'Main office admin email'}
-            error={errors.adminEmail}
-          >
-            <input
-              autoComplete="email"
-              name="adminEmail"
-              onChange={(event) => {
-                setAdminEmail(event.target.value);
-                setErrors((current) => ({
-                  ...current,
-                  adminEmail: undefined,
-                }));
-              }}
-              placeholder="admin@example.com"
-              type="email"
-              value={adminEmail}
-            />
-          </Field>
-
-          <Field label="Plan" error={errors.planId}>
-            <select
-              disabled={isLoadingPlans}
-              name="planId"
-              onChange={(event) => {
-                setPlanId(event.target.value);
-                setErrors((current) => ({ ...current, planId: undefined }));
-              }}
-              value={planId}
+          {setupStep === 'details' ? (
+            <form
+              className="location-setup-form"
+              onSubmit={handleDetailsSubmit}
             >
-              {plans.length === 0 ? (
-                <option value="">No active plans available</option>
+              {isBranch ? (
+                <Field label="Branch name" error={errors.branchName}>
+                  <input
+                    autoComplete="organization"
+                    name="branchName"
+                    onChange={(event) => {
+                      setBranchName(event.target.value);
+                      setErrors((current) => ({
+                        ...current,
+                        branchName: undefined,
+                      }));
+                    }}
+                    placeholder="Bangalore Branch"
+                    value={branchName}
+                  />
+                </Field>
               ) : null}
-              {plans.map((plan) => (
-                <option key={plan.id} value={plan.id}>
-                  {planLabel(plan)}
-                </option>
-              ))}
-            </select>
-          </Field>
 
-          <div className="location-setup-actions">
-            <Link className="button button-secondary" to="/dashboard">
-              Back
-            </Link>
-            <Button
-              disabled={!session || isLoadingPlans || isSubmitting}
-              type="submit"
-            >
-              {isSubmitting ? 'Creating...' : pageTitle}
-            </Button>
-          </div>
-        </form>
+              <Field
+                label={
+                  isBranch ? 'Branch admin name' : 'Main office admin name'
+                }
+                error={errors.adminName}
+              >
+                <input
+                  autoComplete="name"
+                  name="adminName"
+                  onChange={(event) => {
+                    setAdminName(event.target.value);
+                    setErrors((current) => ({
+                      ...current,
+                      adminName: undefined,
+                    }));
+                  }}
+                  placeholder="Rohit Sharma"
+                  value={adminName}
+                />
+              </Field>
+
+              <Field
+                label={
+                  isBranch ? 'Branch admin email' : 'Main office admin email'
+                }
+                error={errors.adminEmail}
+              >
+                <input
+                  autoComplete="email"
+                  name="adminEmail"
+                  onChange={(event) => {
+                    setAdminEmail(event.target.value);
+                    setErrors((current) => ({
+                      ...current,
+                      adminEmail: undefined,
+                    }));
+                  }}
+                  placeholder="admin@example.com"
+                  type="email"
+                  value={adminEmail}
+                />
+              </Field>
+
+              <div className="location-setup-actions">
+                <Link className="button button-secondary" to="/dashboard">
+                  Back
+                </Link>
+                <Button disabled={!session} type="submit">
+                  Continue
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <form className="location-setup-form" onSubmit={handleSubmit}>
+              <div className="location-plan-heading">
+                <h2>Select a plan</h2>
+                <p>
+                  Pick the package for this{' '}
+                  {isBranch ? 'branch' : 'main office'}. You can review the
+                  admin details before creating it.
+                </p>
+              </div>
+
+              {errors.planId ? (
+                <p className="location-plan-error">{errors.planId}</p>
+              ) : null}
+
+              <div className="location-plan-options">
+                {isLoadingPlans ? (
+                  <p className="location-plan-empty">Loading plans...</p>
+                ) : null}
+
+                {!isLoadingPlans && plans.length === 0 ? (
+                  <p className="location-plan-empty">
+                    No active plans available.
+                  </p>
+                ) : null}
+
+                {plans.map((plan) => (
+                  <label
+                    className={`location-plan-option ${
+                      String(plan.id) === planId ? 'selected' : ''
+                    }`}
+                    key={plan.id}
+                  >
+                    <input
+                      checked={String(plan.id) === planId}
+                      name="planId"
+                      onChange={(event) => {
+                        setPlanId(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          planId: undefined,
+                        }));
+                      }}
+                      type="radio"
+                      value={plan.id}
+                    />
+                    <span>
+                      <strong>{planLabel(plan)}</strong>
+                      {plan.description ? (
+                        <small>{plan.description}</small>
+                      ) : null}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="location-setup-actions">
+                <button
+                  className="button button-secondary"
+                  onClick={() => setSetupStep('details')}
+                  type="button"
+                >
+                  Back
+                </button>
+                <Button
+                  disabled={!session || isLoadingPlans || isSubmitting}
+                  type="submit"
+                >
+                  {isSubmitting ? 'Creating...' : pageTitle}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </section>
     </AppLayout>
   );

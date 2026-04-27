@@ -24,7 +24,7 @@
   line-height: 1.6;
 }
 
-.location-setup-form,
+.location-setup-card,
 .location-setup-session {
   border: 1px solid #d7dee8;
   border-radius: 8px;
@@ -32,10 +32,64 @@
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
+.location-setup-card {
+  padding: 24px;
+}
+
+.location-setup-stepper {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.location-setup-stepper li {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #667085;
+  padding: 10px 12px;
+}
+
+.location-setup-stepper li.active,
+.location-setup-stepper li.complete {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #175cd3;
+}
+
+.location-setup-stepper span {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #475467;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.location-setup-stepper li.active span,
+.location-setup-stepper li.complete span {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.location-setup-stepper strong {
+  font-size: 0.92rem;
+}
+
 .location-setup-form {
   display: grid;
   gap: 4px;
-  padding: 24px;
 }
 
 .location-setup-form .field {
@@ -89,6 +143,83 @@
 .location-setup-actions .button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.location-plan-heading {
+  margin-bottom: 14px;
+}
+
+.location-plan-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+
+.location-plan-heading p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.location-plan-options {
+  display: grid;
+  gap: 10px;
+}
+
+.location-plan-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.location-plan-option:hover,
+.location-plan-option.selected {
+  border-color: #2563eb;
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.location-plan-option input {
+  margin-top: 3px;
+}
+
+.location-plan-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.location-plan-option strong {
+  color: #111827;
+  font-size: 0.98rem;
+}
+
+.location-plan-option small,
+.location-plan-empty {
+  color: #667085;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.location-plan-empty {
+  margin: 0;
+}
+
+.location-plan-error {
+  margin: 0 0 10px;
+  color: #b42318;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .location-setup-notice {
@@ -145,8 +276,12 @@
     font-size: 1.7rem;
   }
 
-  .location-setup-form {
+  .location-setup-card {
     padding: 18px;
+  }
+
+  .location-setup-stepper {
+    grid-template-columns: 1fr;
   }
 
   .location-setup-actions {

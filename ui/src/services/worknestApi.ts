@@ -18,6 +18,7 @@ export type CompanyLocation = {
   location_type: 'main_office' | 'branch';
   name: string;
   status: string;
+  created_at?: string;
 };
 
 export type LocationSetupResponse = {
@@ -58,6 +59,7 @@ export type Payslip = {
 export type AuthSession = {
   token: string;
   tenantId: string;
+  userName?: string;
 };
 
 function authHeaders(session: AuthSession | null) {
@@ -167,6 +169,19 @@ export function createMainOffice(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export function listCompanyLocations(session: AuthSession) {
+  return apiRequest<{
+    locations: CompanyLocation[];
+    summary: {
+      main_offices: number;
+      branches: number;
+      total: number;
+    };
+  }>(`/locations?tenant=${encodeURIComponent(session.tenantId)}`, {
+    headers: authHeaders(session),
+  });
 }
 
 export function createBranch(

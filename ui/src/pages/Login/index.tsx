@@ -79,6 +79,7 @@ export function LoginPage() {
       saveHrSession({
         token: response.token,
         tenantId,
+        userName: response.user.name,
       });
       setNotice({
         kind: 'success',
