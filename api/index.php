@@ -235,6 +235,47 @@ function find_plan(PDO $pdo, int $planId): ?array
     return $plan === false ? null : $plan;
 }
 
+function ensure_company_locations_table(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS company_locations (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            tenant_id VARCHAR(80) NOT NULL,
+            location_type ENUM('main_office', 'branch') NOT NULL,
+            name VARCHAR(180) NOT NULL,
+            plan_id BIGINT UNSIGNED NOT NULL,
+            admin_user_id BIGINT UNSIGNED NULL DEFAULT NULL,
+            status ENUM('pending_setup', 'active', 'suspended', 'disabled') NOT NULL DEFAULT 'pending_setup',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            deleted_at TIMESTAMP NULL DEFAULT NULL,
+            active_location_key VARCHAR(220) GENERATED ALWAYS AS (
+                CASE
+                    WHEN deleted_at IS NULL AND location_type = 'main_office' THEN 'main_office'
+                    WHEN deleted_at IS NULL THEN CONCAT('branch:', LOWER(name))
+                    ELSE NULL
+                END
+            ) STORED,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_company_locations_active_name (tenant_id, active_location_key),
+            KEY idx_company_locations_tenant_type (tenant_id, location_type),
+            KEY idx_company_locations_plan_id (plan_id),
+            KEY idx_company_locations_admin_user_id (admin_user_id),
+            KEY idx_company_locations_status (status),
+            KEY idx_company_locations_deleted_at (deleted_at),
+            CONSTRAINT fk_company_locations_tenant
+                FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
+                ON DELETE CASCADE,
+            CONSTRAINT fk_company_locations_plan
+                FOREIGN KEY (plan_id) REFERENCES plans (id)
+                ON DELETE RESTRICT,
+            CONSTRAINT fk_company_locations_admin_user
+                FOREIGN KEY (admin_user_id) REFERENCES users (id)
+                ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}
+
 function location_payload(array $location, array $admin, array $plan): array
 {
     return [
@@ -608,6 +649,7 @@ try {
     if ($method === 'GET' && $path === '/locations') {
         $tenant = api_tenant();
         require_actor($tenant, 'hr_admin');
+        ensure_company_locations_table($pdo);
         $stmt = $pdo->prepare('SELECT id, tenant_id, location_type, name, status, created_at FROM company_locations WHERE tenant_id = :tenant_id AND deleted_at IS NULL ORDER BY location_type ASC, name ASC');
         $stmt->execute(['tenant_id' => $tenant]);
         $locations = $stmt->fetchAll();
@@ -634,6 +676,7 @@ try {
     if ($method === 'POST' && $path === '/main-office') {
         $tenant = api_tenant();
         require_actor($tenant, 'hr_admin');
+        ensure_company_locations_table($pdo);
         $body = api_body();
         $payload = create_company_location(
             $pdo,
@@ -650,6 +693,7 @@ try {
     if ($method === 'POST' && $path === '/branches') {
         $tenant = api_tenant();
         require_actor($tenant, 'hr_admin');
+        ensure_company_locations_table($pdo);
         $body = api_body();
         $payload = create_company_location(
             $pdo,
