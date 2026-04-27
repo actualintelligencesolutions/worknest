@@ -1,5 +1,10 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { clearHrSession } from '../../../services/hrSession';
+import {
+  clearHrSession,
+  HR_SESSION_CHANGE_EVENT,
+  loadHrSession,
+} from '../../../services/hrSession';
 import { useTenantStore } from '../../../stores/tenantStore';
 import './style.scss';
 
@@ -7,8 +12,12 @@ export function Header() {
   const tenant = useTenantStore((state) => state.tenant);
   const location = useLocation();
   const navigate = useNavigate();
-  const isDashboard = location.pathname.startsWith('/dashboard');
-  const navItems = isDashboard
+  const [hasHrSession, setHasHrSession] = useState(
+    () => loadHrSession() !== null,
+  );
+  const shouldShowDashboardState =
+    hasHrSession || location.pathname.startsWith('/dashboard');
+  const navItems = shouldShowDashboardState
     ? [
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Main Office', path: '/dashboard/main-office' },
@@ -20,6 +29,20 @@ export function Header() {
         { label: 'Register', path: '/register' },
         { label: 'Workspace', path: '/workspace' },
       ];
+
+  useEffect(() => {
+    function syncSessionState() {
+      setHasHrSession(loadHrSession() !== null);
+    }
+
+    window.addEventListener(HR_SESSION_CHANGE_EVENT, syncSessionState);
+    window.addEventListener('storage', syncSessionState);
+
+    return () => {
+      window.removeEventListener(HR_SESSION_CHANGE_EVENT, syncSessionState);
+      window.removeEventListener('storage', syncSessionState);
+    };
+  }, []);
 
   function handleLogout() {
     clearHrSession();
@@ -48,7 +71,7 @@ export function Header() {
       </nav>
 
       <div className="header-actions">
-        {isDashboard ? (
+        {shouldShowDashboardState ? (
           <button
             className="header-logout"
             onClick={handleLogout}

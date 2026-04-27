@@ -1,6 +1,7 @@
 import type { AuthSession } from './worknestApi';
 
 const HR_SESSION_STORAGE_KEY = 'worknest.hrSession';
+export const HR_SESSION_CHANGE_EVENT = 'worknest.hrSession.change';
 
 export function loadHrSession(): AuthSession | null {
   if (typeof window === 'undefined') {
@@ -30,6 +31,7 @@ export function saveHrSession(session: AuthSession) {
   }
 
   window.localStorage.setItem(HR_SESSION_STORAGE_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event(HR_SESSION_CHANGE_EVENT));
 }
 
 export function clearHrSession() {
@@ -38,4 +40,5 @@ export function clearHrSession() {
   }
 
   window.localStorage.removeItem(HR_SESSION_STORAGE_KEY);
+  window.dispatchEvent(new Event(HR_SESSION_CHANGE_EVENT));
 }
