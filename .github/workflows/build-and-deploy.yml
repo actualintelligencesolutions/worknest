@@ -67,14 +67,13 @@ jobs:
           fi
 
       - name: Trigger deployment webhook
-        if: github.event_name == 'push'
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}
+          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN || secrets.PAT_TOKEN }}
         run: |
           if [ -z "${DEPLOY_WEBHOOK_URL}" ]; then
-            echo "DEPLOY_WEBHOOK_URL secret is not configured; relying on PAT_TOKEN push webhook."
-            exit 0
+            echo "DEPLOY_WEBHOOK_URL secret is not configured."
+            exit 1
           fi
 
           headers=(
@@ -90,6 +89,8 @@ jobs:
             "${headers[@]}" \
             --data "{\"repository\":\"${GITHUB_REPOSITORY}\",\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
             "${DEPLOY_WEBHOOK_URL}"
+
+          echo "Deployment webhook triggered."
 
       - name: Upload UI build artifact
         uses: actions/upload-artifact@v4
