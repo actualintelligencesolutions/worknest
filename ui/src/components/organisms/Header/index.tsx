@@ -49,7 +49,11 @@ export function Header() {
 
       <div className="header-actions">
         {isDashboard ? (
-          <button className="header-logout" onClick={handleLogout} type="button">
+          <button
+            className="header-logout"
+            onClick={handleLogout}
+            type="button"
+          >
             Logout
           </button>
         ) : (
