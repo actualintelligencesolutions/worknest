@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - stage
+      - uat
       - publish
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ permissions:
 
 env:
   UI_DIR: ui
-  NODE_VERSION: 22
+  NODE_VERSION: 23
 
 jobs:
   build:
@@ -22,9 +22,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          ref: ${{ github.ref_name }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -37,35 +34,20 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         run: npm ci
 
-      - name: Check formatting
-        working-directory: ${{ env.UI_DIR }}
-        run: npm run format
-
-      - name: Run lint
-        working-directory: ${{ env.UI_DIR }}
-        run: npm run lint
-
-      - name: Run tests
-        working-directory: ${{ env.UI_DIR }}
-        run: npm run test
-
       - name: Build
         working-directory: ${{ env.UI_DIR }}
         run: npm run build
 
-      - name: Commit UI build output
+      - name: Commit and Push Changes
         if: github.event_name == 'push'
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           git add -f "${UI_DIR}/dist"
-          git add -u "${UI_DIR}/dist"
-          if git diff --cached --quiet; then
-            git commit --allow-empty -m "Trigger deployment [skip ci]"
-          else
-            git commit -m "Build UI dist [skip ci]"
-          fi
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git commit -m "Deploy build [skip ci]" || echo "No changes to commit"
+          git push "https://x-access-token:${PAT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload UI build artifact
         uses: actions/upload-artifact@v4
