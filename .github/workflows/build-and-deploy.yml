@@ -43,5 +43,11 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add ui/dist -f
-          git commit -m "Deploy build [skip ci]" || echo "No changes to commit"
+          git add -u ui/dist
+          if git diff --cached --quiet; then
+            git commit --allow-empty -m "Trigger deployment [skip ci]"
+          else
+            git commit -m "Deploy build [skip ci]"
+          fi
+          echo "Pushing deploy commit $(git rev-parse --short HEAD) to ${GITHUB_REF_NAME}"
           git push "https://x-access-token:${PAT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"  # Use the PAT token for pushing changes
