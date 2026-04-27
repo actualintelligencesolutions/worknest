@@ -16,7 +16,8 @@
 .header-brand,
 .header-nav a,
 .header-login,
-.header-signup {
+.header-signup,
+.header-logout {
   color: #111827;
   text-decoration: none;
 }
@@ -87,7 +88,8 @@
   color: #0f6bff;
 }
 
-.header-signup {
+.header-signup,
+.header-logout {
   min-height: 40px;
   border: 1px solid #0f6bff;
   border-radius: 6px;
@@ -99,9 +101,15 @@
 }
 
 .header-signup.active,
-.header-signup:hover {
+.header-signup:hover,
+.header-logout:hover {
   background: #0958d9;
   color: #ffffff;
+}
+
+.header-logout {
+  cursor: pointer;
+  font: inherit;
 }
 
 @media (max-width: 760px) {
@@ -119,7 +127,8 @@
   }
 
   .header-login,
-  .header-signup {
+  .header-signup,
+  .header-logout {
     min-height: 36px;
     padding: 8px 12px;
   }

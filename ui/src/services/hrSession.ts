@@ -31,3 +31,11 @@ export function saveHrSession(session: AuthSession) {
 
   window.localStorage.setItem(HR_SESSION_STORAGE_KEY, JSON.stringify(session));
 }
+
+export function clearHrSession() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.removeItem(HR_SESSION_STORAGE_KEY);
+}

@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -63,6 +65,31 @@ jobs:
             git commit -m "Build UI dist [skip ci]"
             git push
           fi
+
+      - name: Trigger deployment webhook
+        if: github.event_name == 'push'
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}
+        run: |
+          if [ -z "${DEPLOY_WEBHOOK_URL}" ]; then
+            echo "DEPLOY_WEBHOOK_URL secret is not configured; relying on PAT_TOKEN push webhook."
+            exit 0
+          fi
+
+          headers=(
+            -H "Content-Type: application/json"
+            -H "X-GitHub-Event: workflow_deploy"
+          )
+
+          if [ -n "${DEPLOY_WEBHOOK_TOKEN}" ]; then
+            headers+=(-H "Authorization: Bearer ${DEPLOY_WEBHOOK_TOKEN}")
+          fi
+
+          curl --fail --show-error --silent \
+            "${headers[@]}" \
+            --data "{\"repository\":\"${GITHUB_REPOSITORY}\",\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
+            "${DEPLOY_WEBHOOK_URL}"
 
       - name: Upload UI build artifact
         uses: actions/upload-artifact@v4

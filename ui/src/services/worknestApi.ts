@@ -1,6 +1,6 @@
 import { apiRequest, type ApiEnvelope } from './apiClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const API_BASE_URL = 'https://worknest.actualintelligencesolutions.in/api';
 
 export type Plan = {
   id: number;

@@ -8,7 +8,7 @@ export type ApiEnvelope<T> = {
   } | null;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const API_BASE_URL = 'https://worknest.actualintelligencesolutions.in/api';
 
 export async function apiRequest<T>(
   path: string,

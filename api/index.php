@@ -4,6 +4,21 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/config.php';
 
+function api_send_cors_headers(): void
+{
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-TENANT-ID');
+    header('Access-Control-Max-Age: 86400');
+}
+
+api_send_cors_headers();
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 function api_json(array $payload, int $status = 200): void
 {
     http_response_code($status);
