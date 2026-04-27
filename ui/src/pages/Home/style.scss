@@ -36,14 +36,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 12px 0;
 }
 
 .landing-hero-art img {
   display: block;
-  width: min(100%, 660px);
+  width: min(100%, 700px);
   height: auto;
-  border-radius: 8px;
   object-fit: contain;
+  filter: drop-shadow(0 28px 42px rgba(15, 107, 255, 0.12));
 }
 
 @media (max-width: 860px) {

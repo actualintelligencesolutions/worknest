@@ -27,7 +27,10 @@ export function Home() {
         </div>
 
         <div className="landing-hero-art">
-          <img src="/images/hero.png" alt="Worknest company workspace setup" />
+          <img
+            src="/images/hero-new.png"
+            alt="Worknest company workspace setup"
+          />
         </div>
       </section>
     </AppLayout>
