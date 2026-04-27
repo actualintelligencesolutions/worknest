@@ -60,37 +60,11 @@ jobs:
           git add -f "${UI_DIR}/dist"
           git add -u "${UI_DIR}/dist"
           if git diff --cached --quiet; then
-            echo "No UI build changes to commit."
+            git commit --allow-empty -m "Trigger deployment [skip ci]"
           else
             git commit -m "Build UI dist [skip ci]"
-            git push
           fi
-
-      - name: Trigger deployment webhook
-        env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN || secrets.PAT_TOKEN }}
-        run: |
-          if [ -z "${DEPLOY_WEBHOOK_URL}" ]; then
-            echo "DEPLOY_WEBHOOK_URL secret is not configured."
-            exit 1
-          fi
-
-          headers=(
-            -H "Content-Type: application/json"
-            -H "X-GitHub-Event: workflow_deploy"
-          )
-
-          if [ -n "${DEPLOY_WEBHOOK_TOKEN}" ]; then
-            headers+=(-H "Authorization: Bearer ${DEPLOY_WEBHOOK_TOKEN}")
-          fi
-
-          curl --fail --show-error --silent \
-            "${headers[@]}" \
-            --data "{\"repository\":\"${GITHUB_REPOSITORY}\",\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
-            "${DEPLOY_WEBHOOK_URL}"
-
-          echo "Deployment webhook triggered."
+          git push
 
       - name: Upload UI build artifact
         uses: actions/upload-artifact@v4
