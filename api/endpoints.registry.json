@@ -70,6 +70,36 @@
       }
     },
     {
+      "id": "api.locations.index",
+      "method": "GET",
+      "path": "/api/locations",
+      "status": "active",
+      "purpose": "List tenant company locations and return a setup summary for dashboard virgin-state detection.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "tenant": "tenant slug or X-TENANT-ID header" }
+      },
+      "response": {
+        "success": {
+          "locations": [],
+          "summary": {
+            "main_offices": 0,
+            "branches": 0,
+            "total": 0
+          }
+        },
+        "error": { "code": "UNAUTHORIZED", "message": "Authentication is required." }
+      },
+      "database": { "related_tables": ["company_locations"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Only lists locations for the resolved tenant."
+      }
+    },
+    {
       "id": "api.main-office.store",
       "method": "POST",
       "path": "/api/main-office",

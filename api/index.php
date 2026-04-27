@@ -605,6 +605,32 @@ try {
         api_success(['plans' => $stmt->fetchAll()]);
     }
 
+    if ($method === 'GET' && $path === '/locations') {
+        $tenant = api_tenant();
+        require_actor($tenant, 'hr_admin');
+        $stmt = $pdo->prepare('SELECT id, tenant_id, location_type, name, status, created_at FROM company_locations WHERE tenant_id = :tenant_id AND deleted_at IS NULL ORDER BY location_type ASC, name ASC');
+        $stmt->execute(['tenant_id' => $tenant]);
+        $locations = $stmt->fetchAll();
+        $mainOfficeCount = 0;
+        $branchCount = 0;
+        foreach ($locations as $location) {
+            if (($location['location_type'] ?? '') === 'main_office') {
+                $mainOfficeCount++;
+            }
+            if (($location['location_type'] ?? '') === 'branch') {
+                $branchCount++;
+            }
+        }
+        api_success([
+            'locations' => $locations,
+            'summary' => [
+                'main_offices' => $mainOfficeCount,
+                'branches' => $branchCount,
+                'total' => count($locations),
+            ],
+        ]);
+    }
+
     if ($method === 'POST' && $path === '/main-office') {
         $tenant = api_tenant();
         require_actor($tenant, 'hr_admin');
