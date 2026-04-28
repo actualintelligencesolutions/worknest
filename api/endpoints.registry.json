@@ -157,6 +157,30 @@
       }
     },
     {
+      "id": "api.branches.show",
+      "method": "GET",
+      "path": "/api/branches/{id}",
+      "status": "active",
+      "purpose": "Fetch full details for a single branch, including plan and admin user.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "request": {
+        "params": { "id": "numeric branch id", "tenant": "tenant slug or X-TENANT-ID header" },
+        "body": {}
+      },
+      "response": {
+        "success": { "location": {}, "plan": {}, "admin": {} },
+        "error": { "code": "BRANCH_NOT_FOUND", "message": "Branch not found." }
+      },
+      "database": { "related_tables": ["company_locations", "plans", "users"] },
+      "notes": {
+        "auth_rules": "Requires HR admin token.",
+        "tenant_behavior": "Branch must belong to the requesting tenant."
+      }
+    },
+    {
       "id": "api.companies.register",
       "method": "POST",
       "path": "/api/companies/register",

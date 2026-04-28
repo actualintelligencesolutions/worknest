@@ -1,6 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { DashboardPage } from './pages/Dashboard';
 import { LocationSetupPage } from './pages/Dashboard/LocationSetupPage';
+import { ManageBranchPage } from './pages/Dashboard/ManageBranchPage';
 import { Home } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
   {
     path: '/dashboard/branches/new',
     element: <LocationSetupPage mode="branch" />,
+  },
+  {
+    path: '/dashboard/branches/:id',
+    element: <ManageBranchPage />,
   },
   {
     path: '*',

@@ -23,12 +23,7 @@ export function Header() {
         { label: 'Main Office', path: '/dashboard/main-office' },
         { label: 'New Branch', path: '/dashboard/branches/new' },
       ]
-    : [
-        { label: 'Home', path: '/' },
-        { label: 'Login', path: '/login' },
-        { label: 'Register', path: '/register' },
-        { label: 'Workspace', path: '/workspace' },
-      ];
+    : [];
 
   useEffect(() => {
     function syncSessionState() {

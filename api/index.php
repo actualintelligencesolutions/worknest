@@ -690,6 +690,52 @@ try {
         api_success($payload, 201);
     }
 
+    $branchId = id_from_path($path, '#^/branches/([0-9]+)$#');
+    if ($branchId !== null && $method === 'GET') {
+        $tenant = api_tenant();
+        require_actor($tenant, 'hr_admin');
+        ensure_company_locations_table($pdo);
+        $stmt = $pdo->prepare(
+            'SELECT cl.id, cl.tenant_id, cl.location_type, cl.name, cl.status, cl.created_at,
+                    p.id AS plan_id, p.plan_code, p.name AS plan_name, p.price_cents, p.currency,
+                    u.id AS admin_id, u.name AS admin_name, u.email AS admin_email, u.status AS admin_status
+             FROM company_locations cl
+             LEFT JOIN plans p ON p.id = cl.plan_id AND p.deleted_at IS NULL
+             LEFT JOIN users u ON u.id = cl.admin_user_id AND u.deleted_at IS NULL
+             WHERE cl.id = :id AND cl.tenant_id = :tenant_id
+               AND cl.location_type = \'branch\' AND cl.deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['id' => $branchId, 'tenant_id' => $tenant]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row === false) {
+            api_error('BRANCH_NOT_FOUND', 'Branch not found.', 404);
+        }
+        api_success([
+            'location' => [
+                'id'            => (int) $row['id'],
+                'tenant_id'     => $row['tenant_id'],
+                'location_type' => $row['location_type'],
+                'name'          => $row['name'],
+                'status'        => $row['status'],
+                'created_at'    => $row['created_at'],
+            ],
+            'plan' => [
+                'id'          => $row['plan_id'] !== null ? (int) $row['plan_id'] : null,
+                'plan_code'   => $row['plan_code'],
+                'name'        => $row['plan_name'],
+                'price_cents' => $row['price_cents'] !== null ? (int) $row['price_cents'] : null,
+                'currency'    => $row['currency'],
+            ],
+            'admin' => [
+                'id'     => $row['admin_id'] !== null ? (int) $row['admin_id'] : null,
+                'name'   => $row['admin_name'],
+                'email'  => $row['admin_email'],
+                'status' => $row['admin_status'],
+            ],
+        ]);
+    }
+
     if ($method === 'POST' && $path === '/branches') {
         $tenant = api_tenant();
         require_actor($tenant, 'hr_admin');

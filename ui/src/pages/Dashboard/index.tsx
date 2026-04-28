@@ -550,7 +550,7 @@ export function DashboardPage() {
                             <div className="dashboard-location-actions">
                               <Link
                                 className="button button-primary dashboard-location-action"
-                                to="/dashboard/branches/new"
+                                to={`/dashboard/branches/${branch.id}`}
                               >
                                 Manage
                               </Link>

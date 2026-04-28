@@ -33,6 +33,30 @@ export type LocationSetupResponse = {
   plan: Plan;
 };
 
+export type BranchDetail = {
+  location: {
+    id: number;
+    tenant_id: string;
+    location_type: 'branch';
+    name: string;
+    status: string;
+    created_at: string | null;
+  };
+  plan: {
+    id: number | null;
+    plan_code: string | null;
+    name: string | null;
+    price_cents: number | null;
+    currency: string | null;
+  };
+  admin: {
+    id: number | null;
+    name: string | null;
+    email: string | null;
+    status: string | null;
+  };
+};
+
 export type PayrollImportResponse = {
   import: {
     id: number;
@@ -200,6 +224,13 @@ export function createBranch(
       headers: authHeaders(session),
       body: JSON.stringify(payload),
     },
+  );
+}
+
+export function getBranch(session: AuthSession, id: number) {
+  return apiRequest<BranchDetail>(
+    `/branches/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    { headers: authHeaders(session) },
   );
 }
 
