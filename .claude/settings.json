@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Volumes/StudioSSD/Users/cainedaniel/Drive/Actual\\\\ Inteligence\\\\ Solutions/worknest/ui/src/**)"
+      "Read(//Volumes/StudioSSD/Users/cainedaniel/Drive/Actual\\\\ Inteligence\\\\ Solutions/worknest/ui/src/**)",
+      "Bash(grep -n '$path\\\\|$method\\\\|REQUEST_URI\\\\|REQUEST_METHOD' '/Volumes/StudioSSD/Users/cainedaniel/Drive/Actual Inteligence Solutions/worknest/api/index.php')",
+      "Bash(grep -n '^$path\\\\|^$method\\\\|$path = \\\\|$method = ' '/Volumes/StudioSSD/Users/cainedaniel/Drive/Actual Inteligence Solutions/worknest/api/index.php')",
+      "Bash(grep -n 'api_path\\\\|api_method\\\\|^$path\\\\b\\\\|^$method\\\\b' '/Volumes/StudioSSD/Users/cainedaniel/Drive/Actual Inteligence Solutions/worknest/api/index.php')",
+      "Bash(git fetch *)"
     ]
   }
 }

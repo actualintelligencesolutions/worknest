@@ -399,6 +399,32 @@
   overflow-wrap: anywhere;
 }
 
+.location-detail-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.location-detail-list div {
+  border-top: 1px solid #eef2f6;
+  padding-top: 12px;
+}
+
+.location-detail-list dt {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.location-detail-list dd {
+  margin: 4px 0 0;
+  color: #111827;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 720px) {
   .location-setup-page {
     padding: 28px 18px 48px;

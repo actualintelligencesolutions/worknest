@@ -80,7 +80,7 @@ export function ManageBranchPage() {
         setBranch(response);
       } catch (err) {
         if (!isCurrent) return;
-        setError((err as Error).message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (isCurrent) setIsLoading(false);
       }
@@ -135,7 +135,7 @@ export function ManageBranchPage() {
         {!isLoading && !error && branch !== null ? (
           <div className="location-setup-shell">
             <div className="location-setup-card">
-              <dl className="location-preview" style={{ border: 'none', boxShadow: 'none', padding: 0 }}>
+              <dl className="location-detail-list">
                 <div>
                   <dt>Branch Name</dt>
                   <dd>{branch.location.name}</dd>
