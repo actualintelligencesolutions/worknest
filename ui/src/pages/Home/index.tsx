@@ -262,7 +262,11 @@ export function Home() {
   return (
     <AppLayout fullWidth tenant={tenant}>
       <div className="landing-page">
-        <section className="landing-hero-band" aria-labelledby="landing-title">
+        <section
+          className="landing-hero-band"
+          id="top"
+          aria-labelledby="landing-title"
+        >
           <div className="landing-shell landing-hero">
             <div className="landing-hero-copy">
               <p className="eyebrow">Payroll Operations, Simplified</p>
@@ -276,9 +280,6 @@ export function Home() {
               </p>
               <div className="landing-hero-actions">
                 <a className="button button-primary" href="#contact">
-                  Enquire
-                </a>
-                <a className="button button-secondary" href="#contact">
                   Enquire
                 </a>
               </div>

@@ -26,6 +26,7 @@ export function Header() {
       ]
     : isPublicHome
       ? [
+          { label: 'Home', href: '#top' },
           { label: 'Features', href: '#features' },
           { label: 'Pricing', href: '#pricing' },
           { label: 'Contact', href: '#contact' },
