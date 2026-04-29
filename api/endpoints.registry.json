@@ -293,7 +293,7 @@
       "method": "POST",
       "path": "/api/auth/hr-login",
       "status": "active",
-      "purpose": "Authenticate an HR admin for a tenant.",
+      "purpose": "Authenticate an active user for a tenant.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
@@ -308,7 +308,7 @@
       },
       "database": { "related_tables": ["users"] },
       "notes": {
-        "auth_rules": "Only active users with role hr_admin may log in.",
+        "auth_rules": "Any active user with valid tenant-scoped credentials may log in.",
         "tenant_behavior": "Login is scoped to the resolved tenant."
       }
     },

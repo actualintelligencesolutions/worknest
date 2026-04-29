@@ -892,14 +892,14 @@ try {
     if ($method === 'POST' && $path === '/auth/hr-login') {
         $tenant = api_tenant();
         $body = api_body();
-        $stmt = $pdo->prepare('SELECT id, tenant_id, name, email, password_hash, role, status FROM users WHERE tenant_id = :tenant_id AND email = :email AND role = "hr_admin" AND status = "active" AND deleted_at IS NULL');
+        $stmt = $pdo->prepare('SELECT id, tenant_id, name, email, password_hash, role, status FROM users WHERE tenant_id = :tenant_id AND email = :email AND status = "active" AND deleted_at IS NULL');
         $stmt->execute(['tenant_id' => $tenant, 'email' => strtolower(trim((string) ($body['email'] ?? '')))]);
         $user = $stmt->fetch();
         if ($user === false || !password_verify((string) ($body['password'] ?? ''), (string) $user['password_hash'])) {
             api_error('INVALID_CREDENTIALS', 'Invalid email or password.', 401);
         }
         api_success([
-            'token' => make_token(['tenant_id' => $tenant, 'role' => 'hr_admin', 'user_id' => (int) $user['id']]),
+            'token' => make_token(['tenant_id' => $tenant, 'role' => $user['role'], 'user_id' => (int) $user['id']]),
             'user' => ['id' => (int) $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']],
         ]);
     }

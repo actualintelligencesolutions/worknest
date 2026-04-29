@@ -101,7 +101,7 @@ export function LoginPage() {
             <div className="login-intro">
               <h1 id="login-title">Welcome back to your workspace.</h1>
               <p>
-                Sign in with your Company ID and HR admin credentials to continue
+                Sign in with your Company ID and account credentials to continue
                 office and branch setup.
               </p>
             </div>
@@ -119,7 +119,7 @@ export function LoginPage() {
                 <div className="panel-heading">
                   <p className="eyebrow">HR Login</p>
                   <h2>Sign in</h2>
-                  <p>Use the admin account created during registration.</p>
+                  <p>Use the account created for your company.</p>
                 </div>
 
                 <Field label="Company ID" error={errors.workspaceSlug}>

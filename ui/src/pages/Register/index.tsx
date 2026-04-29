@@ -71,7 +71,7 @@ function localWorkspaceAvailability(slug: string): WorkspaceStatus {
   if (!slug) {
     return {
       kind: 'idle',
-      message: 'Pick a short company address.',
+      message: 'Pick a short Company ID.',
     };
   }
   if (slug.length < 3) {
@@ -83,7 +83,7 @@ function localWorkspaceAvailability(slug: string): WorkspaceStatus {
   if (reservedWorkspaceSlugs.has(slug)) {
     return {
       kind: 'unavailable',
-      message: 'This address is already taken.',
+      message: 'This Company ID is already taken.',
     };
   }
   return {
@@ -139,8 +139,8 @@ export function RegisterPage() {
         setWorkspaceStatus({
           kind: result.available ? 'available' : 'unavailable',
           message: result.available
-            ? 'This address is available.'
-            : 'This address is already taken.',
+            ? 'This Company ID is available.'
+            : 'This Company ID is already taken.',
         });
       } catch (error) {
         if (!isCurrentCheck) {
@@ -150,7 +150,7 @@ export function RegisterPage() {
           kind: 'error',
           message:
             (error as Error).message ||
-            'Unable to check this address right now.',
+            'Unable to check this Company ID right now.',
         });
       }
     }, 350);
@@ -167,11 +167,11 @@ export function RegisterPage() {
       nextErrors.companyName = 'Company name is required.';
     }
     if (!workspaceSlug.trim()) {
-      nextErrors.workspaceSlug = 'Workspace address is required.';
+      nextErrors.workspaceSlug = 'Company ID is required.';
     } else if (workspaceStatus.kind === 'checking') {
-      nextErrors.workspaceSlug = 'Please wait while we check this address.';
+      nextErrors.workspaceSlug = 'Please wait while we check this Company ID.';
     } else if (workspaceStatus.kind !== 'available') {
-      nextErrors.workspaceSlug = 'Choose an available workspace address.';
+      nextErrors.workspaceSlug = 'Choose an available Company ID.';
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -362,7 +362,7 @@ export function RegisterPage() {
                     </div>
                   </Field>
 
-                  <Field label="Workspace address" error={errors.workspaceSlug}>
+                  <Field label="Company ID" error={errors.workspaceSlug}>
                     <div className="workspace-address-control">
                       <span>{workspaceBaseAddress}</span>
                       <input
