@@ -47,7 +47,7 @@ export function LoginPage() {
   function validateForm() {
     const nextErrors: FormErrors = {};
     if (!workspaceSlug.trim()) {
-      nextErrors.workspaceSlug = 'Workspace address is required.';
+      nextErrors.workspaceSlug = 'Company ID is required.';
     }
     if (!adminEmail.trim()) {
       nextErrors.adminEmail = 'Admin email is required.';
@@ -101,8 +101,8 @@ export function LoginPage() {
             <div className="login-intro">
               <h1 id="login-title">Welcome back to your workspace.</h1>
               <p>
-                Sign in with your workspace address and HR admin credentials to
-                continue office and branch setup.
+                Sign in with your Company ID and HR admin credentials to continue
+                office and branch setup.
               </p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export function LoginPage() {
                   <p>Use the admin account created during registration.</p>
                 </div>
 
-                <Field label="Workspace address" error={errors.workspaceSlug}>
+                <Field label="Company ID" error={errors.workspaceSlug}>
                   <input
                     autoComplete="organization"
                     name="workspaceSlug"

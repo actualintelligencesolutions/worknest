@@ -6,9 +6,6 @@ on:
       - 'preview'
       - 'publish'
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,22 +17,24 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
+          node-version: '23'  # Matches local env (v23.10.0)
+          cache: 'npm'
           cache-dependency-path: ui/package-lock.json
 
       - name: Install Dependencies
-        working-directory: ./ui
         run: npm ci
+        working-directory: ui
 
       - name: Run Build
-        working-directory: ./ui
         run: npm run build
+        working-directory: ui
 
       - name: Commit and Push Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use the PAT for authentication when pushing
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add ui/dist -f
           git commit -m "Deploy build [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref_name }}
+          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}  # Use the PAT token for pushing changes
