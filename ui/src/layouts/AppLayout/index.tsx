@@ -6,15 +6,18 @@ import './style.scss';
 type AppLayoutProps = {
   tenant: TenantConfig;
   children: ReactNode;
+  fullWidth?: boolean;
 };
 
-export function AppLayout({ tenant, children }: AppLayoutProps) {
+export function AppLayout({ tenant, children, fullWidth = false }: AppLayoutProps) {
   void tenant;
 
   return (
     <div className="app-shell">
       <Header />
-      <main className="app-main">{children}</main>
+      <main className={fullWidth ? 'app-main app-main-full' : 'app-main'}>
+        {children}
+      </main>
     </div>
   );
 }

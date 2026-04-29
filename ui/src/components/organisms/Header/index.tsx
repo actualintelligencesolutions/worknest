@@ -17,12 +17,19 @@ export function Header() {
   );
   const shouldShowDashboardState =
     hasHrSession || location.pathname.startsWith('/dashboard');
+  const isPublicHome = !shouldShowDashboardState && location.pathname === '/';
   const navItems = shouldShowDashboardState
     ? [
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Main Office', path: '/dashboard/main-office' },
         { label: 'New Branch', path: '/dashboard/branches/new' },
       ]
+    : isPublicHome
+      ? [
+          { label: 'Features', href: '#features' },
+          { label: 'Pricing', href: '#pricing' },
+          { label: 'Contact', href: '#contact' },
+        ]
     : [];
 
   useEffect(() => {
@@ -55,13 +62,19 @@ export function Header() {
 
       <nav className="header-nav" aria-label="Primary navigation">
         {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => (isActive ? 'active' : undefined)}
-          >
-            {item.label}
-          </NavLink>
+          'path' in item ? (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => (isActive ? 'active' : undefined)}
+            >
+              {item.label}
+            </NavLink>
+          ) : (
+            <a key={item.href} href={item.href}>
+              {item.label}
+            </a>
+          )
         ))}
       </nav>
 
@@ -76,12 +89,12 @@ export function Header() {
           </button>
         ) : (
           <>
-            <NavLink className="header-login" to="/login">
-              Login
-            </NavLink>
-            <NavLink className="header-signup" to="/register">
-              Register Now
-            </NavLink>
+            <a
+              className="header-signup"
+              href={isPublicHome ? '#contact' : '/#contact'}
+            >
+              Enquire
+            </a>
           </>
         )}
       </div>
