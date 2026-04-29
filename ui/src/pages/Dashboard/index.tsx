@@ -251,25 +251,6 @@ export function DashboardPage() {
                 : 'Your workspace is partially set up. Complete the next steps or continue managing your offices.'}
             </p>
           </div>
-          {session && !isLoading && !hasLoadError ? (
-            <div
-              className="dashboard-global-actions"
-              aria-label="Workspace actions"
-            >
-              <Link
-                className="button button-primary"
-                to="/dashboard/main-office"
-              >
-                Setup Main Office
-              </Link>
-              <Link
-                className="button button-secondary"
-                to="/dashboard/branches/new"
-              >
-                Setup Branch
-              </Link>
-            </div>
-          ) : null}
         </div>
 
         {notice ? (
@@ -384,21 +365,14 @@ export function DashboardPage() {
                 </div>
 
                 <div className="dashboard-location-stack">
-                  <div className="dashboard-entity-section">
-                    <div className="dashboard-entity-heading">
-                      <span>Main Office</span>
-                      {mainOffices.length === 0 ? (
-                        <Link
-                          className="button button-primary dashboard-location-action"
-                          to="/dashboard/main-office"
-                        >
-                          Setup Main Office
-                        </Link>
-                      ) : null}
-                    </div>
+                  {mainOffices.length > 0 ? (
+                    <>
+                      <div className="dashboard-entity-section">
+                        <div className="dashboard-entity-heading">
+                          <span>Main Office</span>
+                        </div>
 
-                    {mainOffices.length > 0
-                      ? mainOffices.map((office) => (
+                        {mainOffices.map((office) => (
                           <div
                             className="dashboard-location-box is-main"
                             key={office.id}
@@ -418,7 +392,9 @@ export function DashboardPage() {
                                 >
                                   <span
                                     className="status-pill-dot"
-                                    style={{ background: getStatusMeta(office.status).dot }}
+                                    style={{
+                                      background: getStatusMeta(office.status).dot,
+                                    }}
                                   />
                                   {getStatusMeta(office.status).label}
                                 </span>
@@ -447,11 +423,12 @@ export function DashboardPage() {
                               </button>
                             </div>
                           </div>
-                        ))
-                      : null}
-                  </div>
+                        ))}
+                      </div>
 
-                  <div className="dashboard-location-divider" />
+                      <div className="dashboard-location-divider" />
+                    </>
+                  ) : null}
 
                   <div className="dashboard-entity-section">
                     <div className="dashboard-entity-heading">

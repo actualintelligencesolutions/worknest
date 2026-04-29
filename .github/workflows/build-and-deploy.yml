@@ -3,8 +3,11 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - 'uat'
+      - 'preview'
       - 'publish'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,41 +16,26 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '23'  # Matches local env (v23.10.0)
-          cache: 'npm'
+          node-version: '20'
+          cache: npm
           cache-dependency-path: ui/package-lock.json
 
       - name: Install Dependencies
+        working-directory: ./ui
         run: npm ci
-        working-directory: ui
 
       - name: Run Build
+        working-directory: ./ui
         run: npm run build
-        working-directory: ui
 
       - name: Commit and Push Changes
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use the PAT for authentication when pushing
         run: |
-          if [ -z "${PAT_TOKEN}" ]; then
-            echo "PAT_TOKEN secret is not configured."
-            exit 1
-          fi
-
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add ui/dist -f
-          git add -u ui/dist
-          if git diff --cached --quiet; then
-            git commit --allow-empty -m "Trigger deployment [skip ci]"
-          else
-            git commit -m "Deploy build [skip ci]"
-          fi
-          echo "Pushing deploy commit $(git rev-parse --short HEAD) to ${GITHUB_REF_NAME}"
-          git push "https://x-access-token:${PAT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"  # Use the PAT token for pushing changes
+          git commit -m "Deploy build [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }}
