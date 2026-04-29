@@ -177,6 +177,22 @@ export function loginHrAdmin(
   });
 }
 
+export function submitContactEnquiry(payload: {
+  name: string;
+  company_name: string;
+  email: string;
+  phone: string;
+  message: string;
+}) {
+  return apiRequest<{
+    submitted: boolean;
+    recipient: string;
+  }>('/contact-enquiries', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createMainOffice(
   session: AuthSession,
   payload: {

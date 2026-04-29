@@ -652,8 +652,32 @@
   grid-column: 1 / -1;
 }
 
+.enquiry-form-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 12px;
+}
+
 .enquiry-form button {
   width: fit-content;
+}
+
+.enquiry-form button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.enquiry-form-notice {
+  margin: 0;
+  font-weight: 600;
+}
+
+.enquiry-form-notice-success {
+  color: #0b7a43;
+}
+
+.enquiry-form-notice-error {
+  color: #c0392b;
 }
 
 .landing-footer {
@@ -670,8 +694,15 @@
 }
 
 .landing-footer-brand {
-  font-size: 1.05rem;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-footer-brand-logo {
+  display: block;
+  width: auto;
+  height: 40px;
+  object-fit: contain;
 }
 
 .landing-footer-nav {
@@ -768,6 +799,10 @@
   .landing-footer-shell {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .landing-footer-brand-logo {
+    height: 34px;
   }
 
   .problem-card,

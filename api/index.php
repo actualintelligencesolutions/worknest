@@ -122,6 +122,43 @@ function send_admin_email_otp(string $email, string $otp, string $companyName): 
     return @mail($email, $subject, $message, $headers);
 }
 
+function send_contact_enquiry_email(
+    string $name,
+    string $companyName,
+    string $email,
+    string $phone,
+    string $message
+): bool {
+    if (!function_exists('mail')) {
+        return false;
+    }
+
+    $to = 'cainedaniel92@gmail.com';
+    $subject = 'New Worknest enquiry submitted';
+    $safeName = trim(preg_replace('/[\r\n]+/', ' ', $name) ?? '');
+    $safeCompanyName = trim(preg_replace('/[\r\n]+/', ' ', $companyName) ?? '');
+    $safeEmail = trim(preg_replace('/[\r\n]+/', ' ', $email) ?? '');
+    $safePhone = trim(preg_replace('/[\r\n]+/', ' ', $phone) ?? '');
+    $body = implode("\n", [
+        'A new enquiry was submitted on the Worknest website.',
+        '',
+        'Name: ' . $safeName,
+        'Company Name: ' . $safeCompanyName,
+        'Email: ' . $safeEmail,
+        'Phone: ' . $safePhone,
+        '',
+        'Message:',
+        $message,
+    ]);
+    $headers = [
+        'From: no-reply@worknest.local',
+        'Reply-To: ' . $safeEmail,
+        'Content-Type: text/plain; charset=UTF-8',
+    ];
+
+    return @mail($to, $subject, $body, implode("\r\n", $headers));
+}
+
 function generate_otp_code(): string
 {
     return '3333';
@@ -839,6 +876,50 @@ try {
                 'dev_otp' => $otp,
             ],
             'next_step' => 'verify_admin_email',
+        ], 201);
+    }
+
+    if ($method === 'POST' && $path === '/contact-enquiries') {
+        $body = api_body();
+        $name = trim((string) ($body['name'] ?? ''));
+        $companyName = trim((string) ($body['company_name'] ?? ''));
+        $email = strtolower(trim((string) ($body['email'] ?? '')));
+        $phone = trim((string) ($body['phone'] ?? ''));
+        $message = trim((string) ($body['message'] ?? ''));
+
+        if (
+            $name === '' ||
+            $companyName === '' ||
+            !filter_var($email, FILTER_VALIDATE_EMAIL) ||
+            $phone === '' ||
+            $message === ''
+        ) {
+            api_error(
+                'VALIDATION_ERROR',
+                'Name, company name, valid email, phone, and message are required.',
+                422
+            );
+        }
+
+        $emailSent = send_contact_enquiry_email(
+            $name,
+            $companyName,
+            $email,
+            $phone,
+            $message
+        );
+
+        if (!$emailSent) {
+            api_error(
+                'EMAIL_SEND_FAILED',
+                'We could not send your enquiry right now. Please try again.',
+                500
+            );
+        }
+
+        api_success([
+            'submitted' => true,
+            'recipient' => 'cainedaniel92@gmail.com',
         ], 201);
     }
 

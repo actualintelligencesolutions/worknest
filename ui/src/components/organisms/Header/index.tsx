@@ -54,12 +54,13 @@ export function Header() {
 
   return (
     <header className="header">
-      <NavLink className="header-brand" to="/">
-        <span className="header-brand-mark" aria-hidden="true">
-          W
-        </span>
-        <span>{tenant.branding.appName}</span>
-      </NavLink>
+      <div className="header-brand" aria-label={tenant.branding.appName}>
+        <img
+          className="header-brand-logo"
+          src="/images/worknest-logo.png"
+          alt={tenant.branding.appName}
+        />
+      </div>
 
       <nav className="header-nav" aria-label="Primary navigation">
         {navItems.map((item) => (

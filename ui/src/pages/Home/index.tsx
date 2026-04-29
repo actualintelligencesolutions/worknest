@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { AppLayout } from '../../layouts/AppLayout';
+import { submitContactEnquiry } from '../../services/worknestApi';
 import { useTenantStore } from '../../stores/tenantStore';
 import './style.scss';
 
@@ -112,7 +113,7 @@ const pricingTiers: PricingPlan[] = [
     segment: 'smb',
     description: 'For small growing teams',
     monthlyPrice: '₹500 / month',
-    yearlyPrice: '₹5000 / year',
+    yearlyPrice: '₹5,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -126,8 +127,8 @@ const pricingTiers: PricingPlan[] = [
     segment: 'smb',
     label: 'Most Popular',
     description: 'Best for teams scaling payroll across locations',
-    monthlyPrice: '₹1000 / month',
-    yearlyPrice: '₹10000 / year',
+    monthlyPrice: '₹1,000 / month',
+    yearlyPrice: '₹10,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -142,8 +143,8 @@ const pricingTiers: PricingPlan[] = [
     name: 'Scale',
     segment: 'smb',
     description: 'For larger operations that need more control',
-    monthlyPrice: '₹3000 / month',
-    yearlyPrice: '₹30000 / year',
+    monthlyPrice: '₹3,000 / month',
+    yearlyPrice: '₹30,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -156,8 +157,8 @@ const pricingTiers: PricingPlan[] = [
     name: 'Enterprise',
     segment: 'enterprise',
     description: 'Operational oversight for large payroll teams',
-    monthlyPrice: '₹5000 / month',
-    yearlyPrice: '₹50000 / year',
+    monthlyPrice: '₹5,000 / month',
+    yearlyPrice: '₹50,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -170,8 +171,8 @@ const pricingTiers: PricingPlan[] = [
     name: 'Enterprise Plus',
     segment: 'enterprise',
     description: 'For multi-location businesses with stricter governance needs',
-    monthlyPrice: '₹8000 / month',
-    yearlyPrice: '₹80000 / year',
+    monthlyPrice: '₹8,000 / month',
+    yearlyPrice: '₹80,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -184,8 +185,8 @@ const pricingTiers: PricingPlan[] = [
     name: 'Corporate',
     segment: 'enterprise',
     description: 'For high-volume payroll operations that need operational resilience',
-    monthlyPrice: '₹12000 / month',
-    yearlyPrice: '₹120000 / year',
+    monthlyPrice: '₹12,000 / month',
+    yearlyPrice: '₹1,20,000 / year',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, 2 months free',
     features: [
@@ -201,8 +202,8 @@ const pricingTiers: PricingPlan[] = [
     eyebrow: 'Customized requirements?',
     description:
       'Speak to us for custom workflows, volume-based pricing, migration planning, and rollout support tailored to your payroll operations.',
-    monthlyPrice: '₹5000 + ₹15 per employee',
-    yearlyPrice: '₹50000 + ₹150 per employee',
+    monthlyPrice: '₹5,000 + ₹15 per employee',
+    yearlyPrice: '₹50,000 + ₹150 per employee',
     monthlyNote: 'Billed monthly',
     yearlyNote: 'Billed yearly, custom scaling',
     features: [
@@ -247,6 +248,11 @@ export function Home() {
   const tenant = useTenantStore((state) => state.tenant);
   const [pricingSegment, setPricingSegment] = useState<PricingSegment>('smb');
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [isSubmittingEnquiry, setIsSubmittingEnquiry] = useState(false);
+  const [enquiryNotice, setEnquiryNotice] = useState<{
+    tone: 'success' | 'error';
+    message: string;
+  } | null>(null);
   usePageTitle('Worknest');
 
   const visiblePricingTiers = pricingTiers.filter(
@@ -255,8 +261,53 @@ export function Home() {
   const standardPricingTiers = visiblePricingTiers.filter((plan) => !plan.custom);
   const customEnterprisePlan = visiblePricingTiers.find((plan) => plan.custom) ?? null;
 
-  function handleDemoRequest(event: FormEvent<HTMLFormElement>) {
+  async function handleDemoRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      name: String(formData.get('name') ?? '').trim(),
+      company_name: String(formData.get('companyName') ?? '').trim(),
+      email: String(formData.get('email') ?? '').trim(),
+      phone: String(formData.get('phone') ?? '').trim(),
+      message: String(formData.get('message') ?? '').trim(),
+    };
+
+    if (
+      payload.name === '' ||
+      payload.company_name === '' ||
+      payload.email === '' ||
+      payload.phone === '' ||
+      payload.message === ''
+    ) {
+      setEnquiryNotice({
+        tone: 'error',
+        message: 'Please complete all enquiry fields before submitting.',
+      });
+      return;
+    }
+
+    setIsSubmittingEnquiry(true);
+    setEnquiryNotice(null);
+
+    try {
+      await submitContactEnquiry(payload);
+      form.reset();
+      setEnquiryNotice({
+        tone: 'success',
+        message: 'Thanks. Your enquiry has been sent and we will get in touch soon.',
+      });
+    } catch (error) {
+      setEnquiryNotice({
+        tone: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'We could not send your enquiry right now. Please try again.',
+      });
+    } finally {
+      setIsSubmittingEnquiry(false);
+    }
   }
 
   return (
@@ -538,15 +589,38 @@ export function Home() {
                 rows={5}
               />
             </label>
-            <button className="button button-primary" type="submit">
-              Enquire
-            </button>
+            <div className="enquiry-form-actions">
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={isSubmittingEnquiry}
+              >
+                {isSubmittingEnquiry ? 'Sending...' : 'Enquire'}
+              </button>
+              {enquiryNotice ? (
+                <p
+                  className={
+                    enquiryNotice.tone === 'success'
+                      ? 'enquiry-form-notice enquiry-form-notice-success'
+                      : 'enquiry-form-notice enquiry-form-notice-error'
+                  }
+                >
+                  {enquiryNotice.message}
+                </p>
+              ) : null}
+            </div>
           </form>
         </LandingSection>
 
         <footer className="landing-footer">
           <div className="landing-shell landing-footer-shell">
-            <span className="landing-footer-brand">Worknest</span>
+            <div className="landing-footer-brand" aria-label="Worknest">
+              <img
+                className="landing-footer-brand-logo"
+                src="/images/worknest-logo.png"
+                alt="Worknest"
+              />
+            </div>
             <nav aria-label="Footer navigation" className="landing-footer-nav">
               <a href="#features">Features</a>
               <a href="#pricing">Pricing</a>
