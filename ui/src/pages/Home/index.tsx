@@ -617,7 +617,7 @@ export function Home() {
             <div className="landing-footer-brand" aria-label="Worknest">
               <img
                 className="landing-footer-brand-logo"
-                src="/images/worknest-logo.png"
+                src="/images/new-logo.jpeg"
                 alt="Worknest"
               />
             </div>

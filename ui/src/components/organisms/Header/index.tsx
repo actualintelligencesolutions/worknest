@@ -15,23 +15,24 @@ export function Header() {
   const [hasHrSession, setHasHrSession] = useState(
     () => loadHrSession() !== null,
   );
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCompactPublicHeader, setIsCompactPublicHeader] = useState(false);
   const shouldShowDashboardState =
     hasHrSession || location.pathname.startsWith('/dashboard');
-  const isPublicHome = !shouldShowDashboardState && location.pathname === '/';
+  const isPublic = !shouldShowDashboardState;
+  const isPublicHome = isPublic && location.pathname === '/';
   const navItems = shouldShowDashboardState
     ? [
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Main Office', path: '/dashboard/main-office' },
         { label: 'New Branch', path: '/dashboard/branches/new' },
       ]
-    : isPublicHome
-      ? [
-          { label: 'Home', href: '#top' },
-          { label: 'Features', href: '#features' },
-          { label: 'Pricing', href: '#pricing' },
-          { label: 'Contact', href: '#contact' },
-        ]
-    : [];
+    : [
+        { label: 'Home', href: isPublicHome ? '#top' : '/#top' },
+        { label: 'Features', href: isPublicHome ? '#features' : '/#features' },
+        { label: 'Pricing', href: isPublicHome ? '#pricing' : '/#pricing' },
+        { label: 'Contact', href: isPublicHome ? '#contact' : '/#contact' },
+      ];
 
   useEffect(() => {
     function syncSessionState() {
@@ -47,56 +48,123 @@ export function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    if (!isPublic) {
+      setIsCompactPublicHeader(false);
+      return;
+    }
+
+    function syncScrollState() {
+      setIsCompactPublicHeader(window.scrollY > 24);
+    }
+
+    syncScrollState();
+    window.addEventListener('scroll', syncScrollState, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', syncScrollState);
+    };
+  }, [isPublic]);
+
   function handleLogout() {
     clearHrSession();
     navigate('/login');
   }
 
   return (
-    <header className="header">
-      <div className="header-brand" aria-label={tenant.branding.appName}>
-        <img
-          className="header-brand-logo"
-          src="/images/worknest-logo.png"
-          alt={tenant.branding.appName}
-        />
-      </div>
+    <header
+      className={
+        isPublic
+          ? isCompactPublicHeader
+            ? 'header header-public header-public-compact'
+            : 'header header-public'
+          : 'header'
+      }
+    >
+      <div
+        className={
+          isPublic
+            ? isCompactPublicHeader
+              ? 'header-shell header-shell-public header-shell-public-compact'
+              : 'header-shell header-shell-public'
+            : 'header-shell'
+        }
+      >
+        {isPublic ? (
+          <>
+            <div className="header-brand-row">
+              <div className="header-brand header-brand-public" aria-label={tenant.branding.appName}>
+                <img
+                  className="header-brand-logo"
+                  src="/images/new-logo.jpeg"
+                  alt={tenant.branding.appName}
+                />
+              </div>
+              <button
+                aria-controls="public-navigation"
+                aria-expanded={isMenuOpen}
+                className="header-menu-toggle"
+                onClick={() => setIsMenuOpen((current) => !current)}
+                type="button"
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+            </div>
 
-      <nav className="header-nav" aria-label="Primary navigation">
-        {navItems.map((item) => (
-          'path' in item ? (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
+            <div
+              className={
+                isMenuOpen
+                  ? 'header-menu-panel header-menu-panel-open'
+                  : 'header-menu-panel'
+              }
+              id="public-navigation"
             >
-              {item.label}
-            </NavLink>
-          ) : (
-            <a key={item.href} href={item.href}>
-              {item.label}
-            </a>
-          )
-        ))}
-      </nav>
-
-      <div className="header-actions">
-        {shouldShowDashboardState ? (
-          <button
-            className="header-logout"
-            onClick={handleLogout}
-            type="button"
-          >
-            Logout
-          </button>
+              <nav className="header-nav header-nav-public" aria-label="Primary navigation">
+                {navItems.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </>
         ) : (
           <>
-            <a
-              className="header-signup"
-              href={isPublicHome ? '#contact' : '/#contact'}
-            >
-              Enquire
-            </a>
+            <div className="header-brand" aria-label={tenant.branding.appName}>
+              <img
+                className="header-brand-logo"
+                src="/images/new-logo.jpeg"
+                alt={tenant.branding.appName}
+              />
+            </div>
+
+            <nav className="header-nav" aria-label="Primary navigation">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            <div className="header-actions">
+              <button
+                className="header-logout"
+                onClick={handleLogout}
+                type="button"
+              >
+                Logout
+              </button>
+            </div>
           </>
         )}
       </div>
