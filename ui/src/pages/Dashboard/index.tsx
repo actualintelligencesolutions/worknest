@@ -290,7 +290,12 @@ export function DashboardPage() {
                 your workspace.
               </p>
             </div>
-            <Link className="button button-primary" to="/login">
+            <Link
+              className="button button-primary"
+              target="_blank"
+              rel="noreferrer"
+              to="/login"
+            >
               Login
             </Link>
           </div>

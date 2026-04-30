@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   clearHrSession,
   HR_SESSION_CHANGE_EVENT,
@@ -16,7 +16,6 @@ export function Header() {
     () => loadHrSession() !== null,
   );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isCompactPublicHeader, setIsCompactPublicHeader] = useState(false);
   const shouldShowDashboardState =
     hasHrSession || location.pathname.startsWith('/dashboard');
   const isPublic = !shouldShowDashboardState;
@@ -52,24 +51,6 @@ export function Header() {
     setIsMenuOpen(false);
   }, [location.pathname, location.hash]);
 
-  useEffect(() => {
-    if (!isPublic) {
-      setIsCompactPublicHeader(false);
-      return;
-    }
-
-    function syncScrollState() {
-      setIsCompactPublicHeader(window.scrollY > 24);
-    }
-
-    syncScrollState();
-    window.addEventListener('scroll', syncScrollState, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', syncScrollState);
-    };
-  }, [isPublic]);
-
   function handleLogout() {
     clearHrSession();
     navigate('/login');
@@ -79,18 +60,14 @@ export function Header() {
     <header
       className={
         isPublic
-          ? isCompactPublicHeader
-            ? 'header header-public header-public-compact'
-            : 'header header-public'
+          ? 'header header-public header-public-compact'
           : 'header'
       }
     >
       <div
         className={
           isPublic
-            ? isCompactPublicHeader
-              ? 'header-shell header-shell-public header-shell-public-compact'
-              : 'header-shell header-shell-public'
+            ? 'header-shell header-shell-public header-shell-public-compact'
             : 'header-shell'
         }
       >
@@ -132,6 +109,24 @@ export function Header() {
                   </a>
                 ))}
               </nav>
+              <div className="header-public-actions">
+                <Link
+                  className="header-login"
+                  target="_blank"
+                  rel="noreferrer"
+                  to="/login"
+                >
+                  Login
+                </Link>
+                <Link
+                  className="header-signup"
+                  target="_blank"
+                  rel="noreferrer"
+                  to="/register"
+                >
+                  Register
+                </Link>
+              </div>
             </div>
           </>
         ) : (

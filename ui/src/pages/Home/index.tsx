@@ -330,6 +330,14 @@ export function Home() {
                 payslips.
               </p>
               <div className="landing-hero-actions">
+                <Link
+                  className="button button-primary"
+                  target="_blank"
+                  rel="noreferrer"
+                  to="/register"
+                >
+                  Register Now
+                </Link>
                 <a className="button button-primary" href="#contact">
                   Enquire
                 </a>
@@ -511,6 +519,14 @@ export function Home() {
                     </div>
                   ))}
                 </div>
+                <Link
+                  className="button button-primary pricing-card-action"
+                  target="_blank"
+                  rel="noreferrer"
+                  to="/register"
+                >
+                  Register Now
+                </Link>
               </article>
             ))}
           </div>
@@ -543,9 +559,19 @@ export function Home() {
                   </div>
                 ))}
               </div>
-              <a className="button button-primary custom-pricing-action" href="#contact">
-                {customEnterprisePlan.ctaLabel ?? 'Enquire'}
-              </a>
+              <div className="custom-pricing-actions">
+                <a className="button button-primary custom-pricing-action" href="#contact">
+                  {customEnterprisePlan.ctaLabel ?? 'Enquire'}
+                </a>
+                <Link
+                  className="button button-secondary custom-pricing-action"
+                  target="_blank"
+                  rel="noreferrer"
+                  to="/register"
+                >
+                  Register Now
+                </Link>
+              </div>
             </article>
           ) : null}
 
@@ -625,7 +651,9 @@ export function Home() {
               <a href="#features">Features</a>
               <a href="#pricing">Pricing</a>
               <a href="#contact">Contact</a>
-              <Link to="/login">Login</Link>
+              <Link target="_blank" rel="noreferrer" to="/register">
+                Register
+              </Link>
             </nav>
           </div>
         </footer>

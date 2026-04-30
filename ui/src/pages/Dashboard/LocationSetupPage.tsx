@@ -223,7 +223,12 @@ export function LocationSetupPage({ mode }: LocationSetupPageProps) {
               Complete company registration and email OTP verification before
               creating offices or branches.
             </p>
-            <Link className="button button-secondary" to="/register">
+            <Link
+              className="button button-secondary"
+              target="_blank"
+              rel="noreferrer"
+              to="/register"
+            >
               Go to registration
             </Link>
           </div>

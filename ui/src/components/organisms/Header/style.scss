@@ -16,6 +16,7 @@
 
 .header-brand,
 .header-nav a,
+.header-login,
 .header-signup,
 .header-logout {
   color: #111827;
@@ -93,7 +94,9 @@
 
 .header-menu-panel {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 28px;
   width: 100%;
   transition: justify-content 180ms ease;
 }
@@ -154,6 +157,59 @@
     transform 160ms ease,
     box-shadow 160ms ease;
 }
+
+.header-public-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-login,
+.header-signup {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 0.94rem;
+  font-weight: 800;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.header-login {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+.header-signup {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+}
+
+.header-login:hover,
+.header-signup:hover {
+  transform: translateY(-1px);
+}
+
+.header-login:hover {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: #eff6ff;
+}
+
+.header-signup:hover {
+  background: #1d4ed8;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.2);
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -172,7 +228,7 @@
 .header-shell-public-compact {
   display: grid;
   min-height: 74px;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(180px, 0.68fr) minmax(0, 1.32fr);
   align-items: center;
   justify-items: stretch;
   gap: 20px;
@@ -309,7 +365,7 @@
   }
 
   .header-menu-panel-open {
-    max-height: 280px;
+    max-height: 360px;
     opacity: 1;
   }
 
@@ -318,6 +374,17 @@
     flex-direction: column;
     gap: 14px;
     padding-top: 2px;
+  }
+
+  .header-public-actions {
+    width: 100%;
+    justify-content: center;
+    padding-top: 12px;
+  }
+
+  .header-login,
+  .header-signup {
+    flex: 1 1 0;
   }
 
   .header-shell:not(.header-shell-public) {
