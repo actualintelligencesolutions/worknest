@@ -145,6 +145,15 @@ export function Header() {
                 ))}
               </nav>
 
+              <div className="header-public-actions header-public-actions-inline">
+                <Link className="header-action-button header-action-button-secondary" to="/login">
+                  Login
+                </Link>
+                <Link className="header-action-button header-action-button-primary" to="/register">
+                  Register
+                </Link>
+              </div>
+
               <button
                 aria-controls="public-navigation"
                 aria-expanded={isMenuOpen}
@@ -171,6 +180,15 @@ export function Header() {
                   </a>
                 ))}
               </nav>
+
+              <div className="header-public-actions header-public-actions-mobile">
+                <Link className="header-action-button header-action-button-secondary" to="/login">
+                  Login
+                </Link>
+                <Link className="header-action-button header-action-button-primary" to="/register">
+                  Register
+                </Link>
+              </div>
             </div>
           </>
         ) : (
