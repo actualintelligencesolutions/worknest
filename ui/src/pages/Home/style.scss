@@ -14,7 +14,7 @@
 }
 
 .landing-shell {
-  width: min(100% - 48px, 1160px);
+  width: min(100% - 48px, 1440px);
   margin: 0 auto;
 }
 
@@ -716,11 +716,14 @@
   align-items: center;
 }
 
-.landing-footer-brand-logo {
-  display: block;
-  width: auto;
-  height: 40px;
-  object-fit: contain;
+.landing-footer-brand-mark {
+  display: inline-block;
+  color: #2a57ba;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .landing-footer-nav {
@@ -781,7 +784,7 @@
 
 @media (max-width: 760px) {
   .landing-shell {
-    width: min(100% - 32px, 1160px);
+    width: min(100% - 32px, 1440px);
   }
 
   .landing-section {
@@ -819,8 +822,8 @@
     align-items: flex-start;
   }
 
-  .landing-footer-brand-logo {
-    height: 34px;
+  .landing-footer-brand-mark {
+    font-size: 1.05rem;
   }
 
   .problem-card,

@@ -5,11 +5,41 @@ import {
   HR_SESSION_CHANGE_EVENT,
   loadHrSession,
 } from '../../../services/hrSession';
-import { useTenantStore } from '../../../stores/tenantStore';
 import './style.scss';
 
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10.5 4a6.5 6.5 0 1 0 4.11 11.56l4.91 4.91 1.41-1.41-4.91-4.91A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 5H4V3H2v2h2.18l2.12 10.59A2 2 0 0 0 8.28 17H18v-2H8.28l-.4-2H18a2 2 0 0 0 1.96-1.58l1.46-6.42H7Zm2.6 8-.78-4H19l-.91 4H9.6ZM9.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16v2H4V7Zm0 8h16v2H4v-2Zm0-4h16v2H4v-2Z" />
+    </svg>
+  );
+}
+
 export function Header() {
-  const tenant = useTenantStore((state) => state.tenant);
   const location = useLocation();
   const navigate = useNavigate();
   const [hasHrSession, setHasHrSession] = useState(
@@ -20,18 +50,24 @@ export function Header() {
     hasHrSession || location.pathname.startsWith('/dashboard');
   const isPublic = !shouldShowDashboardState;
   const isPublicHome = isPublic && location.pathname === '/';
-  const navItems = shouldShowDashboardState
+  const publicUtilityItems = [
+    { label: 'How to use', href: '/#features' },
+    { label: 'Pricing', href: '/#pricing' },
+    { label: 'Contact', href: '/#contact' },
+  ];
+  const publicNavItems = [
+    { label: 'Home', href: isPublicHome ? '#top' : '/#top' },
+    { label: 'Features', href: isPublicHome ? '#features' : '/#features' },
+    { label: 'Pricing', href: isPublicHome ? '#pricing' : '/#pricing' },
+    { label: 'Contact', href: isPublicHome ? '#contact' : '/#contact' },
+  ];
+  const dashboardNavItems = shouldShowDashboardState
     ? [
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Main Office', path: '/dashboard/main-office' },
         { label: 'New Branch', path: '/dashboard/branches/new' },
       ]
-    : [
-        { label: 'Home', href: isPublicHome ? '#top' : '/#top' },
-        { label: 'Features', href: isPublicHome ? '#features' : '/#features' },
-        { label: 'Pricing', href: isPublicHome ? '#pricing' : '/#pricing' },
-        { label: 'Contact', href: isPublicHome ? '#contact' : '/#contact' },
-      ];
+    : [];
 
   useEffect(() => {
     function syncSessionState() {
@@ -59,28 +95,56 @@ export function Header() {
   return (
     <header
       className={
-        isPublic
-          ? 'header header-public header-public-compact'
-          : 'header'
+        isPublic ? 'header header-public' : 'header header-dashboard'
       }
     >
       <div
         className={
           isPublic
-            ? 'header-shell header-shell-public header-shell-public-compact'
-            : 'header-shell'
+            ? 'header-shell header-shell-public'
+            : 'header-shell header-shell-dashboard'
         }
       >
         {isPublic ? (
           <>
-            <div className="header-brand-row">
-              <div className="header-brand header-brand-public" aria-label={tenant.branding.appName}>
-                <img
-                  className="header-brand-logo"
-                  src="/images/new-logo.jpeg"
-                  alt={tenant.branding.appName}
-                />
+            <div className="header-topbar">
+              <nav className="header-utility-nav">
+                {publicUtilityItems.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+
+              <div className="header-utility-actions">
+                <a className="header-icon-link" href="/#features" aria-label="Search">
+                  <SearchIcon />
+                </a>
+                <Link className="header-icon-link" to="/login" aria-label="Login">
+                  <UserIcon />
+                </Link>
+                <Link className="header-icon-link" to="/register" aria-label="Register">
+                  <CartIcon />
+                </Link>
               </div>
+            </div>
+
+            <div className="header-mainrow">
+              <div className="header-brand">
+                <span className="header-brand-mark">WORKNEST</span>
+              </div>
+
+              <nav
+                className="header-nav header-nav-public header-nav-inline"
+                aria-label="Primary navigation"
+              >
+                {publicNavItems.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+
               <button
                 aria-controls="public-navigation"
                 aria-expanded={isMenuOpen}
@@ -88,9 +152,7 @@ export function Header() {
                 onClick={() => setIsMenuOpen((current) => !current)}
                 type="button"
               >
-                <span />
-                <span />
-                <span />
+                <MenuIcon />
               </button>
             </div>
 
@@ -102,45 +164,23 @@ export function Header() {
               }
               id="public-navigation"
             >
-              <nav className="header-nav header-nav-public" aria-label="Primary navigation">
-                {navItems.map((item) => (
+              <nav className="header-nav header-nav-public header-nav-mobile" aria-label="Primary navigation">
+                {publicNavItems.map((item) => (
                   <a key={item.href} href={item.href}>
                     {item.label}
                   </a>
                 ))}
               </nav>
-              <div className="header-public-actions">
-                <Link
-                  className="header-login"
-                  target="_blank"
-                  rel="noreferrer"
-                  to="/login"
-                >
-                  Login
-                </Link>
-                <Link
-                  className="header-signup"
-                  target="_blank"
-                  rel="noreferrer"
-                  to="/register"
-                >
-                  Register
-                </Link>
-              </div>
             </div>
           </>
         ) : (
           <>
-            <div className="header-brand" aria-label={tenant.branding.appName}>
-              <img
-                className="header-brand-logo"
-                src="/images/new-logo.jpeg"
-                alt={tenant.branding.appName}
-              />
+            <div className="header-brand">
+              <span className="header-brand-mark">WORKNEST</span>
             </div>
 
             <nav className="header-nav" aria-label="Primary navigation">
-              {navItems.map((item) => (
+              {dashboardNavItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}

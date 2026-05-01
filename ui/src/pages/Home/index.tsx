@@ -336,7 +336,7 @@ export function Home() {
                   rel="noreferrer"
                   to="/register"
                 >
-                  Register Now
+                  Register
                 </Link>
                 <a className="button button-primary" href="#contact">
                   Enquire
@@ -525,7 +525,7 @@ export function Home() {
                   rel="noreferrer"
                   to="/register"
                 >
-                  Register Now
+                  Register
                 </Link>
               </article>
             ))}
@@ -569,7 +569,7 @@ export function Home() {
                   rel="noreferrer"
                   to="/register"
                 >
-                  Register Now
+                  Register
                 </Link>
               </div>
             </article>
@@ -641,11 +641,7 @@ export function Home() {
         <footer className="landing-footer">
           <div className="landing-shell landing-footer-shell">
             <div className="landing-footer-brand" aria-label="Worknest">
-              <img
-                className="landing-footer-brand-logo"
-                src="/images/new-logo.jpeg"
-                alt="Worknest"
-              />
+              <span className="landing-footer-brand-mark">WORKNEST</span>
             </div>
             <nav aria-label="Footer navigation" className="landing-footer-nav">
               <a href="#features">Features</a>
