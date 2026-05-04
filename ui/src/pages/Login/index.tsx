@@ -85,7 +85,7 @@ export function LoginPage() {
         kind: 'success',
         message: `Welcome back, ${response.user.name}.`,
       });
-      navigate('/dashboard');
+      navigate('/app');
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     } finally {

@@ -275,7 +275,7 @@ export function RegisterPage() {
         kind: 'success',
         message: 'Email OTP verified. Workspace setup is ready.',
       });
-      navigate('/dashboard');
+      navigate('/app');
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     } finally {

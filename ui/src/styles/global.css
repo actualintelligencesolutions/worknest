@@ -48,8 +48,35 @@ h6 {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
+}
+
+input,
+textarea,
+select {
+  color: #111827;
+  background: #ffffff;
+}
+
+select {
+  width: 100%;
+  border: 1px solid #cfd6e4;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+pre {
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #374151;
+  padding: 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .eyebrow {

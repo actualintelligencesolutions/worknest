@@ -8,28 +8,32 @@ export type Plan = {
   name: string;
   price_cents: number;
   currency: string;
-  description: string | null;
-  status: string;
+  description?: string | null;
+  status?: string;
 };
 
 export type CompanyLocation = {
   id: number;
   tenant_id: string;
-  location_type: 'main_office' | 'branch';
+  location_type?: 'main_office' | 'branch';
+  office_type?: 'main_office' | 'branch';
   name: string;
   status: string;
   created_at?: string;
+  city?: string | null;
+  state?: string | null;
 };
 
 export type LocationSetupResponse = {
   location: CompanyLocation;
+  office?: CompanyLocation;
   admin: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    status: string;
-  };
+    id: number | null;
+    name: string | null;
+    email: string | null;
+    role?: string | null;
+    status: string | null;
+  } | null;
   plan: Plan;
 };
 
@@ -37,10 +41,23 @@ export type BranchDetail = {
   location: {
     id: number;
     tenant_id: string;
-    location_type: 'branch';
+    location_type?: 'branch' | 'main_office';
+    office_type?: 'branch' | 'main_office';
     name: string;
     status: string;
     created_at: string | null;
+    contact_email?: string | null;
+    contact_phone?: string | null;
+    city?: string | null;
+    state?: string | null;
+    timezone?: string | null;
+  };
+  office?: {
+    id: number;
+    tenant_id: string;
+    office_type?: 'branch' | 'main_office';
+    name: string;
+    status: string;
   };
   plan: {
     id: number | null;
@@ -54,27 +71,72 @@ export type BranchDetail = {
     name: string | null;
     email: string | null;
     status: string | null;
-  };
+  } | null;
 };
 
-export type PayrollImportResponse = {
-  import: {
+export type UserRecord = {
+  id: number;
+  tenant_id: string;
+  office_id: number | null;
+  employee_id: string | null;
+  first_name?: string;
+  last_name?: string | null;
+  display_name?: string;
+  name?: string;
+  email: string | null;
+  phone: string | null;
+  user_type?: 'tenant_owner' | 'branch_admin' | 'employee';
+  role?: string;
+  status: string;
+  created_at?: string;
+};
+
+export type PayrollBatch = {
+  id: number;
+  tenant_id: string;
+  office_id: number;
+  period_year: number;
+  period_month: number;
+  source_file_name: string;
+  source_file_path?: string;
+  upload_status: string;
+  uploaded_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  validation_summary_json?: string | null;
+  mapping_json?: string | null;
+};
+
+export type PayrollBatchUploadResponse = {
+  batch: {
     id: number;
-    status: string;
-    payroll_period_id: number;
+    upload_status: string;
   };
   headers: string[];
   sample_rows: Record<string, string>[];
   mapping_suggestions: Record<string, { source: string; confidence: string }>;
 };
 
+export type PayrollValidationSummary = {
+  total_rows: number;
+  valid_rows: number;
+  error_rows: number;
+  critical_errors: string[];
+  normalized_rows?: Array<{
+    data: Record<string, unknown>;
+    errors: string[];
+  }>;
+};
+
 export type Payslip = {
   id: number;
-  employee_code: string;
-  employee_name: string;
-  gross_pay: string;
-  total_deductions: string;
-  net_pay: string;
+  employee_code?: string;
+  employee_id?: string;
+  employee_name?: string;
+  employee_name_snapshot?: string;
+  gross_pay: string | number;
+  total_deductions: string | number;
+  net_pay: string | number;
   status: string;
   period_month: number;
   period_year: number;
@@ -84,6 +146,19 @@ export type AuthSession = {
   token: string;
   tenantId: string;
   userName?: string;
+};
+
+export type ActorProfile = {
+  id: number;
+  tenant_id: string;
+  office_id: number | null;
+  employee_id: string | null;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  user_type: 'tenant_owner' | 'branch_admin' | 'employee';
+  status: string;
+  office_ids: number[];
 };
 
 function authHeaders(session: AuthSession | null) {
@@ -156,6 +231,48 @@ export function verifyAdminEmailOtp(challengeId: number, otpCode: string) {
   });
 }
 
+export function loginOwner(
+  tenantId: string,
+  payload: {
+    email: string;
+    password: string;
+  },
+) {
+  return apiRequest<{
+    token: string;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+    };
+  }>(`/auth/owner-login?tenant=${encodeURIComponent(tenantId)}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function loginBranchAdmin(
+  tenantId: string,
+  payload: {
+    email: string;
+    password: string;
+  },
+) {
+  return apiRequest<{
+    token: string;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+    };
+  }>(`/auth/branch-login?tenant=${encodeURIComponent(tenantId)}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function loginHrAdmin(
   tenantId: string,
   payload: {
@@ -177,6 +294,26 @@ export function loginHrAdmin(
   });
 }
 
+export function getCurrentActor(session: AuthSession) {
+  return apiRequest<{ actor: ActorProfile }>(
+    `/auth/me?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
+export function logoutSession(session: AuthSession) {
+  return apiRequest<{ revoked: boolean }>(
+    `/auth/logout?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export function submitContactEnquiry(payload: {
   name: string;
   company_name: string;
@@ -196,9 +333,12 @@ export function submitContactEnquiry(payload: {
 export function createMainOffice(
   session: AuthSession,
   payload: {
-    admin_name: string;
-    admin_email: string;
+    name?: string;
+    admin_name?: string;
+    admin_email?: string;
     plan_id: number;
+    city?: string;
+    state?: string;
   },
 ) {
   return apiRequest<LocationSetupResponse>(
@@ -224,13 +364,31 @@ export function listCompanyLocations(session: AuthSession) {
   });
 }
 
+export function listOffices(session: AuthSession) {
+  return apiRequest<{
+    offices: CompanyLocation[];
+    locations: CompanyLocation[];
+    summary: {
+      main_offices: number;
+      branches: number;
+      total: number;
+    };
+  }>(`/offices?tenant=${encodeURIComponent(session.tenantId)}`, {
+    headers: authHeaders(session),
+  });
+}
+
 export function createBranch(
   session: AuthSession,
   payload: {
-    branch_name: string;
-    admin_name: string;
-    admin_email: string;
+    name?: string;
+    branch_name?: string;
+    office_code?: string;
+    admin_name?: string;
+    admin_email?: string;
     plan_id: number;
+    city?: string;
+    state?: string;
   },
 ) {
   return apiRequest<LocationSetupResponse>(
@@ -243,11 +401,286 @@ export function createBranch(
   );
 }
 
+export function getOffice(session: AuthSession, id: number) {
+  return apiRequest<{
+    office: BranchDetail['location'];
+    location: BranchDetail['location'];
+    plan: BranchDetail['plan'];
+    admin: BranchDetail['admin'];
+  }>(`/offices/${id}?tenant=${encodeURIComponent(session.tenantId)}`, {
+    headers: authHeaders(session),
+  });
+}
+
 export function getBranch(session: AuthSession, id: number) {
   return apiRequest<BranchDetail>(
     `/branches/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
     { headers: authHeaders(session) },
   );
+}
+
+export function updateOffice(
+  session: AuthSession,
+  id: number,
+  payload: Record<string, unknown>,
+) {
+  return apiRequest<{ office: CompanyLocation }>(
+    `/offices/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function assignOfficePlan(
+  session: AuthSession,
+  id: number,
+  planId: number,
+) {
+  return apiRequest<{
+    office: CompanyLocation;
+    plan: Plan;
+  }>(`/offices/${id}/plans?tenant=${encodeURIComponent(session.tenantId)}`, {
+    method: 'POST',
+    headers: authHeaders(session),
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export function assignOfficeAdmins(
+  session: AuthSession,
+  id: number,
+  userIds: number[],
+) {
+  return apiRequest<{
+    office: CompanyLocation;
+    assigned_user_ids: number[];
+  }>(`/offices/${id}/admins?tenant=${encodeURIComponent(session.tenantId)}`, {
+    method: 'POST',
+    headers: authHeaders(session),
+    body: JSON.stringify({ user_ids: userIds }),
+  });
+}
+
+export function listUsers(
+  session: AuthSession,
+  filters?: {
+    office_id?: number | '';
+    user_type?: string;
+  },
+) {
+  const params = new URLSearchParams();
+  params.set('tenant', session.tenantId);
+  if (filters?.office_id) {
+    params.set('office_id', String(filters.office_id));
+  }
+  if (filters?.user_type) {
+    params.set('user_type', filters.user_type);
+  }
+
+  return apiRequest<{ users: UserRecord[] }>(`/users?${params.toString()}`, {
+    headers: authHeaders(session),
+  });
+}
+
+export function getUser(session: AuthSession, id: number) {
+  return apiRequest<{ user: UserRecord }>(
+    `/users/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    { headers: authHeaders(session) },
+  );
+}
+
+export function createUser(
+  session: AuthSession,
+  payload: {
+    user_type: 'branch_admin' | 'employee';
+    office_id?: number | null;
+    first_name: string;
+    last_name?: string;
+    display_name?: string;
+    email?: string;
+    phone?: string;
+    employee_id?: string;
+    password?: string;
+    initial_pin?: string;
+  },
+) {
+  return apiRequest<{ user: UserRecord }>(
+    `/users?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function updateUser(
+  session: AuthSession,
+  id: number,
+  payload: Record<string, unknown>,
+) {
+  return apiRequest<{ user: UserRecord }>(
+    `/users/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function resetEmployeePin(
+  session: AuthSession,
+  id: number,
+  pin: string,
+) {
+  return apiRequest<{ user: UserRecord; pin_reset: boolean }>(
+    `/users/${id}/reset-pin?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({ pin }),
+    },
+  );
+}
+
+export function listPayrollBatches(
+  session: AuthSession,
+  filters?: { office_id?: number | '' },
+) {
+  const params = new URLSearchParams();
+  params.set('tenant', session.tenantId);
+  if (filters?.office_id) {
+    params.set('office_id', String(filters.office_id));
+  }
+
+  return apiRequest<{ batches: PayrollBatch[] }>(
+    `/payroll-batches?${params.toString()}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
+export async function uploadPayrollBatch(
+  session: AuthSession,
+  payload: {
+    office_id: number;
+    period_month: number;
+    period_year: number;
+    file: File;
+  },
+) {
+  const formData = new FormData();
+  formData.append('office_id', String(payload.office_id));
+  formData.append('period_month', String(payload.period_month));
+  formData.append('period_year', String(payload.period_year));
+  formData.append('file', payload.file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/payroll-batches?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: formData,
+    },
+  );
+
+  const envelope =
+    (await response.json()) as ApiEnvelope<PayrollBatchUploadResponse>;
+  if (!response.ok || !envelope.success || envelope.data === null) {
+    throw new Error(envelope.error?.message ?? 'Payroll upload failed');
+  }
+
+  return envelope.data;
+}
+
+export function saveBatchMapping(
+  session: AuthSession,
+  batchId: number,
+  mapping: Record<string, string>,
+) {
+  return apiRequest<{
+    batch: { id: number; upload_status: string; mapping: Record<string, string> };
+  }>(
+    `/payroll-batches/${batchId}/mapping?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({ mapping }),
+    },
+  );
+}
+
+export function validateBatch(session: AuthSession, batchId: number) {
+  return apiRequest<{
+    batch: { id: number; upload_status: string };
+    summary: PayrollValidationSummary;
+  }>(
+    `/payroll-batches/${batchId}/validate?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function confirmBatch(session: AuthSession, batchId: number) {
+  return apiRequest<{
+    batch: { id: number; upload_status: string };
+    records_created: number;
+  }>(
+    `/payroll-batches/${batchId}/confirm?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function publishBatch(session: AuthSession, batchId: number) {
+  return apiRequest<{
+    batch: { id: number; upload_status: string };
+    summary: {
+      employee_count: number;
+      payslips_generated: number;
+    };
+  }>(
+    `/payroll-batches/${batchId}/publish?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function listPayslips(session: AuthSession) {
+  return apiRequest<{ payslips: Payslip[] }>(
+    `/payslips?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
+export async function downloadPayslip(session: AuthSession, payslipId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/payslips/${payslipId}/download?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+  if (!response.ok) {
+    throw new Error('Payslip download failed');
+  }
+
+  return response.blob();
 }
 
 export function createPayrollPeriod(
@@ -282,7 +715,16 @@ export async function uploadPayrollImport(
     },
   );
   const envelope =
-    (await response.json()) as ApiEnvelope<PayrollImportResponse>;
+    (await response.json()) as ApiEnvelope<{
+      import: {
+        id: number;
+        status: string;
+        payroll_period_id: number;
+      };
+      headers: string[];
+      sample_rows: Record<string, string>[];
+      mapping_suggestions: Record<string, { source: string; confidence: string }>;
+    }>;
   if (!response.ok || !envelope.success || envelope.data === null) {
     throw new Error(envelope.error?.message ?? 'Payroll upload failed');
   }
@@ -365,27 +807,4 @@ export function verifyEmployeeOtp(
     method: 'POST',
     body: JSON.stringify({ challenge_id: challengeId, otp_code: otpCode }),
   });
-}
-
-export function listPayslips(session: AuthSession) {
-  return apiRequest<{ payslips: Payslip[] }>(
-    `/payslips?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      headers: authHeaders(session),
-    },
-  );
-}
-
-export async function downloadPayslip(session: AuthSession, payslipId: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/payslips/${payslipId}/download?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      headers: authHeaders(session),
-    },
-  );
-  if (!response.ok) {
-    throw new Error('Payslip download failed');
-  }
-
-  return response.blob();
 }
