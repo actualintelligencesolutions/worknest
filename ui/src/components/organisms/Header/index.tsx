@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   clearHrSession,
   HR_SESSION_CHANGE_EVENT,
@@ -120,12 +120,22 @@ export function Header() {
                 <a className="header-icon-link" href="/#features" aria-label="Search">
                   <SearchIcon />
                 </a>
-                <Link className="header-icon-link" to="/login" aria-label="Login">
+                <button
+                  className="header-icon-link"
+                  onClick={() => navigate('/login')}
+                  aria-label="Login"
+                  type="button"
+                >
                   <UserIcon />
-                </Link>
-                <Link className="header-icon-link" to="/register" aria-label="Register">
+                </button>
+                <button
+                  className="header-icon-link"
+                  onClick={() => navigate('/register')}
+                  aria-label="Register"
+                  type="button"
+                >
                   <CartIcon />
-                </Link>
+                </button>
               </div>
             </div>
 
@@ -146,12 +156,20 @@ export function Header() {
               </nav>
 
               <div className="header-public-actions header-public-actions-inline">
-                <Link className="header-action-button header-action-button-secondary" to="/login">
+                <button
+                  className="header-action-button header-action-button-secondary"
+                  onClick={() => navigate('/login')}
+                  type="button"
+                >
                   Login
-                </Link>
-                <Link className="header-action-button header-action-button-primary" to="/register">
+                </button>
+                <button
+                  className="header-action-button header-action-button-primary"
+                  onClick={() => navigate('/register')}
+                  type="button"
+                >
                   Register
-                </Link>
+                </button>
               </div>
 
               <button
@@ -182,12 +200,20 @@ export function Header() {
               </nav>
 
               <div className="header-public-actions header-public-actions-mobile">
-                <Link className="header-action-button header-action-button-secondary" to="/login">
+                <button
+                  className="header-action-button header-action-button-secondary"
+                  onClick={() => navigate('/login')}
+                  type="button"
+                >
                   Login
-                </Link>
-                <Link className="header-action-button header-action-button-primary" to="/register">
+                </button>
+                <button
+                  className="header-action-button header-action-button-primary"
+                  onClick={() => navigate('/register')}
+                  type="button"
+                >
                   Register
-                </Link>
+                </button>
               </div>
             </div>
           </>

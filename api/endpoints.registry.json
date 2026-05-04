@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "response_envelope": {
     "success": "boolean",
     "data": "object | array | null",
@@ -16,556 +16,463 @@
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": false,
-      "request": { "params": {}, "body": {} },
-      "response": {
-        "success": { "status": "ok", "service": "api" },
-        "error": { "code": "SERVER_ERROR", "message": "Unexpected API failure." }
-      },
       "database": { "related_tables": [] },
-      "notes": {
-        "auth_rules": "No auth required.",
-        "tenant_behavior": "No tenant context required."
-      }
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "No tenant context required." }
     },
     {
       "id": "api.endpoints.search",
       "method": "GET",
       "path": "/api/endpoints",
       "status": "active",
-      "purpose": "Search the machine-readable endpoint registry by query text.",
+      "purpose": "Search the endpoint registry by query text.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": false,
-      "request": { "params": { "query": "optional search phrase" }, "body": {} },
-      "response": {
-        "success": { "matches": [], "reuse_prompt": "string" },
-        "error": { "code": "REGISTRY_UNAVAILABLE", "message": "Endpoint registry could not be read." }
-      },
       "database": { "related_tables": [] },
-      "notes": {
-        "auth_rules": "No auth required.",
-        "tenant_behavior": "No tenant context required."
-      }
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "No tenant context required." }
     },
     {
       "id": "api.plans.index",
       "method": "GET",
       "path": "/api/plans",
       "status": "active",
-      "purpose": "List active plans/packages available for later branch package selection.",
+      "purpose": "List active office plans.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": false,
-      "request": { "params": {}, "body": {} },
-      "response": {
-        "success": { "plans": [] },
-        "error": { "code": "DATABASE_ERROR", "message": "The API database operation failed." }
-      },
       "database": { "related_tables": ["plans"] },
-      "notes": {
-        "auth_rules": "No auth required.",
-        "tenant_behavior": "Plans are global for v1 and seeded under the default tenant."
-      }
-    },
-    {
-      "id": "api.locations.index",
-      "method": "GET",
-      "path": "/api/locations",
-      "status": "active",
-      "purpose": "List tenant company locations and return a setup summary for dashboard virgin-state detection.",
-      "handler": "api/index.php",
-      "consumes": "none",
-      "produces": "application/json",
-      "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" }
-      },
-      "response": {
-        "success": {
-          "locations": [],
-          "summary": {
-            "main_offices": 0,
-            "branches": 0,
-            "total": 0
-          }
-        },
-        "error": { "code": "UNAUTHORIZED", "message": "Authentication is required." }
-      },
-      "database": { "related_tables": ["company_locations"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only lists locations for the resolved tenant."
-      }
-    },
-    {
-      "id": "api.main-office.store",
-      "method": "POST",
-      "path": "/api/main-office",
-      "status": "active",
-      "purpose": "Create the tenant Main Office, assign an active plan, and create a pending HR admin for it.",
-      "handler": "api/index.php",
-      "consumes": "application/json",
-      "produces": "application/json",
-      "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {
-          "admin_name": "required string",
-          "admin_email": "required email",
-          "plan_id": "required active plan id"
-        }
-      },
-      "response": {
-        "success": { "location": {}, "admin": {}, "plan": {} },
-        "error": { "code": "MAIN_OFFICE_EXISTS", "message": "Main Office already exists for this tenant." }
-      },
-      "database": { "related_tables": ["company_locations", "users", "plans"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only one active Main Office can exist per tenant."
-      }
-    },
-    {
-      "id": "api.branches.store",
-      "method": "POST",
-      "path": "/api/branches",
-      "status": "active",
-      "purpose": "Create a tenant branch, assign an active plan, and create a pending HR admin for it.",
-      "handler": "api/index.php",
-      "consumes": "application/json",
-      "produces": "application/json",
-      "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {
-          "branch_name": "required string",
-          "admin_name": "required string",
-          "admin_email": "required email",
-          "plan_id": "required active plan id"
-        }
-      },
-      "response": {
-        "success": { "location": {}, "admin": {}, "plan": {} },
-        "error": { "code": "BRANCH_EXISTS", "message": "A branch with this name already exists." }
-      },
-      "database": { "related_tables": ["company_locations", "users", "plans"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Branch names are unique within a tenant."
-      }
-    },
-    {
-      "id": "api.branches.show",
-      "method": "GET",
-      "path": "/api/branches/{id}",
-      "status": "active",
-      "purpose": "Fetch full details for a single branch, including plan and admin user.",
-      "handler": "api/index.php",
-      "consumes": "none",
-      "produces": "application/json",
-      "tenant_required": true,
-      "request": {
-        "params": { "id": "numeric branch id", "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {}
-      },
-      "response": {
-        "success": { "location": {}, "plan": {}, "admin": {} },
-        "error": { "code": "BRANCH_NOT_FOUND", "message": "Branch not found." }
-      },
-      "database": { "related_tables": ["company_locations", "plans", "users"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Branch must belong to the requesting tenant."
-      }
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Global plan catalog." }
     },
     {
       "id": "api.companies.register",
       "method": "POST",
       "path": "/api/companies/register",
       "status": "active",
-      "purpose": "Create a tenant/company, first HR admin, and email OTP verification challenge. Branch package selection happens later.",
+      "purpose": "Register a tenant and create the first tenant owner plus OTP challenge.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": false,
-      "request": {
-        "params": {},
-        "body": {
-          "company_name": "required string",
-          "tenant_id": "optional slug",
-          "admin_name": "required string",
-          "admin_email": "required email",
-          "admin_phone": "required phone",
-          "admin_password": "required string"
-        }
-      },
-      "response": {
-        "success": {
-          "tenant": {},
-          "user": {},
-          "verification": {
-            "challenge_id": 1,
-            "channel": "email",
-            "destination": "admin@example.com",
-            "email_sent": true,
-            "dev_otp": "3333"
-          },
-          "next_step": "verify_admin_email"
-        },
-        "error": { "code": "VALIDATION_ERROR", "message": "Registration data is incomplete." }
-      },
-      "database": { "related_tables": ["tenants", "users", "user_verification_challenges", "onboarding_flows"] },
-      "notes": {
-        "auth_rules": "No auth required because this creates the first HR admin.",
-        "tenant_behavior": "Creates a new tenant slug and keeps all records scoped to it. Admin remains pending until email OTP verification succeeds."
-      }
+      "database": { "related_tables": ["tenants", "users", "roles", "user_roles", "otp_challenges", "audit_logs"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Creates a new tenant and scoped owner account." }
     },
     {
       "id": "api.companies.check-workspace",
       "method": "GET",
       "path": "/api/companies/check-workspace",
       "status": "active",
-      "purpose": "Check whether a company workspace address is available before registration.",
+      "purpose": "Check whether a workspace slug is available.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": false,
-      "request": {
-        "params": { "tenant_id": "required workspace slug" },
-        "body": {}
-      },
-      "response": {
-        "success": {
-          "tenant_id": "acme",
-          "available": true,
-          "reason": null
-        },
-        "error": {
-          "code": "VALIDATION_ERROR",
-          "message": "Workspace address must be at least 3 characters."
-        }
-      },
       "database": { "related_tables": ["tenants"] },
-      "notes": {
-        "auth_rules": "No auth required because this runs before registration.",
-        "tenant_behavior": "Checks the requested tenant slug against existing tenant records."
-      }
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Checks slug availability before tenant creation." }
     },
     {
       "id": "api.auth.admin.verify-otp",
       "method": "POST",
       "path": "/api/auth/admin/verify-otp",
       "status": "active",
-      "purpose": "Verify the first HR admin email OTP and activate the company workspace.",
+      "purpose": "Verify the tenant owner's email OTP challenge.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": false,
-      "request": {
-        "params": {},
-        "body": {
-          "challenge_id": "required numeric id",
-          "otp_code": "required string"
-        }
-      },
-      "response": {
-        "success": {
-          "token": "string",
-          "tenant": {},
-          "user": {},
-          "next_step": "setup_company"
-        },
-        "error": {
-          "code": "INVALID_OTP",
-          "message": "The OTP is invalid or expired."
-        }
-      },
-      "database": { "related_tables": ["tenants", "users", "user_verification_challenges", "onboarding_flows"] },
-      "notes": {
-        "auth_rules": "No auth required because the OTP challenge proves email ownership.",
-        "tenant_behavior": "Activates the tenant and primary HR admin after successful email OTP verification."
-      }
+      "database": { "related_tables": ["otp_challenges", "users", "tenants", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Activates the tenant owner inside the target tenant." }
     },
     {
-      "id": "api.auth.hr-login",
+      "id": "api.auth.owner-login",
+      "method": "POST",
+      "path": "/api/auth/owner-login",
+      "status": "active",
+      "purpose": "Tenant owner login.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Authenticates only inside the requested tenant." }
+    },
+    {
+      "id": "api.auth.branch-login",
+      "method": "POST",
+      "path": "/api/auth/branch-login",
+      "status": "active",
+      "purpose": "Branch admin login.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Authenticates only inside the requested tenant." }
+    },
+    {
+      "id": "api.auth.hr-login.compat",
       "method": "POST",
       "path": "/api/auth/hr-login",
       "status": "active",
-      "purpose": "Authenticate an active user for a tenant.",
+      "purpose": "Compatibility alias for tenant owner or branch admin login.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "email": "required email", "password": "required string" }
-      },
-      "response": {
-        "success": { "token": "string", "user": {} },
-        "error": { "code": "INVALID_CREDENTIALS", "message": "Invalid email or password." }
-      },
-      "database": { "related_tables": ["users"] },
-      "notes": {
-        "auth_rules": "Any active user with valid tenant-scoped credentials may log in.",
-        "tenant_behavior": "Login is scoped to the resolved tenant."
-      }
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Tenant-scoped compatibility route." }
     },
     {
-      "id": "api.auth.employee.request-otp",
+      "id": "api.auth.employee-login",
       "method": "POST",
-      "path": "/api/auth/employee/request-otp",
+      "path": "/api/auth/employee-login",
       "status": "active",
-      "purpose": "Create a dev-mode OTP challenge for an employee phone number.",
+      "purpose": "Employee login using employee ID and PIN.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "phone": "required phone number" }
-      },
-      "response": {
-        "success": { "challenge_id": 1, "dev_otp": "3333" },
-        "error": { "code": "EMPLOYEE_NOT_FOUND", "message": "No employee exists for this phone number." }
-      },
-      "database": { "related_tables": ["employee_profiles", "employee_otp_challenges"] },
-      "notes": {
-        "auth_rules": "No auth required; OTP proves phone ownership.",
-        "tenant_behavior": "Phone lookup is scoped to the resolved tenant."
-      }
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Authenticates the employee within a single tenant." }
     },
     {
-      "id": "api.auth.employee.verify-otp",
+      "id": "api.auth.logout",
       "method": "POST",
-      "path": "/api/auth/employee/verify-otp",
+      "path": "/api/auth/logout",
       "status": "active",
-      "purpose": "Verify an employee OTP challenge and return an employee token.",
+      "purpose": "Revoke the current bearer session.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
-      "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "challenge_id": "required numeric id", "otp_code": "required string" }
-      },
-      "response": {
-        "success": { "token": "string", "employee": {} },
-        "error": { "code": "INVALID_OTP", "message": "The OTP is invalid or expired." }
-      },
-      "database": { "related_tables": ["employee_profiles", "employee_otp_challenges"] },
-      "notes": {
-        "auth_rules": "Returns an employee-scoped token after successful verification.",
-        "tenant_behavior": "Challenge and employee must belong to the resolved tenant."
-      }
+      "tenant_required": false,
+      "database": { "related_tables": ["auth_sessions"] },
+      "notes": { "auth_rules": "Requires bearer token.", "tenant_behavior": "Revokes only the current session." }
     },
     {
       "id": "api.auth.me",
       "method": "GET",
       "path": "/api/auth/me",
       "status": "active",
-      "purpose": "Return the current HR admin or employee session.",
+      "purpose": "Return the current authenticated actor and office scope.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {}
-      },
-      "response": {
-        "success": { "actor": {} },
-        "error": { "code": "UNAUTHORIZED", "message": "A valid bearer token is required." }
-      },
-      "database": { "related_tables": ["users", "employee_profiles"] },
-      "notes": {
-        "auth_rules": "Requires Authorization: Bearer token.",
-        "tenant_behavior": "Token tenant must match requested tenant."
-      }
+      "database": { "related_tables": ["users", "user_roles", "auth_sessions"] },
+      "notes": { "auth_rules": "Requires bearer token.", "tenant_behavior": "Returns actor data for the requested tenant." }
     },
     {
-      "id": "api.employees.index",
+      "id": "api.offices.index",
       "method": "GET",
-      "path": "/api/employees",
+      "path": "/api/offices",
       "status": "active",
-      "purpose": "List tenant employees created from payroll imports.",
+      "purpose": "List offices visible to the current actor.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": true,
-      "request": { "params": { "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
-      "response": {
-        "success": { "employees": [] },
-        "error": { "code": "UNAUTHORIZED", "message": "A valid HR token is required." }
-      },
-      "database": { "related_tables": ["employee_profiles"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only lists employees for the resolved tenant."
-      }
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins see only assigned offices." }
     },
     {
-      "id": "api.payroll-periods.store",
-      "method": "POST",
-      "path": "/api/payroll-periods",
+      "id": "api.locations.index.compat",
+      "method": "GET",
+      "path": "/api/locations",
       "status": "active",
-      "purpose": "Create or return a draft payroll period for a tenant.",
+      "purpose": "Compatibility alias for office listing.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Compatibility route for existing clients." }
+    },
+    {
+      "id": "api.offices.show",
+      "method": "GET",
+      "path": "/api/offices/{id}",
+      "status": "active",
+      "purpose": "Fetch office detail with current plan context.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins need office assignment." }
+    },
+    {
+      "id": "api.branches.show.compat",
+      "method": "GET",
+      "path": "/api/branches/{id}",
+      "status": "active",
+      "purpose": "Compatibility alias for office detail on branch routes.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Compatibility route for existing clients." }
+    },
+    {
+      "id": "api.main-office.store",
+      "method": "POST",
+      "path": "/api/main-office",
+      "status": "active",
+      "purpose": "Create the tenant main office and assign its first plan.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "period_month": "1-12", "period_year": "four digit year" }
-      },
-      "response": {
-        "success": { "period": {} },
-        "error": { "code": "VALIDATION_ERROR", "message": "Payroll period is invalid." }
-      },
-      "database": { "related_tables": ["payroll_periods"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Period uniqueness is tenant scoped."
-      }
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner token.", "tenant_behavior": "Allows only one main office per tenant." }
     },
     {
-      "id": "api.payroll-imports.store",
+      "id": "api.branches.store",
       "method": "POST",
-      "path": "/api/payroll-imports",
+      "path": "/api/branches",
       "status": "active",
-      "purpose": "Upload a CSV/XLSX payroll source file and return detected headers with mapping suggestions.",
+      "purpose": "Create a branch office and assign its initial plan.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Scoped to the requesting tenant." }
+    },
+    {
+      "id": "api.offices.update",
+      "method": "PATCH",
+      "path": "/api/offices/{id}",
+      "status": "active",
+      "purpose": "Update office profile and settings.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or assigned branch admin token.", "tenant_behavior": "Update is limited to the current tenant." }
+    },
+    {
+      "id": "api.offices.assign-plan",
+      "method": "POST",
+      "path": "/api/offices/{id}/plans",
+      "status": "active",
+      "purpose": "Assign or change the active office plan.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner token.", "tenant_behavior": "Expires the previous active plan before inserting the new assignment." }
+    },
+    {
+      "id": "api.offices.assign-admins",
+      "method": "POST",
+      "path": "/api/offices/{id}/admins",
+      "status": "active",
+      "purpose": "Assign existing branch admins to an office.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "roles", "user_roles", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner token.", "tenant_behavior": "Creates office-scoped role assignments inside the tenant." }
+    },
+    {
+      "id": "api.users.store",
+      "method": "POST",
+      "path": "/api/users",
+      "status": "active",
+      "purpose": "Create a branch admin or employee.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "roles", "user_roles", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins can create users only in assigned offices." }
+    },
+    {
+      "id": "api.users.index",
+      "method": "GET",
+      "path": "/api/users",
+      "status": "active",
+      "purpose": "List users visible to the current actor.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins see only users in assigned offices." }
+    },
+    {
+      "id": "api.employees.index.compat",
+      "method": "GET",
+      "path": "/api/employees",
+      "status": "active",
+      "purpose": "Compatibility alias for user listing.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Compatibility route for older clients." }
+    },
+    {
+      "id": "api.users.show",
+      "method": "GET",
+      "path": "/api/users/{id}",
+      "status": "active",
+      "purpose": "Get user detail.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins need office access to the target user." }
+    },
+    {
+      "id": "api.users.update",
+      "method": "PATCH",
+      "path": "/api/users/{id}",
+      "status": "active",
+      "purpose": "Update user profile or status.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins need office access to the target user." }
+    },
+    {
+      "id": "api.users.reset-pin",
+      "method": "POST",
+      "path": "/api/users/{id}/reset-pin",
+      "status": "active",
+      "purpose": "Reset an employee PIN.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Applies only to employees in the current tenant." }
+    },
+    {
+      "id": "api.payroll-batches.store",
+      "method": "POST",
+      "path": "/api/payroll-batches",
+      "status": "active",
+      "purpose": "Upload a payroll file and create a payroll batch.",
       "handler": "api/index.php",
       "consumes": "multipart/form-data",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "payroll_period_id": "required id", "payroll_file": "required CSV/XLSX file" }
-      },
-      "response": {
-        "success": { "import": {}, "headers": [], "mapping_suggestions": {} },
-        "error": { "code": "INVALID_FILE", "message": "Upload must be CSV or XLSX." }
-      },
-      "database": { "related_tables": ["payroll_imports"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Upload is scoped to the resolved tenant."
-      }
+      "database": { "related_tables": ["payroll_batches", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Batch is scoped to one office and one payroll month." }
     },
     {
-      "id": "api.payroll-imports.mapping.update",
-      "method": "PUT",
-      "path": "/api/payroll-imports/{id}/mapping",
+      "id": "api.payroll-batches.index",
+      "method": "GET",
+      "path": "/api/payroll-batches",
       "status": "active",
-      "purpose": "Save mapping for an uploaded payroll import and tenant mapping template reuse.",
+      "purpose": "List payroll batches visible to the current actor.",
       "handler": "api/index.php",
-      "consumes": "application/json",
+      "consumes": "none",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "id": "numeric import id", "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": { "mapping": "object keyed by Worknest field" }
-      },
-      "response": {
-        "success": { "import": {} },
-        "error": { "code": "INVALID_MAPPING", "message": "Required mappings are missing." }
-      },
-      "database": { "related_tables": ["payroll_imports", "payroll_mapping_templates"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only updates tenant-owned imports."
-      }
+      "database": { "related_tables": ["payroll_batches"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins see only assigned office batches." }
     },
     {
-      "id": "api.payroll-imports.process",
+      "id": "api.payroll-batches.mapping",
       "method": "POST",
-      "path": "/api/payroll-imports/{id}/process",
+      "path": "/api/payroll-batches/{id}/mapping",
       "status": "active",
-      "purpose": "Normalize mapped payroll rows, validate exceptions, and create draft payslip records.",
+      "purpose": "Persist payroll column mapping.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "id": "numeric import id", "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {}
-      },
-      "response": {
-        "success": { "import": {}, "summary": {} },
-        "error": { "code": "INVALID_IMPORT_STATE", "message": "Import must be mapped before processing." }
-      },
-      "database": { "related_tables": ["payroll_import_rows", "employee_profiles", "payslip_records"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only processes tenant-owned imports."
-      }
+      "database": { "related_tables": ["payroll_batches", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Mapping is stored against the tenant-scoped batch." }
     },
     {
-      "id": "api.payroll-periods.publish",
+      "id": "api.payroll-batches.validate",
       "method": "POST",
-      "path": "/api/payroll-periods/{id}/publish",
+      "path": "/api/payroll-batches/{id}/validate",
       "status": "active",
-      "purpose": "Publish a payroll period, lock its records, and generate payslip PDF files.",
+      "purpose": "Validate a mapped payroll batch.",
       "handler": "api/index.php",
       "consumes": "application/json",
       "produces": "application/json",
       "tenant_required": true,
-      "request": {
-        "params": { "id": "numeric period id", "tenant": "tenant slug or X-TENANT-ID header" },
-        "body": {}
-      },
-      "response": {
-        "success": { "period": {}, "generated_files": 0 },
-        "error": { "code": "PUBLISH_BLOCKED", "message": "Critical payroll errors must be fixed before publishing." }
-      },
-      "database": { "related_tables": ["payroll_periods", "payslip_records", "payslip_files"] },
-      "notes": {
-        "auth_rules": "Requires HR admin token.",
-        "tenant_behavior": "Only publishes tenant-owned periods."
-      }
+      "database": { "related_tables": ["payroll_batches"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Validation reads the tenant batch file and updates batch summary." }
+    },
+    {
+      "id": "api.payroll-batches.confirm",
+      "method": "POST",
+      "path": "/api/payroll-batches/{id}/confirm",
+      "status": "active",
+      "purpose": "Create normalized payroll records for a validated batch.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payroll_batches", "payroll_records", "users", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Employees must exist in the same tenant and office." }
+    },
+    {
+      "id": "api.payroll-batches.publish",
+      "method": "POST",
+      "path": "/api/payroll-batches/{id}/publish",
+      "status": "active",
+      "purpose": "Generate and publish payslips for a confirmed batch.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payroll_batches", "payroll_records", "payslips", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Publishes only the requested tenant batch." }
     },
     {
       "id": "api.payslips.index",
       "method": "GET",
       "path": "/api/payslips",
       "status": "active",
-      "purpose": "List payslips visible to the current employee or HR admin.",
+      "purpose": "List accessible payslips.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/json",
       "tenant_required": true,
-      "request": { "params": { "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
-      "response": {
-        "success": { "payslips": [] },
-        "error": { "code": "UNAUTHORIZED", "message": "A valid token is required." }
-      },
-      "database": { "related_tables": ["payslip_records", "payroll_periods"] },
-      "notes": {
-        "auth_rules": "HR can see tenant payslips; employees only see their own published payslips.",
-        "tenant_behavior": "All results are tenant scoped."
-      }
+      "database": { "related_tables": ["payslips", "payroll_records", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner, branch admin, or employee token.", "tenant_behavior": "Employees see only their own payslips." }
+    },
+    {
+      "id": "api.payslips.show",
+      "method": "GET",
+      "path": "/api/payslips/{id}",
+      "status": "active",
+      "purpose": "Get payslip metadata.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payslips", "payroll_records", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner, branch admin, or employee token.", "tenant_behavior": "Employees see only their own payslips." }
     },
     {
       "id": "api.payslips.download",
       "method": "GET",
       "path": "/api/payslips/{id}/download",
       "status": "active",
-      "purpose": "Download a generated payslip PDF.",
+      "purpose": "Download the latest generated payslip PDF.",
       "handler": "api/index.php",
       "consumes": "none",
       "produces": "application/pdf",
       "tenant_required": true,
-      "request": { "params": { "id": "numeric payslip id", "tenant": "tenant slug or X-TENANT-ID header" }, "body": {} },
-      "response": {
-        "success": "Binary PDF stream",
-        "error": { "code": "PAYSLIP_NOT_FOUND", "message": "No accessible payslip was found." }
-      },
-      "database": { "related_tables": ["payslip_records", "payslip_files"] },
-      "notes": {
-        "auth_rules": "Requires HR admin or matching employee token.",
-        "tenant_behavior": "Only serves tenant-owned generated files."
-      }
+      "database": { "related_tables": ["payslips", "payroll_records", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner, branch admin, or employee token.", "tenant_behavior": "Authorization is checked before file access." }
     }
   ]
 }

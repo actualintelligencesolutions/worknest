@@ -1,0 +1,50 @@
+CREATE TABLE IF NOT EXISTS tenants (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(80) NOT NULL,
+  name VARCHAR(180) NOT NULL,
+  legal_name VARCHAR(220) NULL DEFAULT NULL,
+  status ENUM('pending_verification', 'active', 'suspended', 'disabled') NOT NULL DEFAULT 'pending_verification',
+  onboarding_status ENUM('not_started', 'main_office_pending', 'branch_setup_pending', 'active') NOT NULL DEFAULT 'not_started',
+  primary_owner_user_id BIGINT UNSIGNED NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_tenants_tenant_id (tenant_id),
+  KEY idx_tenants_status (status),
+  KEY idx_tenants_onboarding_status (onboarding_status),
+  KEY idx_tenants_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(80) NOT NULL,
+  office_id BIGINT UNSIGNED NULL DEFAULT NULL,
+  employee_id VARCHAR(80) NULL DEFAULT NULL,
+  first_name VARCHAR(120) NOT NULL,
+  last_name VARCHAR(120) NULL DEFAULT NULL,
+  display_name VARCHAR(180) NOT NULL,
+  email VARCHAR(255) NULL DEFAULT NULL,
+  phone VARCHAR(32) NULL DEFAULT NULL,
+  password_hash VARCHAR(255) NULL DEFAULT NULL,
+  pin_hash VARCHAR(255) NULL DEFAULT NULL,
+  user_type ENUM('tenant_owner', 'branch_admin', 'employee') NOT NULL,
+  status ENUM('pending_verification', 'active', 'suspended', 'disabled') NOT NULL DEFAULT 'pending_verification',
+  email_verified_at TIMESTAMP NULL DEFAULT NULL,
+  phone_verified_at TIMESTAMP NULL DEFAULT NULL,
+  last_login_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_tenant_email (tenant_id, email),
+  UNIQUE KEY uq_users_tenant_employee_id (tenant_id, employee_id),
+  KEY idx_users_tenant_id (tenant_id),
+  KEY idx_users_office_id (office_id),
+  KEY idx_users_user_type (user_type),
+  KEY idx_users_status (status),
+  KEY idx_users_deleted_at (deleted_at),
+  CONSTRAINT fk_users_tenant
+    FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
