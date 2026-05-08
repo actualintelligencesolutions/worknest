@@ -214,6 +214,7 @@ function register_routes(Router $router, Container $container): void
 
     $router->add('POST', '/payroll-batches', fn ($request) => $payroll->upload($request));
     $router->add('GET', '/payroll-batches', fn ($request) => $payroll->list($request));
+    $router->add('GET', '/payroll-batches/{id}', fn ($request) => $payroll->detail($request));
     $router->add('POST', '/payroll-batches/{id}/mapping', fn ($request) => $payroll->mapping($request));
     $router->add('POST', '/payroll-batches/{id}/validate', fn ($request) => $payroll->validate($request));
     $router->add('POST', '/payroll-batches/{id}/confirm', fn ($request) => $payroll->confirm($request));

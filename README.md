@@ -157,6 +157,7 @@ Implementation status is tracked in code and mirrored in `api/endpoints.registry
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/payroll-batches` | Upload payroll source file | Bearer | Required | Implemented |
 | GET | `/api/payroll-batches` | List payroll batches | Bearer | Required | Implemented |
+| GET | `/api/payroll-batches/{id}` | Fetch one batch with validation and record detail | Bearer | Required | Implemented |
 | POST | `/api/payroll-batches/{id}/mapping` | Save column mapping | Bearer | Required | Implemented |
 | POST | `/api/payroll-batches/{id}/validate` | Validate batch rows | Bearer | Required | Implemented |
 | POST | `/api/payroll-batches/{id}/confirm` | Create normalized payroll records | Bearer | Required | Implemented |

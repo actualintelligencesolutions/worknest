@@ -1,4 +1,4 @@
-import { Navigate, createBrowserRouter, useParams } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
@@ -9,20 +9,34 @@ import { PayrollBatchPage } from './pages/app/PayrollBatchPage';
 import { PayrollPage } from './pages/app/PayrollPage';
 import { SettingsPage } from './pages/app/SettingsPage';
 import { UsersPage } from './pages/app/UsersPage';
-import { WorknestPage } from './pages/worknest/WorknestPage';
+import { EmployeeLoginPage } from './pages/employee/EmployeeLoginPage';
+import { EmployeePayslipDetailPage } from './pages/employee/EmployeePayslipDetailPage';
+import { EmployeePayslipsPage } from './pages/employee/EmployeePayslipsPage';
+import { loadEmployeeSession } from './services/employeeSession';
 import { loadHrSession } from './services/hrSession';
 
 function PublicOnlyRoute({ element }: { element: JSX.Element }) {
-  return loadHrSession() ? <Navigate replace to="/app" /> : element;
+  if (loadHrSession()) {
+    return <Navigate replace to="/app" />;
+  }
+
+  if (loadEmployeeSession()) {
+    return <Navigate replace to="/employee/payslips" />;
+  }
+
+  return element;
 }
 
 function AdminRoute({ element }: { element: JSX.Element }) {
   return loadHrSession() ? element : <Navigate replace to="/login" />;
 }
 
-function RedirectLegacyBranchDetail() {
-  const { id } = useParams();
-  return <Navigate replace to={`/app/offices/${id ?? ''}`} />;
+function EmployeePublicRoute({ element }: { element: JSX.Element }) {
+  return loadEmployeeSession() ? <Navigate replace to="/employee/payslips" /> : element;
+}
+
+function EmployeeRoute({ element }: { element: JSX.Element }) {
+  return loadEmployeeSession() ? element : <Navigate replace to="/employee/login" />;
 }
 
 export const router = createBrowserRouter([
@@ -71,23 +85,23 @@ export const router = createBrowserRouter([
     element: <AdminRoute element={<SettingsPage />} />,
   },
   {
-    path: '/dashboard',
-    element: <Navigate replace to="/app" />,
+    path: '/employee',
+    element: <Navigate replace to="/employee/login" />,
   },
   {
-    path: '/dashboard/main-office',
-    element: <Navigate replace to="/app/offices/new" />,
+    path: '/employee/login',
+    element: <EmployeePublicRoute element={<EmployeeLoginPage />} />,
   },
   {
-    path: '/dashboard/branches/new',
-    element: <Navigate replace to="/app/offices/new?type=branch" />,
+    path: '/employee/payslips',
+    element: <EmployeeRoute element={<EmployeePayslipsPage />} />,
   },
   {
-    path: '/dashboard/branches/:id',
-    element: <RedirectLegacyBranchDetail />,
+    path: '/employee/payslips/:id',
+    element: <EmployeeRoute element={<EmployeePayslipDetailPage />} />,
   },
   {
     path: '*',
-    element: <WorknestPage />,
+    element: <Navigate replace to="/" />,
   },
 ]);

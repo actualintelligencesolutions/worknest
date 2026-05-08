@@ -44,6 +44,16 @@ final class PayrollController extends BaseController
         ]));
     }
 
+    public function detail(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+
+        return Response::success(
+            $this->payrollService->getBatchDetail((int) $request->attribute('id'), $tenantId, $actor)
+        );
+    }
+
     public function mapping(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);

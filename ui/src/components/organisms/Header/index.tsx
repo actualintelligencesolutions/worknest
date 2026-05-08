@@ -47,7 +47,7 @@ export function Header() {
   );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const shouldShowDashboardState =
-    hasHrSession || location.pathname.startsWith('/dashboard');
+    hasHrSession && location.pathname.startsWith('/app');
   const isPublic = !shouldShowDashboardState;
   const isPublicHome = isPublic && location.pathname === '/';
   const publicUtilityItems = [
@@ -63,9 +63,11 @@ export function Header() {
   ];
   const dashboardNavItems = shouldShowDashboardState
     ? [
-        { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Main Office', path: '/dashboard/main-office' },
-        { label: 'New Branch', path: '/dashboard/branches/new' },
+        { label: 'Overview', path: '/app' },
+        { label: 'Offices', path: '/app/offices' },
+        { label: 'Users', path: '/app/users' },
+        { label: 'Payroll', path: '/app/payroll' },
+        { label: 'Settings', path: '/app/settings' },
       ]
     : [];
 

@@ -91,6 +91,26 @@ final class PayrollService
         return ['batches' => $this->payrollBatchRepository->listByTenant($tenantId, $actor, $filters)];
     }
 
+    public function getBatchDetail(int $batchId, string $tenantId, array $actor): array
+    {
+        $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        $office = $this->officeRepository->findById((int) $batch['office_id'], $tenantId);
+        $records = $this->payrollRecordRepository->listByBatch($batchId, $tenantId);
+
+        return [
+            'batch' => $this->serializeBatch($batch),
+            'office' => $office === null ? null : [
+                'id' => (int) $office['id'],
+                'name' => $office['name'],
+                'office_type' => $office['office_type'],
+                'status' => $office['status'],
+                'city' => $office['city'] ?? null,
+                'state' => $office['state'] ?? null,
+            ],
+            'records' => array_map(fn (array $record): array => $this->serializeRecord($record), $records),
+        ];
+    }
+
     public function saveMapping(int $batchId, string $tenantId, array $actor, array $mapping): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
@@ -283,6 +303,58 @@ final class PayrollService
         $this->assertOfficeAccess((int) $batch['office_id'], $tenantId, $actor);
 
         return $batch;
+    }
+
+    private function serializeBatch(array $batch): array
+    {
+        return [
+            'id' => (int) $batch['id'],
+            'tenant_id' => $batch['tenant_id'],
+            'office_id' => (int) $batch['office_id'],
+            'period_year' => (int) $batch['period_year'],
+            'period_month' => (int) $batch['period_month'],
+            'source_file_name' => $batch['source_file_name'],
+            'source_file_path' => $batch['source_file_path'],
+            'upload_status' => $batch['upload_status'],
+            'mapping' => $this->decodeJsonColumn($batch['mapping_json'] ?? null),
+            'validation_summary' => $this->decodeJsonColumn($batch['validation_summary_json'] ?? null),
+            'confirmed_by_user_id' => $batch['confirmed_by_user_id'] !== null ? (int) $batch['confirmed_by_user_id'] : null,
+            'published_by_user_id' => $batch['published_by_user_id'] !== null ? (int) $batch['published_by_user_id'] : null,
+            'uploaded_at' => $batch['uploaded_at'] ?? null,
+            'confirmed_at' => $batch['confirmed_at'] ?? null,
+            'published_at' => $batch['published_at'] ?? null,
+            'created_at' => $batch['created_at'] ?? null,
+            'updated_at' => $batch['updated_at'] ?? null,
+        ];
+    }
+
+    private function serializeRecord(array $record): array
+    {
+        return [
+            'id' => (int) $record['id'],
+            'user_id' => (int) $record['user_id'],
+            'employee_id' => $record['employee_id'],
+            'employee_name_snapshot' => $record['employee_name_snapshot'],
+            'gross_pay' => (float) $record['gross_pay'],
+            'total_deductions' => (float) $record['total_deductions'],
+            'net_pay' => (float) $record['net_pay'],
+            'currency' => $record['currency'],
+            'record_status' => $record['record_status'],
+            'earnings' => $this->decodeJsonColumn($record['earnings_json'] ?? null),
+            'deductions' => $this->decodeJsonColumn($record['deductions_json'] ?? null),
+            'validation_errors' => $this->decodeJsonColumn($record['validation_errors_json'] ?? null),
+        ];
+    }
+
+    private function decodeJsonColumn(mixed $value): array
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function assertOfficeAccess(int $officeId, string $tenantId, array $actor): void

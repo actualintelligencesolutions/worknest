@@ -10,7 +10,7 @@ import { AdminLayout } from '../../../layouts/AdminLayout';
 import { loadHrSession } from '../../../services/hrSession';
 import {
   confirmBatch,
-  listPayrollBatches,
+  getPayrollBatch,
   publishBatch,
   validateBatch,
 } from '../../../services/worknestApi';
@@ -24,13 +24,21 @@ export function PayrollBatchPage() {
   const batchId = Number(id);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const batchesQuery = useQuery({
-    queryKey: ['payroll-batches', session?.tenantId],
-    queryFn: () => listPayrollBatches(session!),
-    enabled: Boolean(session),
+  const batchQuery = useQuery({
+    queryKey: ['payroll-batch', session?.tenantId, batchId],
+    queryFn: () => getPayrollBatch(session!, batchId),
+    enabled: Boolean(session && batchId),
   });
 
-  const batch = (batchesQuery.data?.batches ?? []).find((item) => item.id === batchId);
+  const batch = batchQuery.data?.batch;
+  const office = batchQuery.data?.office;
+  const records = batchQuery.data?.records ?? [];
+  const validationSummary = batch?.validation_summary;
+  const mappingEntries = Object.entries(batch?.mapping ?? {});
+  const normalizedRows =
+    validationSummary && 'normalized_rows' in validationSummary
+      ? validationSummary.normalized_rows
+      : [];
 
   async function runAction(
     action: 'validate' | 'confirm' | 'publish',
@@ -54,7 +62,10 @@ export function PayrollBatchPage() {
         const result = await publishBatch(session, batchId);
         setNotice(`Published ${result.summary.payslips_generated} payslips.`);
       }
-      await queryClient.invalidateQueries({ queryKey: ['payroll-batches', session.tenantId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['payroll-batches', session.tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['payroll-batch', session.tenantId, batchId] }),
+      ]);
     } catch (error) {
       setNotice((error as Error).message);
     }
@@ -72,21 +83,27 @@ export function PayrollBatchPage() {
     >
       <div className="app-grid">
         {notice ? <div className="app-notice">{notice}</div> : null}
-        {!batch ? (
+        {batchQuery.isLoading ? (
+          <div className="app-notice">Loading batch detail...</div>
+        ) : !batch ? (
           <EmptyState
             title="Batch not found"
-            message="This view currently resolves batches from the list endpoint."
+            message="The requested payroll batch is not available for this tenant session."
           />
         ) : (
           <>
             <div className="app-grid-three">
               <div className="app-card">
                 <h3>Status</h3>
-                <p>{batch.upload_status}</p>
+                <p>
+                  <span className={`app-status ${batch.upload_status}`}>
+                    {batch.upload_status.replace(/_/g, ' ')}
+                  </span>
+                </p>
               </div>
               <div className="app-card">
                 <h3>Office</h3>
-                <p>{batch.office_id}</p>
+                <p>{office?.name ?? `Office #${batch.office_id}`}</p>
               </div>
               <div className="app-card">
                 <h3>Period</h3>
@@ -111,7 +128,7 @@ export function PayrollBatchPage() {
                 </div>
               }
               title="Batch actions"
-              description="These actions call the real backend routes directly."
+              description="This screen now reads the dedicated batch detail endpoint and shows the current processing state."
             >
               <DataTable columns={['Field', 'Value']}>
                 <tr>
@@ -123,11 +140,125 @@ export function PayrollBatchPage() {
                   <td>{batch.created_at ?? '—'}</td>
                 </tr>
                 <tr>
-                  <td>Validation summary</td>
-                  <td>{batch.validation_summary_json ?? 'Available after validation'}</td>
+                  <td>Uploaded</td>
+                  <td>{batch.uploaded_at ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td>Confirmed</td>
+                  <td>{batch.confirmed_at ?? 'Not confirmed yet'}</td>
+                </tr>
+                <tr>
+                  <td>Published</td>
+                  <td>{batch.published_at ?? 'Not published yet'}</td>
                 </tr>
               </DataTable>
             </PageSection>
+
+            <PageSection
+              title="Mapping"
+              description="The stored source-to-field mapping used for validation and record creation."
+            >
+              {mappingEntries.length === 0 ? (
+                <EmptyState
+                  title="No mapping saved"
+                  message="Save a column mapping from the payroll upload screen before validating this batch."
+                />
+              ) : (
+                <DataTable columns={['Payroll field', 'Source column']}>
+                  {mappingEntries.map(([field, source]) => (
+                    <tr key={field}>
+                      <td>{field.replace(/_/g, ' ')}</td>
+                      <td>{source}</td>
+                    </tr>
+                  ))}
+                </DataTable>
+              )}
+            </PageSection>
+
+            <PageSection
+              title="Validation summary"
+              description="A compact readout of the last validation run."
+            >
+              {!validationSummary || !('total_rows' in validationSummary) ? (
+                <EmptyState
+                  title="No validation summary"
+                  message="Run validation to generate row counts and any critical payroll errors."
+                />
+              ) : (
+                <div className="app-grid-two">
+                  <div className="app-card">
+                    <div className="app-list">
+                      <div className="app-list-row">
+                        <span>Total rows</span>
+                        <strong>{validationSummary.total_rows}</strong>
+                      </div>
+                      <div className="app-list-row">
+                        <span>Valid rows</span>
+                        <strong>{validationSummary.valid_rows}</strong>
+                      </div>
+                      <div className="app-list-row">
+                        <span>Error rows</span>
+                        <strong>{validationSummary.error_rows}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="app-card">
+                    <h3>Critical errors</h3>
+                    {(validationSummary.critical_errors ?? []).length === 0 ? (
+                      <p>No blocking validation errors were recorded.</p>
+                    ) : (
+                      <div className="app-list">
+                        {validationSummary.critical_errors.map((error) => (
+                          <div className="app-list-row" key={error}>
+                            <span>{error}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </PageSection>
+
+            <PageSection
+              title="Payroll records"
+              description="Normalized employee-level records created after confirmation."
+            >
+              {records.length === 0 ? (
+                <EmptyState
+                  title="No payroll records"
+                  message="Confirm the batch to create employee-level payroll records for publishing."
+                />
+              ) : (
+                <DataTable columns={['Employee ID', 'Employee', 'Gross', 'Deductions', 'Net', 'Status']}>
+                  {records.map((record) => (
+                    <tr key={record.id}>
+                      <td>{record.employee_id}</td>
+                      <td>{record.employee_name_snapshot}</td>
+                      <td>{record.gross_pay}</td>
+                      <td>{record.total_deductions}</td>
+                      <td>{record.net_pay}</td>
+                      <td>
+                        <span className={`app-status ${record.record_status}`}>
+                          {record.record_status.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </DataTable>
+              )}
+            </PageSection>
+
+            {Array.isArray(normalizedRows) && normalizedRows.length > 0 ? (
+              <PageSection
+                title="Validation preview"
+                description="The first few normalized rows are shown for quick review."
+              >
+                <div className="app-card">
+                  <pre>{JSON.stringify(normalizedRows.slice(0, 5), null, 2)}</pre>
+                </div>
+              </PageSection>
+            ) : null}
           </>
         )}
       </div>

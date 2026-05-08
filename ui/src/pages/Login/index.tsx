@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { Field } from '../../components/atoms/Field';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -179,6 +179,11 @@ export function LoginPage() {
                     {isSubmitting ? 'Signing in...' : 'Sign in'}
                   </Button>
                 </div>
+
+                <p>
+                  Employee looking for payslips?{' '}
+                  <Link to="/employee/login">Open the employee portal</Link>.
+                </p>
               </form>
             </div>
           </div>

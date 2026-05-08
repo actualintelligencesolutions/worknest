@@ -384,6 +384,19 @@
       "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins see only assigned office batches." }
     },
     {
+      "id": "api.payroll-batches.show",
+      "method": "GET",
+      "path": "/api/payroll-batches/{id}",
+      "status": "active",
+      "purpose": "Fetch a payroll batch with office, mapping, validation, and record detail.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payroll_batches", "offices", "payroll_records"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Access is limited to the current tenant and office scope." }
+    },
+    {
       "id": "api.payroll-batches.mapping",
       "method": "POST",
       "path": "/api/payroll-batches/{id}/mapping",

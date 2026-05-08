@@ -107,6 +107,41 @@ export type PayrollBatch = {
   mapping_json?: string | null;
 };
 
+export type PayrollBatchRecord = {
+  id: number;
+  user_id: number;
+  employee_id: string;
+  employee_name_snapshot: string;
+  gross_pay: number;
+  total_deductions: number;
+  net_pay: number;
+  currency: string;
+  record_status: string;
+  earnings: Record<string, unknown>;
+  deductions: Record<string, unknown>;
+  validation_errors: unknown[];
+};
+
+export type PayrollBatchDetail = {
+  batch: PayrollBatch & {
+    mapping?: Record<string, string>;
+    validation_summary?: PayrollValidationSummary | Record<string, unknown>;
+    confirmed_by_user_id?: number | null;
+    published_by_user_id?: number | null;
+    confirmed_at?: string | null;
+    published_at?: string | null;
+  };
+  office: {
+    id: number;
+    name: string;
+    office_type: 'main_office' | 'branch';
+    status: string;
+    city?: string | null;
+    state?: string | null;
+  } | null;
+  records: PayrollBatchRecord[];
+};
+
 export type PayrollBatchUploadResponse = {
   batch: {
     id: number;
@@ -565,6 +600,15 @@ export function listPayrollBatches(
   );
 }
 
+export function getPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<PayrollBatchDetail>(
+    `/payroll-batches/${batchId}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
 export async function uploadPayrollBatch(
   session: AuthSession,
   payload: {
@@ -669,6 +713,15 @@ export function listPayslips(session: AuthSession) {
   );
 }
 
+export function getPayslip(session: AuthSession, payslipId: number) {
+  return apiRequest<{ payslip: Payslip }>(
+    `/payslips/${payslipId}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
 export async function downloadPayslip(session: AuthSession, payslipId: number) {
   const response = await fetch(
     `${API_BASE_URL}/payslips/${payslipId}/download?tenant=${encodeURIComponent(session.tenantId)}`,
@@ -683,128 +736,24 @@ export async function downloadPayslip(session: AuthSession, payslipId: number) {
   return response.blob();
 }
 
-export function createPayrollPeriod(
-  session: AuthSession,
-  payload: { period_month: number; period_year: number },
-) {
-  return apiRequest<{ period: { id: number; status: string } }>(
-    `/payroll-periods?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      method: 'POST',
-      headers: authHeaders(session),
-      body: JSON.stringify(payload),
-    },
-  );
-}
-
-export async function uploadPayrollImport(
-  session: AuthSession,
-  payrollPeriodId: number,
-  file: File,
-) {
-  const formData = new FormData();
-  formData.append('payroll_period_id', String(payrollPeriodId));
-  formData.append('payroll_file', file);
-
-  const response = await fetch(
-    `${API_BASE_URL}/payroll-imports?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      method: 'POST',
-      headers: authHeaders(session),
-      body: formData,
-    },
-  );
-  const envelope =
-    (await response.json()) as ApiEnvelope<{
-      import: {
-        id: number;
-        status: string;
-        payroll_period_id: number;
-      };
-      headers: string[];
-      sample_rows: Record<string, string>[];
-      mapping_suggestions: Record<string, { source: string; confidence: string }>;
-    }>;
-  if (!response.ok || !envelope.success || envelope.data === null) {
-    throw new Error(envelope.error?.message ?? 'Payroll upload failed');
-  }
-
-  return envelope.data;
-}
-
-export function saveImportMapping(
-  session: AuthSession,
-  importId: number,
-  mapping: Record<string, string>,
-) {
-  return apiRequest<{ import: { id: number; status: string } }>(
-    `/payroll-imports/${importId}/mapping?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      method: 'PUT',
-      headers: authHeaders(session),
-      body: JSON.stringify({ mapping }),
-    },
-  );
-}
-
-export function processImport(session: AuthSession, importId: number) {
-  return apiRequest<{
-    import: { id: number; status: string };
-    summary: {
-      total_rows: number;
-      valid_rows: number;
-      error_rows: number;
-      critical_errors: string[];
-    };
-  }>(
-    `/payroll-imports/${importId}/process?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      method: 'POST',
-      headers: authHeaders(session),
-      body: JSON.stringify({}),
-    },
-  );
-}
-
-export function publishPeriod(session: AuthSession, periodId: number) {
-  return apiRequest<{
-    period: { id: number; status: string };
-    generated_files: number;
-  }>(
-    `/payroll-periods/${periodId}/publish?tenant=${encodeURIComponent(session.tenantId)}`,
-    {
-      method: 'POST',
-      headers: authHeaders(session),
-      body: JSON.stringify({}),
-    },
-  );
-}
-
-export function requestEmployeeOtp(tenantId: string, phone: string) {
-  return apiRequest<{ challenge_id: number; dev_otp: string }>(
-    `/auth/employee/request-otp?tenant=${encodeURIComponent(tenantId)}`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-    },
-  );
-}
-
-export function verifyEmployeeOtp(
+export function loginEmployee(
   tenantId: string,
-  challengeId: number,
-  otpCode: string,
+  payload: {
+    employee_id: string;
+    pin: string;
+  },
 ) {
   return apiRequest<{
     token: string;
-    employee: {
+    user: {
       id: number;
-      employee_code: string;
+      employee_id: string;
       name: string;
-      phone: string;
+      office_id: number | null;
+      user_type: 'employee';
     };
-  }>(`/auth/employee/verify-otp?tenant=${encodeURIComponent(tenantId)}`, {
+  }>(`/auth/employee-login?tenant=${encodeURIComponent(tenantId)}`, {
     method: 'POST',
-    body: JSON.stringify({ challenge_id: challengeId, otp_code: otpCode }),
+    body: JSON.stringify(payload),
   });
 }
