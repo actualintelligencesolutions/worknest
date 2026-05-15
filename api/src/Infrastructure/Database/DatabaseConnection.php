@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Worknest\Api\Infrastructure\Database;
 
 use PDO;
+use Worknest\Api\Application\Exceptions\ApiException;
 
 final class DatabaseConnection
 {
@@ -21,6 +22,7 @@ final class DatabaseConnection
         }
 
         $database = $this->config['database'];
+        $this->assertDatabaseConfig($database);
         $dsn = sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
             $database['host'],
@@ -35,5 +37,34 @@ final class DatabaseConnection
         ]);
 
         return $this->pdo;
+    }
+
+    private function assertDatabaseConfig(array $database): void
+    {
+        $requiredKeys = [
+            'host' => 'DB_HOST',
+            'name' => 'DB_NAME',
+            'user' => 'DB_USER or DB_USERNAME',
+            'pass' => 'DB_PASS or DB_PASSWORD',
+        ];
+
+        $missing = [];
+
+        foreach ($requiredKeys as $configKey => $envHint) {
+            if (!array_key_exists($configKey, $database) || $database[$configKey] === null) {
+                $missing[] = $envHint;
+            }
+        }
+
+        if ($missing === []) {
+            return;
+        }
+
+        throw new ApiException(
+            'DATABASE_CONFIG_ERROR',
+            'Database configuration is incomplete.',
+            500,
+            ['missing' => $missing]
+        );
     }
 }

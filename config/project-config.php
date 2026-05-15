@@ -80,6 +80,18 @@ function project_env_value(string $key, ?string $default = null): ?string
     return $default;
 }
 
+function project_env_first(array $keys, ?string $default = null): ?string
+{
+    foreach ($keys as $key) {
+        $value = project_env_value($key);
+        if ($value !== null) {
+            return $value;
+        }
+    }
+
+    return $default;
+}
+
 function project_environment_config(): array
 {
     return project_config_read_json(project_config_root() . '/environments.json', [

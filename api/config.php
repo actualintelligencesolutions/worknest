@@ -17,11 +17,11 @@ return [
         'tenants' => project_tenant_configs(),
     ],
     'database' => [
-        'host' => api_env('DB_HOST', '127.0.0.1'),
-        'port' => api_env('DB_PORT', '3306'),
-        'name' => api_env('DB_NAME', 'template_database'),
-        'user' => api_env('DB_USER', 'root'),
-        'pass' => api_env('DB_PASS', ''),
-        'charset' => api_env('DB_CHARSET', 'utf8mb4'),
+        'host' => project_env_first(['DB_HOST', 'DATABASE_HOST'], '127.0.0.1'),
+        'port' => project_env_first(['DB_PORT', 'DATABASE_PORT'], '3306'),
+        'name' => project_env_first(['DB_NAME', 'DATABASE_NAME'], 'template_database'),
+        'user' => project_env_first(['DB_USER', 'DB_USERNAME', 'DATABASE_USER', 'DATABASE_USERNAME']),
+        'pass' => project_env_first(['DB_PASS', 'DB_PASSWORD', 'DATABASE_PASS', 'DATABASE_PASSWORD']),
+        'charset' => project_env_first(['DB_CHARSET', 'DATABASE_CHARSET'], 'utf8mb4'),
     ],
 ];
