@@ -273,10 +273,10 @@ export function HomePage() {
             </p>
 
             <div className="marketing-hero-actions">
-              <a className="marketing-hero-secondary" href="#contact">
+              <a className="marketing-hero-secondary" href="/#contact">
                 Enquire
               </a>
-              <a className="marketing-hero-primary" href="#login">
+              <a className="marketing-hero-primary" href="/login">
                 Try now
               </a>
             </div>
@@ -474,7 +474,7 @@ export function HomePage() {
                     <li key={feature}>{feature}</li>
                   ))}
                 </ul>
-                <a className="marketing-plan-link" href="#contact">
+                <a className="marketing-plan-link" href="/#contact">
                   {pricingInfo.ctaLabel}
                 </a>
               </div>
@@ -536,7 +536,14 @@ export function HomePage() {
           </a>
           <div className="marketing-footer-links">
             {footerLinks.map((link) => (
-              <a href={`#${link.toLowerCase()}`} key={link}>
+              <a
+                href={
+                  link === 'Login'
+                    ? '/login'
+                    : `/#${link.toLowerCase()}`
+                }
+                key={link}
+              >
                 {link}
               </a>
             ))}

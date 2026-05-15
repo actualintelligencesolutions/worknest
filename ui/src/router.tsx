@@ -1,5 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { HomePage } from './pages/Home';
+import { LoginPage } from './pages/Login';
+import { RegisterPage } from './pages/Register';
 import { NewDashPage } from './pages/NewDash';
 import {
   NewDashHelpPage,
@@ -15,6 +17,14 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <HomePage />,
+  },
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />,
   },
   {
     path: '/new-dash',

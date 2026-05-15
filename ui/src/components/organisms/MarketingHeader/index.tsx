@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import './style.scss';
 
 const navItems = [
-  { href: '#features', label: 'Features' },
-  { href: '#workflow', label: 'Workflow' },
-  { href: '#pricing', label: 'Pricing' },
-  { href: '#contact', label: 'Contact' },
-  { href: '#login', label: 'Login' },
+  { href: '/#features', label: 'Features' },
+  { href: '/#workflow', label: 'Workflow' },
+  { href: '/#pricing', label: 'Pricing' },
+  { href: '/#contact', label: 'Contact' },
+  { href: '/login', label: 'Login' },
 ];
 
 export function MarketingHeader() {
@@ -44,7 +44,7 @@ export function MarketingHeader() {
           ))}
         </nav>
 
-        <a className="marketing-header-cta" href="#contact">
+        <a className="marketing-header-cta" href="/#contact">
           <span>Enquire</span>
           <span aria-hidden="true">→</span>
         </a>
