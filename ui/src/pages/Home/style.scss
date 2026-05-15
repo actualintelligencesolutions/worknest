@@ -157,6 +157,7 @@
 .marketing-hero-actions {
   display: inline-flex;
   align-items: center;
+  gap: 16px;
   margin-top: 34px;
   padding: 6px;
   border-radius: 999px;
@@ -165,7 +166,7 @@
 }
 
 .marketing-hero-primary,
-.marketing-hero-arrow {
+.marketing-hero-secondary {
   text-decoration: none;
 }
 
@@ -179,45 +180,19 @@
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
 }
 
-.marketing-hero-arrow {
+.marketing-hero-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 62px;
+  min-width: 162px;
   height: 62px;
-  margin-left: 8px;
-  border: 3px solid #4dc79f;
-  border-radius: 50%;
-  color: #46bd97;
+  padding: 0 28px;
+  border: 2px solid rgba(77, 199, 159, 0.5);
+  border-radius: 999px;
+  color: #1d6762;
   background: rgba(255, 255, 255, 0.96);
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.marketing-hero-meta {
-  display: inline-flex;
-  gap: 16px;
-  margin-top: 28px;
-  color: #5f7b7a;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.marketing-hero-meta span + span {
-  position: relative;
-  padding-left: 16px;
-}
-
-.marketing-hero-meta span + span::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(88, 196, 164, 0.7);
-  transform: translateY(-50%);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .marketing-hero-orbit {
@@ -841,8 +816,7 @@
     font-size: 1rem;
   }
 
-  .marketing-hero-actions,
-  .marketing-hero-meta {
+  .marketing-hero-actions {
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -851,9 +825,10 @@
     padding: 16px 28px;
   }
 
-  .marketing-hero-arrow {
-    width: 56px;
+  .marketing-hero-secondary {
+    min-width: 146px;
     height: 56px;
+    margin-left: 0;
   }
 
   .marketing-hero-badge {

@@ -273,17 +273,12 @@ export function HomePage() {
             </p>
 
             <div className="marketing-hero-actions">
-              <a className="marketing-hero-primary" href="#contact">
+              <a className="marketing-hero-secondary" href="#contact">
                 Enquire
               </a>
-              <a aria-label="Open Worknest Console" className="marketing-hero-arrow" href="#login">
-                ↗
+              <a className="marketing-hero-primary" href="#login">
+                Try now
               </a>
-            </div>
-
-            <div className="marketing-hero-meta">
-              <span>Worknest Console</span>
-              <span>Payroll status</span>
             </div>
           </div>
 
