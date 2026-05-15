@@ -32,6 +32,29 @@
     "notifications": "Notifications",
     "notificationCount": "0"
   },
+    "newHeader": {
+      "brand": "Worknest",
+      "navigation": {
+        "label": "New dash navigation",
+        "dashboard": "Dashboard",
+        "setup": "Setup",
+        "offices": "Offices",
+        "team": "Team",
+        "reports": "Reports"
+    },
+    "actions": {
+      "openMenu": "Open navigation menu",
+      "closeMenu": "Close navigation menu",
+      "search": "Search",
+      "notifications": "Notifications",
+      "profile": "Open profile menu"
+    },
+    "profileMenu": {
+      "profile": "Profile",
+      "settings": "Settings",
+      "help": "Help"
+    }
+  },
   "common": {
     "loading": "Loading",
     "error": "Something went wrong",
@@ -136,6 +159,120 @@
     "items": {
       "title": "Payroll",
       "description": "Payroll import workflow."
+    },
+    "newDash": {
+      "eyebrow": "New dashboard experience",
+      "dashboardTitle": "Dashboard",
+      "title": "hello world",
+      "description": "This public dashboard shell is running through the new fixed header and the new primary layout.",
+      "loading": {
+        "title": "Loading dashboard"
+      },
+      "demoMode": {
+        "toolbar": "Demo mode",
+        "banner": "Showing hardcoded workspace details so UI work can continue without a live session."
+      },
+      "dashboardToolbar": "Workspace overview",
+      "error": {
+        "title": "Unable to load dashboard"
+      },
+      "authRequired": {
+        "title": "Sign in to view workspace setup",
+        "description": "This dashboard becomes useful once you are inside a company workspace as the super admin.",
+        "action": "Go to login"
+      },
+      "setup": {
+        "eyebrow": "Workspace readiness",
+        "progress": "{{count}} / 3 steps completed",
+        "status": {
+          "ready": "Ready",
+          "blocked": "Blocked",
+          "completed": "Completed"
+        },
+        "banner": {
+          "incomplete": "Workspace setup incomplete",
+          "incompleteSummary": "Complete the next setup steps in sequence to make this workspace operational. You have finished {{count}} of 3 core steps.",
+          "complete": "Workspace ready for operations",
+          "completeSummary": "Core setup is complete. You can continue managing offices and payroll from the linked workflows below."
+        },
+        "steps": {
+          "office": {
+            "title": "Create or select office",
+            "helper": "Start by creating the main office for this company workspace.",
+            "completedHelper": "Your main office is already in place. You can now manage branches and office details.",
+            "action": "Create office",
+            "completedAction": "Manage offices"
+          },
+          "plan": {
+            "title": "Assign a plan",
+            "helper": "Assign the right plan to {{officeName}} so billing and operational setup can move forward.",
+            "blockedHelper": "Create the main office first. Plan selection becomes available once the office exists.",
+            "completedHelper": "{{officeName}} already has a plan assigned. Review it or update it if needed.",
+            "action": "Assign plan",
+            "completedAction": "Review plan"
+          },
+          "payroll": {
+            "title": "Upload first payroll",
+            "helper": "Upload the first payroll batch once your office structure and plan are ready.",
+            "blockedNoOffice": "Create the workspace office structure first before starting payroll.",
+            "blockedNoPlan": "Assign a plan first. Payroll stays locked until the office plan is ready.",
+            "blockedNoBranch": "Create at least one branch office before uploading payroll, because payroll is branch scoped.",
+            "completedHelper": "The first payroll batch is already in the system. You can continue the monthly workflow from payroll.",
+            "action": "Upload payroll",
+            "completedAction": "Open payroll"
+          }
+        }
+      },
+      "setupWorkspace": {
+        "title": "Setup New Workspace"
+      },
+      "brandNew": {
+        "title": "This workspace needs setup",
+        "description": "A brand new company workspace should move through setup before the broader dashboard navigation appears. Continue in the setup workspace to configure office, plan, and payroll readiness.",
+        "action": "Open setup workspace"
+      },
+      "readyWorkspace": {
+        "title": "Workspace overview",
+        "description": "Core setup has progressed. Use this dashboard as the operational home once setup is no longer brand new."
+      },
+      "workspace": {
+        "title": "Workspace context",
+        "tenant": "Tenant",
+        "signedInAs": "Signed in as",
+        "role": "Role",
+        "fallback": "—"
+      },
+      "support": {
+        "title": "Need help?",
+        "description": "If you need support while completing setup, use the contact path and we will help you unblock the workspace.",
+        "action": "Contact support"
+      },
+      "sections": {
+        "offices": {
+          "title": "Offices",
+          "description": "This is the public stub for offices inside the new dashboard navigation."
+        },
+        "team": {
+          "title": "Team",
+          "description": "This is the public stub for team management inside the new dashboard navigation."
+        },
+        "reports": {
+          "title": "Reports",
+          "description": "This is the public stub for reports inside the new dashboard navigation."
+        },
+        "profile": {
+          "title": "Profile",
+          "description": "This is the public stub for the profile destination opened from the header menu."
+        },
+        "settings": {
+          "title": "Settings",
+          "description": "This is the public stub for settings opened from the header profile menu."
+        },
+        "help": {
+          "title": "Help",
+          "description": "This is the public stub for help opened from the header profile menu."
+        }
+      }
     }
   }
 }

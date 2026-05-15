@@ -1,0 +1,46 @@
+.new-primary-layout {
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.new-primary-layout-main {
+  width: 100%;
+  margin: 0 auto;
+  padding: 84px 32px 0;
+}
+
+.new-primary-layout-page-header {
+  width: min(100%, 1280px);
+  margin: 20px auto 28px;
+}
+
+.new-primary-layout-content {
+  width: min(100%, 960px);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 0 28px;
+}
+
+@media (max-width: 760px) {
+  .new-primary-layout-main {
+    padding: 72px 24px 0;
+  }
+
+  .new-primary-layout-page-header {
+    margin: 16px auto 22px;
+  }
+}
+
+@media (max-width: 520px) {
+  .new-primary-layout-main {
+    padding: 72px 20px 0;
+  }
+
+  .new-primary-layout-page-header {
+    margin: 14px auto 20px;
+  }
+
+  .new-primary-layout-content {
+    padding-bottom: 24px;
+  }
+}

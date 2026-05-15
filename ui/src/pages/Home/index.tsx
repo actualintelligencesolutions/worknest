@@ -1,659 +1,553 @@
 import { useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { usePageTitle } from '../../hooks/usePageTitle';
-import { AppLayout } from '../../layouts/AppLayout';
-import { submitContactEnquiry } from '../../services/worknestApi';
-import { useTenantStore } from '../../stores/tenantStore';
+import { MarketingLayout } from '../../layouts/MarketingLayout';
 import './style.scss';
 
-const problemPoints = [
-  {
-    label: 'Excel everywhere, no control',
-    iconClass: 'problem-card-mark-sprite-1',
-  },
-  {
-    label: 'Payslips sent manually or via WhatsApp',
-    iconClass: 'problem-card-mark-sprite-2',
-  },
-  {
-    label: 'No central system for branches',
-    iconClass: 'problem-card-mark-sprite-3',
-  },
-  {
-    label: 'Employees constantly asking for payslips',
-    iconClass: 'problem-card-mark-sprite-4',
-  },
+const problems = [
+  'Excel everywhere, no control',
+  'Payslips sent manually or via WhatsApp',
+  'No central system for branches',
+  'Employees constantly asking for payslips',
 ];
 
-const solutionBlocks = [
+const features = [
   {
     title: 'Company & Branch Setup',
-    iconClass: 'solution-card-icon-sprite-1',
     description:
       'Create your main company workspace, add branches as you grow, and keep every team inside one structured payroll system.',
   },
   {
     title: 'Payroll Upload & Processing',
-    iconClass: 'solution-card-icon-sprite-2',
     description:
       'Upload payroll sheets in minutes, validate the data before publishing, and keep each payroll cycle organized and traceable.',
   },
   {
     title: 'Employee Self-Service Portal',
-    iconClass: 'solution-card-icon-sprite-3',
     description:
       'Give employees a secure place to access payslips instantly without depending on HR for every request.',
   },
 ];
 
-const steps = [
+const workflow = [
   {
-    label: 'Register your company',
-    iconClass: 'step-number-sprite-1',
+    title: 'Register your company',
+    description:
+      'Create your main workspace with the right company details and get payroll operations started in one place.',
   },
   {
-    label: 'Add branches',
-    iconClass: 'step-number-sprite-2',
+    title: 'Add branches',
+    description:
+      'Set up branch locations as your team grows so every payroll run maps cleanly to the right office structure.',
   },
   {
-    label: 'Upload payroll sheet',
-    iconClass: 'step-number-sprite-3',
+    title: 'Upload payroll sheet',
+    description:
+      'Bring in your payroll file in minutes instead of rebuilding the same information every month.',
   },
   {
-    label: 'Preview and validate',
-    iconClass: 'step-number-sprite-4',
+    title: 'Preview and validate',
+    description:
+      'Catch issues before publishing with a clear review step that helps your team trust the data.',
   },
   {
-    label: 'Publish payslips',
-    iconClass: 'step-number-sprite-5',
+    title: 'Publish payslips',
+    description:
+      'Finalize the payroll cycle and generate payslips through one controlled, trackable workflow.',
   },
   {
-    label: 'Employees access instantly',
-    iconClass: 'step-number-sprite-6',
+    title: 'Employees access instantly',
+    description:
+      'Give employees secure self-service access so HR is no longer answering the same payslip requests manually.',
   },
 ];
 
-type PricingSegment = 'smb' | 'enterprise';
+type Plan = {
+  name: string;
+  price: string;
+  note: string;
+  description: string;
+  features: string[];
+  badge?: string;
+};
+
+type PricingInfo = {
+  title: string;
+  price: string;
+  note: string;
+  description: string;
+  features: string[];
+  ctaLabel: string;
+};
+
+type BusinessTier = 'smb' | 'enterprise';
 type BillingCycle = 'monthly' | 'yearly';
 
-type PricingPlan = {
-  name: string;
-  segment: PricingSegment;
-  description: string;
-  monthlyPrice: string;
-  yearlyPrice: string;
-  monthlyNote: string;
-  yearlyNote: string;
-  features: string[];
-  label?: string;
-  highlighted?: boolean;
-  custom?: boolean;
-  eyebrow?: string;
-  ctaLabel?: string;
+const pricingPlans: Record<BusinessTier, Record<BillingCycle, Plan[]>> = {
+  smb: {
+    monthly: [
+      {
+        name: 'Starter',
+        price: 'Free',
+        note: 'Billed monthly',
+        description: 'Perfect for small teams getting started',
+        features: ['Up to 20 employees', 'Payslip generation', 'Employee login with PIN'],
+      },
+      {
+        name: 'Basic',
+        price: '₹500 / month',
+        note: 'Billed monthly',
+        description: 'For small growing teams',
+        features: ['Up to 50 employees', 'Payroll upload & preview', 'Everything in Starter'],
+      },
+      {
+        name: 'Growth',
+        price: '₹1,000 / month',
+        note: 'Billed monthly',
+        badge: 'Most Popular',
+        description: 'Best for teams scaling payroll across locations',
+        features: [
+          'Up to 100 employees',
+          'Branch-wise payroll',
+          'Versioned payroll uploads',
+          'Everything in Basic',
+        ],
+      },
+      {
+        name: 'Scale',
+        price: '₹3,000 / month',
+        note: 'Billed monthly',
+        description: 'For larger operations that need more control',
+        features: ['Up to 300 employees', 'Priority processing', 'Advanced payroll tracking'],
+      },
+    ],
+    yearly: [
+      {
+        name: 'Starter',
+        price: 'Free',
+        note: 'Billed yearly',
+        description: 'Perfect for small teams getting started',
+        features: ['Up to 20 employees', 'Payslip generation', 'Employee login with PIN'],
+      },
+      {
+        name: 'Basic',
+        price: '₹5,000 / year',
+        note: 'Billed yearly, 2 months free',
+        description: 'For small growing teams',
+        features: ['Up to 50 employees', 'Payroll upload & preview', 'Everything in Starter'],
+      },
+      {
+        name: 'Growth',
+        price: '₹10,000 / year',
+        note: 'Billed yearly, 2 months free',
+        badge: 'Most Popular',
+        description: 'Best for teams scaling payroll across locations',
+        features: [
+          'Up to 100 employees',
+          'Branch-wise payroll',
+          'Versioned payroll uploads',
+          'Everything in Basic',
+        ],
+      },
+      {
+        name: 'Scale',
+        price: '₹30,000 / year',
+        note: 'Billed yearly, 2 months free',
+        description: 'For larger operations that need more control',
+        features: ['Up to 300 employees', 'Priority processing', 'Advanced payroll tracking'],
+      },
+    ],
+  },
+  enterprise: {
+    monthly: [
+      {
+        name: 'Enterprise',
+        price: '₹5,000 / month',
+        note: 'Billed monthly',
+        description: 'Operational oversight for large payroll teams',
+        features: ['Up to 500 employees', 'Admin controls', 'Audit logs'],
+      },
+      {
+        name: 'Enterprise Plus',
+        price: '₹8,000 / month',
+        note: 'Billed monthly',
+        badge: 'Most Popular',
+        description: 'For multi-location businesses with stricter governance needs',
+        features: [
+          'Up to 750 employees',
+          'Role-based admin approvals',
+          'Cross-branch payroll oversight',
+        ],
+      },
+      {
+        name: 'Corporate',
+        price: '₹12,000 / month',
+        note: 'Billed monthly',
+        description: 'For high-volume payroll operations that need operational resilience',
+        features: [
+          'Up to 1000 employees',
+          'Centralized compliance workflows',
+          'Executive reporting visibility',
+        ],
+      },
+    ],
+    yearly: [
+      {
+        name: 'Enterprise',
+        price: '₹50,000 / year',
+        note: 'Billed yearly, 2 months free',
+        description: 'Operational oversight for large payroll teams',
+        features: ['Up to 500 employees', 'Admin controls', 'Audit logs'],
+      },
+      {
+        name: 'Enterprise Plus',
+        price: '₹80,000 / year',
+        note: 'Billed yearly, 2 months free',
+        badge: 'Most Popular',
+        description: 'For multi-location businesses with stricter governance needs',
+        features: [
+          'Up to 750 employees',
+          'Role-based admin approvals',
+          'Cross-branch payroll oversight',
+        ],
+      },
+      {
+        name: 'Corporate',
+        price: '₹1,20,000 / year',
+        note: 'Billed yearly, 2 months free',
+        description: 'For high-volume payroll operations that need operational resilience',
+        features: [
+          'Up to 1000 employees',
+          'Centralized compliance workflows',
+          'Executive reporting visibility',
+        ],
+      },
+    ],
+  },
 };
 
-const pricingTiers: PricingPlan[] = [
-  {
-    name: 'Starter',
-    segment: 'smb',
-    description: 'Perfect for small teams getting started',
-    monthlyPrice: 'Free',
-    yearlyPrice: 'Free',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly',
-    features: [
-      'Up to 20 employees',
-      'Payslip generation',
-      'Employee login with PIN',
-    ],
-  },
-  {
-    name: 'Basic',
-    segment: 'smb',
-    description: 'For small growing teams',
-    monthlyPrice: '₹500 / month',
-    yearlyPrice: '₹5,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 50 employees',
-      'Payroll upload & preview',
-      'Everything in Starter',
-    ],
-  },
-  {
-    name: 'Growth',
-    segment: 'smb',
-    label: 'Most Popular',
-    description: 'Best for teams scaling payroll across locations',
-    monthlyPrice: '₹1,000 / month',
-    yearlyPrice: '₹10,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 100 employees',
-      'Branch-wise payroll',
-      'Versioned payroll uploads',
-      'Everything in Basic',
-    ],
-    highlighted: true,
-  },
-  {
-    name: 'Scale',
-    segment: 'smb',
-    description: 'For larger operations that need more control',
-    monthlyPrice: '₹3,000 / month',
-    yearlyPrice: '₹30,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 300 employees',
-      'Priority processing',
-      'Advanced payroll tracking',
-    ],
-  },
-  {
-    name: 'Enterprise',
-    segment: 'enterprise',
-    description: 'Operational oversight for large payroll teams',
-    monthlyPrice: '₹5,000 / month',
-    yearlyPrice: '₹50,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 500 employees',
-      'Admin controls',
-      'Audit logs',
-    ],
-  },
-  {
-    name: 'Enterprise Plus',
-    segment: 'enterprise',
-    description: 'For multi-location businesses with stricter governance needs',
-    monthlyPrice: '₹8,000 / month',
-    yearlyPrice: '₹80,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 750 employees',
-      'Role-based admin approvals',
-      'Cross-branch payroll oversight',
-    ],
-  },
-  {
-    name: 'Corporate',
-    segment: 'enterprise',
-    description: 'For high-volume payroll operations that need operational resilience',
-    monthlyPrice: '₹12,000 / month',
-    yearlyPrice: '₹1,20,000 / year',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, 2 months free',
-    features: [
-      'Up to 1000 employees',
-      'Centralized compliance workflows',
-      'Executive reporting visibility',
-    ],
-  },
-  {
-    name: 'Custom Enterprise',
-    segment: 'enterprise',
-    custom: true,
-    eyebrow: 'Customized requirements?',
+const enterprisePricingInfo: Record<BillingCycle, PricingInfo> = {
+  monthly: {
+    title: 'Customized requirements?',
+    price: '₹5,000 + ₹150 per employee',
+    note: 'Billed monthly, custom scaling',
     description:
       'Speak to us for custom workflows, volume-based pricing, migration planning, and rollout support tailored to your payroll operations.',
-    monthlyPrice: '₹5,000 + ₹15 per employee',
-    yearlyPrice: '₹50,000 + ₹150 per employee',
-    monthlyNote: 'Billed monthly',
-    yearlyNote: 'Billed yearly, custom scaling',
-    features: [
-      'Unlimited employees',
-      'Custom scaling',
-      'Dedicated support',
-    ],
+    features: ['Unlimited employees', 'Custom scaling', 'Dedicated support'],
     ctaLabel: 'Enquire',
   },
-];
-
-type SectionProps = {
-  eyebrow?: string;
-  id?: string;
-  title: string;
-  description?: string;
-  children: ReactNode;
+  yearly: {
+    title: 'Customized requirements?',
+    price: '₹50,000 + ₹150 per employee',
+    note: 'Billed yearly, custom scaling',
+    description:
+      'Speak to us for custom workflows, volume-based pricing, migration planning, and rollout support tailored to your payroll operations.',
+    features: ['Unlimited employees', 'Custom scaling', 'Dedicated support'],
+    ctaLabel: 'Enquire',
+  },
 };
 
-function LandingSection({
-  eyebrow,
-  id,
-  title,
-  description,
-  children,
-}: SectionProps) {
+const footerLinks = ['Features', 'Pricing', 'Contact', 'Login'];
+
+export function HomePage() {
+  const [businessTier, setBusinessTier] = useState<BusinessTier>('smb');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
+  const plans = pricingPlans[businessTier][billingCycle];
+  const pricingInfo =
+    businessTier === 'enterprise' ? enterprisePricingInfo[billingCycle] : null;
+
   return (
-    <section className="landing-section" id={id}>
-      <div className="landing-shell">
-        <div className="landing-section-heading">
-          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-          <h2>{title}</h2>
-          {description ? <p>{description}</p> : null}
+    <MarketingLayout>
+      <section className="marketing-hero" id="top">
+        <div className="marketing-hero-shell">
+          <div className="marketing-hero-orbit marketing-hero-orbit-one" />
+          <div className="marketing-hero-orbit marketing-hero-orbit-two" />
+          <div className="marketing-hero-orbit marketing-hero-orbit-three" />
+          <div className="marketing-hero-haze marketing-hero-haze-top" />
+          <div className="marketing-hero-haze marketing-hero-haze-bottom" />
+
+          <div className="marketing-hero-content">
+            <p className="marketing-hero-kicker">Payroll Operations, Simplified</p>
+            <h1>Run payroll. Publish payslips. Without the chaos.</h1>
+            <p className="marketing-hero-copy">
+              Worknest helps you onboard your company, manage branches, upload payroll
+              in minutes, and let employees securely access their payslips.
+            </p>
+
+            <div className="marketing-hero-actions">
+              <a className="marketing-hero-primary" href="#contact">
+                Enquire
+              </a>
+              <a aria-label="Open Worknest Console" className="marketing-hero-arrow" href="#login">
+                ↗
+              </a>
+            </div>
+
+            <div className="marketing-hero-meta">
+              <span>Worknest Console</span>
+              <span>Payroll status</span>
+            </div>
+          </div>
+
+          <div className="marketing-hero-badge marketing-hero-badge-left">
+            <span>12</span>
+            <small>Branches active</small>
+          </div>
+          <div className="marketing-hero-badge marketing-hero-badge-right">
+            <span>✓</span>
+            <small>Payslips published in minutes</small>
+          </div>
         </div>
-        {children}
-      </div>
-    </section>
-  );
-}
+      </section>
 
-export function Home() {
-  const tenant = useTenantStore((state) => state.tenant);
-  const [pricingSegment, setPricingSegment] = useState<PricingSegment>('smb');
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
-  const [isSubmittingEnquiry, setIsSubmittingEnquiry] = useState(false);
-  const [enquiryNotice, setEnquiryNotice] = useState<{
-    tone: 'success' | 'error';
-    message: string;
-  } | null>(null);
-  usePageTitle('Worknest');
+      <section className="marketing-section marketing-stats" id="features">
+        <div className="marketing-shell marketing-stat-grid">
+          <article className="marketing-stat">
+            <p>Branches</p>
+            <strong>12 active</strong>
+          </article>
+          <article className="marketing-stat">
+            <p>Uploads</p>
+            <strong>Versioned payroll runs</strong>
+          </article>
+          <article className="marketing-stat">
+            <p>Employees</p>
+            <strong>Secure self-service access</strong>
+          </article>
+        </div>
+      </section>
 
-  const visiblePricingTiers = pricingTiers.filter(
-    (plan) => plan.segment === pricingSegment,
-  );
-  const standardPricingTiers = visiblePricingTiers.filter((plan) => !plan.custom);
-  const customEnterprisePlan = visiblePricingTiers.find((plan) => plan.custom) ?? null;
+      <section className="marketing-section marketing-problem">
+        <div className="marketing-shell marketing-section-grid">
+          <div className="marketing-section-intro">
+            <p className="marketing-section-kicker">Payroll shouldn’t feel like a monthly crisis</p>
+            <h2>Why payroll breaks down</h2>
+          </div>
 
-  async function handleDemoRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const payload = {
-      name: String(formData.get('name') ?? '').trim(),
-      company_name: String(formData.get('companyName') ?? '').trim(),
-      email: String(formData.get('email') ?? '').trim(),
-      phone: String(formData.get('phone') ?? '').trim(),
-      message: String(formData.get('message') ?? '').trim(),
-    };
+          <div className="marketing-section-column">
+            <p className="marketing-section-description">
+              When payroll lives across spreadsheets, chats, and scattered approvals,
+              every cycle gets slower, noisier, and harder to trust.
+            </p>
 
-    if (
-      payload.name === '' ||
-      payload.company_name === '' ||
-      payload.email === '' ||
-      payload.phone === '' ||
-      payload.message === ''
-    ) {
-      setEnquiryNotice({
-        tone: 'error',
-        message: 'Please complete all enquiry fields before submitting.',
-      });
-      return;
-    }
+            <div className="marketing-list-block">
+            {problems.map((problem) => (
+              <div className="marketing-list-row" key={problem}>
+                <span />
+                <p>{problem}</p>
+              </div>
+            ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
-    setIsSubmittingEnquiry(true);
-    setEnquiryNotice(null);
+      <section className="marketing-section marketing-features">
+        <div className="marketing-shell marketing-section-grid marketing-section-grid-reversed">
+          <div className="marketing-section-column">
+            <p className="marketing-section-description">
+                Worknest brings setup, payroll operations, and employee access into one
+                clean workflow built for growing teams.
+            </p>
 
-    try {
-      await submitContactEnquiry(payload);
-      form.reset();
-      setEnquiryNotice({
-        tone: 'success',
-        message: 'Thanks. Your enquiry has been sent and we will get in touch soon.',
-      });
-    } catch (error) {
-      setEnquiryNotice({
-        tone: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'We could not send your enquiry right now. Please try again.',
-      });
-    } finally {
-      setIsSubmittingEnquiry(false);
-    }
-  }
+            <div className="marketing-feature-list">
+              {features.map((feature) => (
+                <article className="marketing-feature-row" key={feature.title}>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
 
-  return (
-    <AppLayout fullWidth tenant={tenant}>
-      <div className="landing-page">
-        <section
-          className="landing-hero-band"
-          id="top"
-          aria-labelledby="landing-title"
-        >
-          <div className="landing-shell landing-hero">
-            <div className="landing-hero-copy">
-              <p className="eyebrow">Payroll Operations, Simplified</p>
-              <h1 id="landing-title">
-                Run payroll. Publish payslips. Without the chaos.
-              </h1>
-              <p className="landing-hero-text">
-                Worknest helps you onboard your company, manage branches, upload
-                payroll in minutes, and let employees securely access their
-                payslips.
-              </p>
-              <div className="landing-hero-actions">
-                <Link
-                  className="button button-primary"
-                  target="_blank"
-                  rel="noreferrer"
-                  to="/register"
+          <div className="marketing-section-intro">
+            <p className="marketing-section-kicker">One system to manage it all</p>
+            <h2>Everything in one workflow</h2>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-workflow" id="workflow">
+        <div className="marketing-shell marketing-section-centered">
+          <div className="marketing-section-intro marketing-section-intro-centered">
+            <p className="marketing-section-kicker">From upload to payslip in minutes</p>
+            <h2>How it works</h2>
+            <p className="marketing-section-description marketing-section-description-centered">
+              The workflow is built to stay simple from company setup to employee
+              delivery.
+            </p>
+          </div>
+
+          <div className="marketing-section-column marketing-section-column-centered">
+            <div className="marketing-workflow-grid">
+              {workflow.map((step, index) => (
+                <div className="marketing-workflow-step" key={step.title}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <p>{step.title}</p>
+                  <small>{step.description}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-pricing" id="pricing">
+        <div className="marketing-shell marketing-section-centered">
+          <div className="marketing-section-intro marketing-section-intro-centered">
+            <p className="marketing-section-kicker">Simple pricing. No surprises</p>
+            <h2>Pricing that scales</h2>
+            <p className="marketing-section-description marketing-section-description-centered">
+              Start small, stay predictable, and scale payroll operations without
+              hidden platform complexity.
+            </p>
+          </div>
+
+          <div className="marketing-section-column marketing-section-column-centered">
+            <div className="marketing-pricing-controls">
+              <div className="marketing-toggle">
+                <button
+                  className={businessTier === 'smb' ? 'active' : undefined}
+                  onClick={() => setBusinessTier('smb')}
+                  type="button"
                 >
-                  Register
-                </Link>
-                <a className="button button-primary" href="#contact">
-                  Enquire
-                </a>
+                  SMB
+                </button>
+                <button
+                  className={businessTier === 'enterprise' ? 'active' : undefined}
+                  onClick={() => setBusinessTier('enterprise')}
+                  type="button"
+                >
+                  Enterprise
+                </button>
+              </div>
+              <div className="marketing-toggle">
+                <button
+                  className={billingCycle === 'monthly' ? 'active' : undefined}
+                  onClick={() => setBillingCycle('monthly')}
+                  type="button"
+                >
+                  Monthly
+                </button>
+                <button
+                  className={billingCycle === 'yearly' ? 'active' : undefined}
+                  onClick={() => setBillingCycle('yearly')}
+                  type="button"
+                >
+                  Yearly
+                </button>
               </div>
             </div>
 
-            <div className="landing-hero-visual" aria-hidden="true">
-              <div className="hero-surface">
-                <div className="hero-surface-top">
-                  <span>Worknest Console</span>
-                  <strong>Payroll status</strong>
-                </div>
-                <img
-                  src="/images/hero-new.png"
-                  alt=""
-                  className="hero-surface-image"
-                />
-                <div className="hero-surface-summary">
-                  <div>
-                    <span>Branches</span>
-                    <strong>12 active</strong>
-                  </div>
-                  <div>
-                    <span>Payslips</span>
-                    <strong>Published in minutes</strong>
-                  </div>
-                </div>
-              </div>
-              <div className="hero-floating-card hero-floating-card-left">
-                <span>Uploads</span>
-                <strong>Versioned payroll runs</strong>
-              </div>
-              <div className="hero-floating-card hero-floating-card-right">
-                <span>Employees</span>
-                <strong>Secure self-service access</strong>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <LandingSection
-          title="Payroll shouldn’t feel like a monthly crisis"
-          description="When payroll lives across spreadsheets, chats, and scattered approvals, every cycle gets slower, noisier, and harder to trust."
-        >
-          <div className="problem-grid">
-            {problemPoints.map((problem) => (
-              <article className="problem-card" key={problem.label}>
-                <span
-                  className={`problem-card-mark ${problem.iconClass}`}
-                  aria-hidden="true"
-                />
-                <h3>{problem.label}</h3>
-              </article>
-            ))}
-          </div>
-        </LandingSection>
-
-        <LandingSection
-          id="features"
-          title="One system to manage it all"
-          description="Worknest brings setup, payroll operations, and employee access into one clean workflow built for growing teams."
-        >
-          <div className="solution-grid">
-            {solutionBlocks.map((block) => (
-              <article className="solution-card" key={block.title}>
-                <div
-                  className={`solution-card-icon ${block.iconClass}`}
-                  aria-hidden="true"
-                />
-                <h3>{block.title}</h3>
-                <p>{block.description}</p>
-              </article>
-            ))}
-          </div>
-        </LandingSection>
-
-        <LandingSection
-          title="From upload to payslip in minutes"
-          description="The workflow is built to stay simple from company setup to employee delivery."
-        >
-          <div className="steps-grid">
-            {steps.map((step) => (
-              <article className="step-card" key={step.label}>
-                <span
-                  className={`step-number ${step.iconClass}`}
-                  aria-hidden="true"
-                />
-                <h3>{step.label}</h3>
-              </article>
-            ))}
-          </div>
-        </LandingSection>
-
-        <LandingSection
-          id="pricing"
-          title="Simple pricing. No surprises"
-          description="Start small, stay predictable, and scale payroll operations without hidden platform complexity."
-        >
-          <div className="pricing-toolbar">
-            <div className="pricing-tabs" aria-label="Pricing segment">
-              <button
-                className={
-                  pricingSegment === 'smb'
-                    ? 'pricing-tab pricing-tab-active'
-                    : 'pricing-tab'
-                }
-                onClick={() => setPricingSegment('smb')}
-                type="button"
-              >
-                SMB
-              </button>
-              <button
-                className={
-                  pricingSegment === 'enterprise'
-                    ? 'pricing-tab pricing-tab-active'
-                    : 'pricing-tab'
-                }
-                onClick={() => setPricingSegment('enterprise')}
-                type="button"
-              >
-                Enterprise
-              </button>
-            </div>
-
-            <button
-              aria-label="Toggle yearly billing"
-              aria-pressed={billingCycle === 'yearly'}
-              className={
-                billingCycle === 'yearly'
-                  ? 'pricing-billing-toggle pricing-billing-toggle-yearly'
-                  : 'pricing-billing-toggle'
-              }
-              onClick={() =>
-                setBillingCycle((current) =>
-                  current === 'monthly' ? 'yearly' : 'monthly',
-                )
-              }
-              type="button"
-            >
-              <span className="pricing-billing-label">Monthly</span>
-              <span className="pricing-billing-track" aria-hidden="true">
-                <span className="pricing-billing-thumb" />
-              </span>
-              <span className="pricing-billing-label">Yearly</span>
-            </button>
-          </div>
-
-          <div className="pricing-grid">
-            {standardPricingTiers.map((tier) => (
-              <article
-                className={
-                  tier.highlighted ? 'pricing-card pricing-card-featured' : 'pricing-card'
-                }
-                key={tier.name}
-              >
-                <div className="pricing-card-top">
-                  <div>
-                    <span className="pricing-card-name">{tier.name}</span>
-                    {tier.label ? (
-                      <p className="pricing-card-badge">{tier.label}</p>
-                    ) : null}
-                  </div>
-                  <strong>
-                    {billingCycle === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice}
-                  </strong>
-                </div>
-                <p className="pricing-card-billing">
-                  {billingCycle === 'monthly' ? tier.monthlyNote : tier.yearlyNote}
-                </p>
-                <p className="pricing-card-description">{tier.description}</p>
-                <div className="pricing-card-divider" />
-                <div className="pricing-card-features">
-                  {tier.features.map((feature) => (
-                    <div className="pricing-card-feature" key={feature}>
-                      <span className="pricing-card-check" aria-hidden="true">
-                        ✓
-                      </span>
-                      <p>{feature}</p>
+            <div className="marketing-plan-grid">
+              {plans.map((plan) => (
+                <article
+                  className={plan.badge ? 'marketing-plan marketing-plan-featured' : 'marketing-plan'}
+                  key={plan.name}
+                >
+                  <div className="marketing-plan-head">
+                    <div>
+                      <h3>{plan.name}</h3>
+                      {plan.badge ? <em>{plan.badge}</em> : null}
                     </div>
-                  ))}
+                    <strong>{plan.price}</strong>
+                  </div>
+                  <p className="marketing-plan-note">{plan.note}</p>
+                  <p className="marketing-plan-description">{plan.description}</p>
+                  <div className="marketing-plan-divider" />
+                  <ul className="marketing-plan-list">
+                    {plan.features.map((feature) => (
+                      <li key={feature}>{feature}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+
+            {pricingInfo ? (
+              <div className="marketing-pricing-info">
+                <div className="marketing-pricing-info-head">
+                  <div>
+                    <h3>{pricingInfo.title}</h3>
+                    <p className="marketing-plan-note">{pricingInfo.note}</p>
+                  </div>
+                  <strong>{pricingInfo.price}</strong>
                 </div>
-                <Link
-                  className="button button-primary pricing-card-action"
-                  target="_blank"
-                  rel="noreferrer"
-                  to="/register"
-                >
-                  Register
-                </Link>
-              </article>
+                <p className="marketing-pricing-info-description">
+                  {pricingInfo.description}
+                </p>
+                <ul className="marketing-pricing-info-list">
+                  {pricingInfo.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                <a className="marketing-plan-link" href="#contact">
+                  {pricingInfo.ctaLabel}
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-contact" id="contact">
+        <div className="marketing-shell marketing-section-grid">
+          <div className="marketing-section-intro">
+            <p className="marketing-section-kicker">Enquire</p>
+            <h2>Let’s talk payroll</h2>
+            <p className="marketing-section-description">
+              Tell us about your payroll setup and we’ll get in touch with the right
+              next step.
+            </p>
+          </div>
+
+          <div className="marketing-section-column">
+            <form className="marketing-form">
+              <label>
+                <span>Name</span>
+                <input placeholder="Your name" type="text" />
+              </label>
+              <label>
+                <span>Company Name</span>
+                <input placeholder="Your company" type="text" />
+              </label>
+              <label>
+                <span>Email</span>
+                <input placeholder="name@company.com" type="email" />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input placeholder="+91 98765 43210" type="tel" />
+              </label>
+              <label className="marketing-form-full">
+                <span>Message</span>
+                <textarea
+                  placeholder="Tell us about your payroll process, team size, or branch setup."
+                  rows={5}
+                />
+              </label>
+              <div className="marketing-form-full">
+                <button className="marketing-submit" type="button">
+                  Enquire
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <footer className="marketing-footer" id="login">
+        <div className="marketing-shell marketing-footer-shell">
+          <a className="marketing-footer-brand" href="#top">
+            Worknest
+          </a>
+          <div className="marketing-footer-links">
+            {footerLinks.map((link) => (
+              <a href={`#${link.toLowerCase()}`} key={link}>
+                {link}
+              </a>
             ))}
           </div>
-
-          {customEnterprisePlan ? (
-            <article className="custom-pricing-card">
-              <div className="custom-pricing-copy">
-                <p className="eyebrow">
-                  {customEnterprisePlan.eyebrow ?? customEnterprisePlan.name}
-                </p>
-                <h3>
-                  {billingCycle === 'monthly'
-                    ? customEnterprisePlan.monthlyPrice
-                    : customEnterprisePlan.yearlyPrice}
-                </h3>
-                <p className="pricing-card-billing">
-                  {billingCycle === 'monthly'
-                    ? customEnterprisePlan.monthlyNote
-                    : customEnterprisePlan.yearlyNote}
-                </p>
-                <p>{customEnterprisePlan.description}</p>
-              </div>
-              <div className="custom-pricing-features">
-                {customEnterprisePlan.features.map((feature) => (
-                  <div className="pricing-card-feature" key={feature}>
-                    <span className="pricing-card-check" aria-hidden="true">
-                      ✓
-                    </span>
-                    <p>{feature}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="custom-pricing-actions">
-                <a className="button button-primary custom-pricing-action" href="#contact">
-                  {customEnterprisePlan.ctaLabel ?? 'Enquire'}
-                </a>
-                <Link
-                  className="button button-secondary custom-pricing-action"
-                  target="_blank"
-                  rel="noreferrer"
-                  to="/register"
-                >
-                  Register
-                </Link>
-              </div>
-            </article>
-          ) : null}
-
-        </LandingSection>
-
-        <LandingSection
-          id="contact"
-          title="Enquire"
-          description="Tell us about your payroll setup and we’ll get in touch with the right next step."
-        >
-          <form className="enquiry-form" onSubmit={handleDemoRequest}>
-            <label>
-              <span>Name</span>
-              <input name="name" placeholder="Your name" type="text" />
-            </label>
-            <label>
-              <span>Company Name</span>
-              <input
-                name="companyName"
-                placeholder="Your company"
-                type="text"
-              />
-            </label>
-            <label>
-              <span>Email</span>
-              <input
-                name="email"
-                placeholder="name@company.com"
-                type="email"
-              />
-            </label>
-            <label>
-              <span>Phone</span>
-              <input name="phone" placeholder="+91 98765 43210" type="tel" />
-            </label>
-            <label className="enquiry-form-message">
-              <span>Message</span>
-              <textarea
-                name="message"
-                placeholder="Tell us about your payroll process, team size, or branch setup."
-                rows={5}
-              />
-            </label>
-            <div className="enquiry-form-actions">
-              <button
-                className="button button-primary"
-                type="submit"
-                disabled={isSubmittingEnquiry}
-              >
-                {isSubmittingEnquiry ? 'Sending...' : 'Enquire'}
-              </button>
-              {enquiryNotice ? (
-                <p
-                  className={
-                    enquiryNotice.tone === 'success'
-                      ? 'enquiry-form-notice enquiry-form-notice-success'
-                      : 'enquiry-form-notice enquiry-form-notice-error'
-                  }
-                >
-                  {enquiryNotice.message}
-                </p>
-              ) : null}
-            </div>
-          </form>
-        </LandingSection>
-
-        <footer className="landing-footer">
-          <div className="landing-shell landing-footer-shell">
-            <div className="landing-footer-brand" aria-label="Worknest">
-              <span className="landing-footer-brand-mark">WORKNEST</span>
-            </div>
-            <nav aria-label="Footer navigation" className="landing-footer-nav">
-              <a href="#features">Features</a>
-              <a href="#pricing">Pricing</a>
-              <a href="#contact">Contact</a>
-              <Link target="_blank" rel="noreferrer" to="/register">
-                Register
-              </Link>
-            </nav>
-          </div>
-        </footer>
-      </div>
-    </AppLayout>
+        </div>
+      </footer>
+    </MarketingLayout>
   );
 }
