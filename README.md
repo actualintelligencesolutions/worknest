@@ -13,6 +13,7 @@ Worknest helps a company:
 - publish payslips for employee self-service
 
 This repository is being migrated from a single-file PHP API to a structured OOP backend under `api/src` while preserving the `/api/...` public route surface.
+The canonical contract now also lives under `/api/v2/...`, while legacy routes remain as compatibility shims for the current UI.
 
 ## Architecture Overview
 
@@ -123,6 +124,9 @@ Implementation status is tracked in code and mirrored in `api/endpoints.registry
 ### Auth
 | Method | Path | Purpose | Auth | Tenant Scope | Status |
 | --- | --- | --- | --- | --- | --- |
+| POST | `/api/v2/auth/admin/login` | Canonical admin login | None | Required | Implemented |
+| POST | `/api/v2/auth/employee/login` | Canonical employee login by email or phone plus PIN | None | Required | Implemented |
+| GET | `/api/v2/auth/me` | Canonical current actor summary | Bearer | Required | Implemented |
 | POST | `/api/companies/register` | Create tenant owner and OTP challenge | None | Creates tenant | Implemented |
 | GET | `/api/companies/check-workspace` | Check workspace slug availability | None | None | Implemented |
 | POST | `/api/auth/admin/verify-otp` | Verify owner OTP | None | Challenge scoped | Implemented |
@@ -135,6 +139,9 @@ Implementation status is tracked in code and mirrored in `api/endpoints.registry
 ### Offices
 | Method | Path | Purpose | Auth | Tenant Scope | Status |
 | --- | --- | --- | --- | --- | --- |
+| GET | `/api/v2/offices` | Canonical office list with usage summary | Bearer | Required | Implemented |
+| POST | `/api/v2/offices` | Canonical office create route | Bearer | Required | Implemented |
+| GET | `/api/v2/offices/{id}/plan-assignments` | List office plan history | Bearer | Required | Implemented |
 | GET | `/api/offices` | List offices | Bearer | Required | Implemented |
 | GET | `/api/offices/{id}` | Office detail | Bearer | Required | Implemented |
 | POST | `/api/main-office` | Create main office | Bearer | Required | Implemented |

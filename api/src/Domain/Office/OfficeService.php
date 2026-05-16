@@ -12,6 +12,8 @@ use Worknest\Api\Domain\Audit\AuditLogger;
 use Worknest\Api\Infrastructure\Database\TransactionManager;
 use Worknest\Api\Infrastructure\Repositories\OfficeRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PlanRepositoryInterface;
+use Worknest\Api\Infrastructure\Repositories\PayrollBatchRepositoryInterface;
+use Worknest\Api\Infrastructure\Repositories\TenantRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\RoleRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\UserRepositoryInterface;
 use Worknest\Api\Infrastructure\Security\PasswordHasher;
@@ -22,6 +24,8 @@ final class OfficeService
         private readonly OfficeRepositoryInterface $officeRepository,
         private readonly PlanRepositoryInterface $planRepository,
         private readonly UserRepositoryInterface $userRepository,
+        private readonly PayrollBatchRepositoryInterface $payrollBatchRepository,
+        private readonly TenantRepositoryInterface $tenantRepository,
         private readonly RoleRepositoryInterface $roleRepository,
         private readonly PasswordHasher $passwordHasher,
         private readonly TransactionManager $transactions,
@@ -42,6 +46,10 @@ final class OfficeService
                 $branches++;
             }
         }
+
+        $offices = array_map(fn (array $office): array => array_merge($office, [
+            'usage_summary' => $this->usageSummary($tenantId, $office),
+        ]), $offices);
 
         return [
             'offices' => $offices,
@@ -73,6 +81,8 @@ final class OfficeService
                 'price_cents' => $office['price_cents'] ?? null,
                 'currency' => $office['currency'] ?? null,
             ],
+            'usage_summary' => $this->usageSummary($tenantId, $office),
+            'plan_assignments' => $this->officeRepository->listPlanAssignments((int) $office['id'], $tenantId),
             'admin' => $this->primaryAdminForOffice($tenantId, (int) $office['id'], $actor),
         ];
     }
@@ -180,6 +190,22 @@ final class OfficeService
         ];
     }
 
+    public function listPlanAssignments(int $officeId, string $tenantId, array $actor): array
+    {
+        $office = $this->officeRepository->findById($officeId, $tenantId);
+        if ($office === null) {
+            throw new NotFoundException('Office not found.');
+        }
+
+        $this->assertOfficeAccess($officeId, $actor);
+
+        return [
+            'office' => $office,
+            'plan_assignments' => $this->officeRepository->listPlanAssignments($officeId, $tenantId),
+            'usage_summary' => $this->usageSummary($tenantId, $office),
+        ];
+    }
+
     private function createOffice(string $tenantId, array $actor, array $payload): array
     {
         $name = trim((string) ($payload['name'] ?? $payload['branch_name'] ?? ''));
@@ -265,6 +291,9 @@ final class OfficeService
         });
 
         $officeId = (int) $created['office_id'];
+        if (($payload['office_type'] ?? '') === 'main_office') {
+            $this->tenantRepository->setOnboardingStatus($tenantId, 'branch_setup_pending');
+        }
         $this->auditLogger->log($tenantId, $officeId, (int) $actor['id'], 'office.created', 'office', (string) $officeId, ['name' => $name, 'office_type' => $payload['office_type']]);
 
         return [
@@ -318,6 +347,30 @@ final class OfficeService
             'name' => $admin['display_name'],
             'email' => $admin['email'],
             'status' => $admin['status'],
+        ];
+    }
+
+    private function usageSummary(string $tenantId, array $office): array
+    {
+        $officeId = (int) $office['id'];
+        $employeeCount = $this->userRepository->countActiveEmployeesByOffice($tenantId, $officeId);
+        $periodYear = (int) date('Y');
+        $periodMonth = (int) date('n');
+        $payrollBatchCount = $this->payrollBatchRepository->countByOfficeAndPeriod($tenantId, $officeId, $periodYear, $periodMonth);
+        $employeeLimit = isset($office['employee_limit']) ? (int) $office['employee_limit'] : null;
+        $monthlyPayrollLimit = isset($office['monthly_payroll_limit']) ? (int) $office['monthly_payroll_limit'] : null;
+
+        return [
+            'employee_count' => $employeeCount,
+            'employee_limit' => $employeeLimit,
+            'employee_limit_reached' => $employeeLimit !== null && $employeeLimit > 0 ? $employeeCount >= $employeeLimit : false,
+            'monthly_payroll_count' => $payrollBatchCount,
+            'monthly_payroll_limit' => $monthlyPayrollLimit,
+            'monthly_payroll_limit_reached' => $monthlyPayrollLimit !== null && $monthlyPayrollLimit > 0
+                ? $payrollBatchCount >= $monthlyPayrollLimit
+                : false,
+            'period_year' => $periodYear,
+            'period_month' => $periodMonth,
         ];
     }
 }

@@ -35,6 +35,10 @@ final class UserController extends BaseController
             'user_type' => $request->query('user_type'),
         ]);
 
+        if ($this->isV2($request)) {
+            return Response::success($payload);
+        }
+
         if ($request->path() === '/employees') {
             return Response::success(['employees' => $payload['users']]);
         }

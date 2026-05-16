@@ -114,6 +114,7 @@ final class PayrollService
     public function saveMapping(int $batchId, string $tenantId, array $actor, array $mapping): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        $this->assertBatchMutable($batch);
         foreach (['employee_id', 'employee_name', 'gross_pay', 'total_deductions', 'net_pay'] as $field) {
             if (empty($mapping[$field])) {
                 throw new ValidationException('Required mappings are missing.', ['field' => $field]);
@@ -135,6 +136,7 @@ final class PayrollService
     public function validateBatch(int $batchId, string $tenantId, array $actor): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        $this->assertBatchMutable($batch);
         $mapping = json_decode((string) ($batch['mapping_json'] ?? 'null'), true);
         if (!is_array($mapping)) {
             throw new ValidationException('Batch must be mapped before validation.');
@@ -184,6 +186,7 @@ final class PayrollService
     public function confirmBatch(int $batchId, string $tenantId, array $actor): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        $this->assertBatchMutable($batch);
         $summary = json_decode((string) ($batch['validation_summary_json'] ?? 'null'), true);
         if (!is_array($summary) || !isset($summary['normalized_rows'])) {
             throw new ValidationException('Batch must be validated before confirmation.');
@@ -243,6 +246,9 @@ final class PayrollService
     public function publishBatch(int $batchId, string $tenantId, array $actor): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        if (($batch['upload_status'] ?? '') === 'published') {
+            throw new ApiException('BATCH_IMMUTABLE', 'Published payroll batches cannot be republished in place.', 409);
+        }
         $records = $this->payrollRecordRepository->listByBatch($batchId, $tenantId);
         if ($records === []) {
             throw new ValidationException('Batch must be confirmed before publishing.');
@@ -250,6 +256,12 @@ final class PayrollService
 
         $generated = 0;
         $this->transactions->run(function () use ($records, $batch, $tenantId, $actor, &$generated, $batchId): void {
+            $this->payslipRepository->supersedePublishedForPeriod(
+                $tenantId,
+                (int) $batch['office_id'],
+                (int) $batch['period_year'],
+                (int) $batch['period_month']
+            );
             foreach ($records as $record) {
                 $filename = sprintf(
                     'payslip-%d-%s-%d-%02d.pdf',
@@ -290,6 +302,7 @@ final class PayrollService
             'summary' => [
                 'employee_count' => count($records),
                 'payslips_generated' => $generated,
+                'employee_notifications' => 'pending',
             ],
         ];
     }
@@ -462,6 +475,13 @@ final class PayrollService
         }
 
         return $errors;
+    }
+
+    private function assertBatchMutable(array $batch): void
+    {
+        if (($batch['upload_status'] ?? '') === 'published') {
+            throw new ApiException('BATCH_IMMUTABLE', 'Published payroll batches cannot be changed. Upload a new batch for corrections.', 409);
+        }
     }
 
     private function money(mixed $value): float

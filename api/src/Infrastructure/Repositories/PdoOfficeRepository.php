@@ -16,8 +16,22 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
     public function listAccessible(string $tenantId, array $actor): array
     {
         $params = ['tenant_id' => $tenantId];
-        $sql = 'SELECT o.*
-            FROM offices o
+        $select = 'SELECT o.*,
+                          p.id AS plan_id,
+                          p.plan_code,
+                          p.name AS plan_name,
+                          p.price_cents,
+                          p.currency,
+                          p.employee_limit,
+                          p.monthly_payroll_limit
+                   FROM offices o
+                   LEFT JOIN tenant_plans tp
+                      ON tp.office_id = o.id
+                     AND tp.tenant_id = o.tenant_id
+                     AND tp.status = "active"
+                   LEFT JOIN plans p
+                      ON p.id = tp.plan_id';
+        $sql = $select . '
             WHERE o.tenant_id = :tenant_id AND o.deleted_at IS NULL';
 
         if (($actor['user_type'] ?? '') === 'branch_admin') {
@@ -26,8 +40,7 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
                 return [];
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
-            $sql = 'SELECT o.*
-            FROM offices o
+            $sql = $select . '
             WHERE o.tenant_id = ? AND o.deleted_at IS NULL AND o.id IN (' . $placeholders . ')';
             $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY o.office_type ASC, o.name ASC');
             $stmt->execute(array_merge([$tenantId], $officeIds));
@@ -167,5 +180,23 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
         $stmt->execute($bindings);
 
         return $this->findById($officeId, $tenantId);
+    }
+
+    public function listPlanAssignments(int $officeId, string $tenantId): array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT tp.*, p.plan_code, p.name AS plan_name, p.price_cents, p.currency,
+                    p.employee_limit, p.monthly_payroll_limit
+             FROM tenant_plans tp
+             JOIN plans p ON p.id = tp.plan_id
+             WHERE tp.office_id = :office_id AND tp.tenant_id = :tenant_id
+             ORDER BY tp.starts_on DESC, tp.id DESC'
+        );
+        $stmt->execute([
+            'office_id' => $officeId,
+            'tenant_id' => $tenantId,
+        ]);
+
+        return $stmt->fetchAll();
     }
 }

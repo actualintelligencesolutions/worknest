@@ -14,6 +14,8 @@ interface UserRepositoryInterface
 
     public function findActiveEmployeeByEmployeeId(string $tenantId, string $employeeId): ?array;
 
+    public function findActiveEmployeeByIdentifier(string $tenantId, string $identifier): ?array;
+
     public function listAccessible(string $tenantId, array $actor, array $filters = []): array;
 
     public function update(int $userId, string $tenantId, array $payload): ?array;
@@ -24,5 +26,9 @@ interface UserRepositoryInterface
 
     public function emailExists(string $tenantId, string $email): bool;
 
+    public function phoneExists(string $tenantId, string $phone): bool;
+
     public function employeeIdExists(string $tenantId, string $employeeId): bool;
+
+    public function countActiveEmployeesByOffice(string $tenantId, int $officeId): int;
 }

@@ -19,4 +19,6 @@ interface PayrollBatchRepositoryInterface
     public function markPublished(int $batchId, string $tenantId, int $publishedByUserId): void;
 
     public function listByTenant(string $tenantId, array $actor, array $filters = []): array;
+
+    public function countByOfficeAndPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): int;
 }

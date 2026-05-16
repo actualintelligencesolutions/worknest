@@ -57,13 +57,21 @@ final class UserService
         }
 
         $email = isset($payload['email']) ? strtolower(trim((string) $payload['email'])) : null;
+        $phone = isset($payload['phone']) ? $this->normalizePhone((string) $payload['phone']) : null;
         if ($email !== null && $email !== '' && $this->userRepository->emailExists($tenantId, $email)) {
             throw new ValidationException('A user with this email already exists for the tenant.');
+        }
+        if ($phone !== null && $phone !== '' && $this->userRepository->phoneExists($tenantId, $phone)) {
+            throw new ValidationException('A user with this phone number already exists for the tenant.');
         }
 
         $employeeId = isset($payload['employee_id']) ? trim((string) $payload['employee_id']) : null;
         if ($employeeId !== null && $employeeId !== '' && $this->userRepository->employeeIdExists($tenantId, $employeeId)) {
             throw new ValidationException('An employee with this employee ID already exists for the tenant.');
+        }
+
+        if ($userType === 'employee' && ($email === null || $email === '') && ($phone === null || $phone === '')) {
+            throw new ValidationException('Employee creation requires at least one login identifier: email or phone.');
         }
 
         $role = $this->roleRepository->findByKey($userType);
@@ -80,7 +88,7 @@ final class UserService
                 'last_name' => trim((string) ($payload['last_name'] ?? '')) ?: null,
                 'display_name' => $displayName,
                 'email' => $email ?: null,
-                'phone' => trim((string) ($payload['phone'] ?? '')) ?: null,
+                'phone' => $phone ?: null,
                 'password_hash' => $userType === 'branch_admin' && !empty($payload['password'])
                     ? $this->passwordHasher->hash((string) $payload['password'])
                     : null,
@@ -135,6 +143,16 @@ final class UserService
         if (isset($payload['display_name']) && trim((string) $payload['display_name']) === '') {
             throw new ValidationException('Display name cannot be empty.');
         }
+        if (array_key_exists('phone', $payload)) {
+            $payload['phone'] = $payload['phone'] !== null && trim((string) $payload['phone']) !== ''
+                ? $this->normalizePhone((string) $payload['phone'])
+                : null;
+        }
+        if (array_key_exists('email', $payload)) {
+            $payload['email'] = $payload['email'] !== null && trim((string) $payload['email']) !== ''
+                ? strtolower(trim((string) $payload['email']))
+                : null;
+        }
 
         $user = $this->userRepository->update($userId, $tenantId, $payload);
         if ($user === null) {
@@ -178,5 +196,24 @@ final class UserService
         if ($officeId === null || !in_array($officeId, $actor['office_ids'] ?? [], true)) {
             throw new ForbiddenException();
         }
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+        if (strlen($digits) === 10) {
+            return '+91' . $digits;
+        }
+        if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+            return '+' . $digits;
+        }
+        if (str_starts_with(trim($phone), '+')) {
+            return '+' . $digits;
+        }
+
+        return '+' . $digits;
     }
 }

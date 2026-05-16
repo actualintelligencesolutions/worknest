@@ -13,4 +13,8 @@ interface TenantRepositoryInterface
     public function setPrimaryOwnerUserId(string $tenantId, int $userId): void;
 
     public function markActive(string $tenantId): void;
+
+    public function update(string $tenantId, array $payload): ?array;
+
+    public function setOnboardingStatus(string $tenantId, string $status): void;
 }

@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "response_envelope": {
     "success": "boolean",
     "data": "object | array | null",
@@ -486,6 +486,123 @@
       "tenant_required": true,
       "database": { "related_tables": ["payslips", "payroll_records", "audit_logs"] },
       "notes": { "auth_rules": "Requires tenant owner, branch admin, or employee token.", "tenant_behavior": "Authorization is checked before file access." }
+    },
+    {
+      "id": "api.v2.tenants.create",
+      "method": "POST",
+      "path": "/api/v2/tenants",
+      "status": "active",
+      "purpose": "Register a tenant owner and create the tenant workspace.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": false,
+      "database": { "related_tables": ["tenants", "users", "otp_challenges", "audit_logs"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Creates a new tenant with owner verification flow." }
+    },
+    {
+      "id": "api.v2.tenants.show",
+      "method": "GET",
+      "path": "/api/v2/tenants/{tenantId}",
+      "status": "active",
+      "purpose": "Get the current tenant profile and onboarding status.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["tenants"] },
+      "notes": { "auth_rules": "Requires tenant owner token.", "tenant_behavior": "The route tenantId must match the authenticated tenant." }
+    },
+    {
+      "id": "api.v2.auth.admin-login",
+      "method": "POST",
+      "path": "/api/v2/auth/admin/login",
+      "status": "active",
+      "purpose": "Canonical admin login for tenant owners and branch admins.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Authenticates inside a single tenant." }
+    },
+    {
+      "id": "api.v2.auth.employee-login",
+      "method": "POST",
+      "path": "/api/v2/auth/employee/login",
+      "status": "active",
+      "purpose": "Employee login using email or phone plus PIN.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "auth_sessions"] },
+      "notes": { "auth_rules": "No auth required.", "tenant_behavior": "Employees are authenticated within a single tenant." }
+    },
+    {
+      "id": "api.v2.offices.index",
+      "method": "GET",
+      "path": "/api/v2/offices",
+      "status": "active",
+      "purpose": "List offices with active plan and usage summary.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans", "users", "payroll_batches"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins see only assigned offices." }
+    },
+    {
+      "id": "api.v2.offices.plan-assignments.index",
+      "method": "GET",
+      "path": "/api/v2/offices/{id}/plan-assignments",
+      "status": "active",
+      "purpose": "List office plan assignment history with usage summary.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["offices", "tenant_plans", "plans"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins need access to the office." }
+    },
+    {
+      "id": "api.v2.users.index",
+      "method": "GET",
+      "path": "/api/v2/users",
+      "status": "active",
+      "purpose": "List users in canonical v2 format.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["users", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Branch admins are limited to their office scope." }
+    },
+    {
+      "id": "api.v2.payroll-batches.publish",
+      "method": "POST",
+      "path": "/api/v2/payroll/batches/{id}/publish",
+      "status": "active",
+      "purpose": "Publish a confirmed payroll batch and supersede older payslips for the same period.",
+      "handler": "api/index.php",
+      "consumes": "application/json",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payroll_batches", "payroll_records", "payslips", "audit_logs"] },
+      "notes": { "auth_rules": "Requires tenant owner or branch admin token.", "tenant_behavior": "Published batches are immutable; corrections require a new batch." }
+    },
+    {
+      "id": "api.v2.payslips.index",
+      "method": "GET",
+      "path": "/api/v2/payslips",
+      "status": "active",
+      "purpose": "List accessible payslips in canonical v2 format.",
+      "handler": "api/index.php",
+      "consumes": "none",
+      "produces": "application/json",
+      "tenant_required": true,
+      "database": { "related_tables": ["payslips", "payroll_records", "user_roles"] },
+      "notes": { "auth_rules": "Requires tenant owner, branch admin, or employee token.", "tenant_behavior": "Employees see only their own payslips." }
     }
   ]
 }

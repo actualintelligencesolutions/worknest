@@ -9,6 +9,7 @@ The API keeps public usage endpoint-first. Internal PHP can become structured, b
 - response envelope
 
 Every endpoint must be represented in `endpoints.registry.json` before it is implemented.
+Canonical endpoints should now be added under `/api/v2/...`; legacy `/api/...` aliases may remain when needed for compatibility.
 
 ## Run Locally
 

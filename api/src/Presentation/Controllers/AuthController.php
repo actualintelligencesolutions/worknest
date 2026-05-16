@@ -43,44 +43,65 @@ final class AuthController extends BaseController
     {
         $tenantId = $this->tenantResolver->fromRequest($request);
         $body = $request->body();
-        return Response::success($this->authService->loginOwner(
+        $payload = $this->authService->loginOwner(
             (string) $tenantId,
             (string) ($body['email'] ?? ''),
             (string) ($body['password'] ?? '')
-        ));
+        );
+
+        return Response::success($this->isV2($request) ? $this->adminLoginPayload($payload) : $payload);
     }
 
     public function branchLogin(Request $request): Response
     {
         $tenantId = $this->tenantResolver->fromRequest($request);
         $body = $request->body();
-        return Response::success($this->authService->loginBranchAdmin(
+        $payload = $this->authService->loginBranchAdmin(
             (string) $tenantId,
             (string) ($body['email'] ?? ''),
             (string) ($body['password'] ?? '')
-        ));
+        );
+
+        return Response::success($this->isV2($request) ? $this->adminLoginPayload($payload) : $payload);
+    }
+
+    public function adminLogin(Request $request): Response
+    {
+        $tenantId = $this->tenantResolver->fromRequest($request);
+        $body = $request->body();
+        $payload = $this->authService->loginHrAdmin(
+            (string) $tenantId,
+            (string) ($body['email'] ?? ''),
+            (string) ($body['password'] ?? '')
+        );
+
+        return Response::success($this->isV2($request) ? $this->adminLoginPayload($payload) : $payload);
     }
 
     public function hrLogin(Request $request): Response
     {
-        $tenantId = $this->tenantResolver->fromRequest($request);
-        $body = $request->body();
-        return Response::success($this->authService->loginHrAdmin(
-            (string) $tenantId,
-            (string) ($body['email'] ?? ''),
-            (string) ($body['password'] ?? '')
-        ));
+        return $this->adminLogin($request);
     }
 
     public function employeeLogin(Request $request): Response
     {
         $tenantId = $this->tenantResolver->fromRequest($request);
         $body = $request->body();
-        return Response::success($this->authService->loginEmployee(
+        $payload = $this->authService->loginEmployee(
             (string) $tenantId,
-            (string) ($body['employee_id'] ?? ''),
+            (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
             (string) ($body['pin'] ?? '')
-        ));
+        );
+
+        if (!$this->isV2($request)) {
+            return Response::success($payload);
+        }
+
+        return Response::success([
+            'actor' => $payload['user'],
+            'tenant' => $payload['tenant'],
+            'session' => $payload['session'],
+        ]);
     }
 
     public function logout(Request $request): Response
@@ -91,6 +112,24 @@ final class AuthController extends BaseController
     public function me(Request $request): Response
     {
         $tenantId = $this->tenantResolver->fromRequest($request);
-        return Response::success($this->authService->currentActor($this->bearerToken($request), $tenantId));
+        $payload = $this->authService->currentActor($this->bearerToken($request), $tenantId);
+
+        if (!$this->isV2($request)) {
+            return Response::success($payload);
+        }
+
+        return Response::success([
+            'actor' => $payload['actor'],
+            'tenant' => ['tenant_id' => $tenantId],
+        ]);
+    }
+
+    private function adminLoginPayload(array $payload): array
+    {
+        return [
+            'actor' => $payload['user'],
+            'tenant' => $payload['tenant'],
+            'session' => $payload['session'],
+        ];
     }
 }

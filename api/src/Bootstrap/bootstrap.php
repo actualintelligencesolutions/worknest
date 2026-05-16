@@ -16,6 +16,7 @@ use Worknest\Api\Domain\Office\OfficeService;
 use Worknest\Api\Domain\Payslip\PayslipService;
 use Worknest\Api\Domain\Payroll\PayrollService;
 use Worknest\Api\Domain\Tenant\TenantResolver;
+use Worknest\Api\Domain\Tenant\TenantService;
 use Worknest\Api\Domain\User\UserService;
 use Worknest\Api\Infrastructure\Database\DatabaseConnection;
 use Worknest\Api\Infrastructure\Database\TransactionManager;
@@ -53,6 +54,7 @@ use Worknest\Api\Presentation\Controllers\OfficeController;
 use Worknest\Api\Presentation\Controllers\PayslipController;
 use Worknest\Api\Presentation\Controllers\PayrollController;
 use Worknest\Api\Presentation\Controllers\SystemController;
+use Worknest\Api\Presentation\Controllers\TenantController;
 use Worknest\Api\Presentation\Controllers\UserController;
 use Worknest\Api\Presentation\Responses\ApiExceptionHandler;
 
@@ -105,9 +107,15 @@ function build_app(array $config): App
         $c->get(OfficeRepositoryInterface::class),
         $c->get(PlanRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class),
+        $c->get(PayrollBatchRepositoryInterface::class),
+        $c->get(TenantRepositoryInterface::class),
         $c->get(RoleRepositoryInterface::class),
         $c->get(PasswordHasher::class),
         $c->get(TransactionManager::class),
+        $c->get(AuditLogger::class)
+    ));
+    $container->singleton(TenantService::class, fn ($c) => new TenantService(
+        $c->get(TenantRepositoryInterface::class),
         $c->get(AuditLogger::class)
     ));
     $container->singleton(UserService::class, fn ($c) => new UserService(
@@ -145,6 +153,13 @@ function build_app(array $config): App
         $c->get(AuthService::class),
         $c->get(TenantResolver::class)
     ));
+    $container->singleton(TenantController::class, fn ($c) => new TenantController(
+        $c->get(AuthService::class),
+        $c->get(OtpService::class),
+        $c->get(TenantResolver::class),
+        $c->get(TenantService::class),
+        $c->get(OfficeService::class)
+    ));
     $container->singleton(OfficeController::class, fn ($c) => new OfficeController(
         $c->get(AuthService::class),
         $c->get(TenantResolver::class),
@@ -176,6 +191,7 @@ function register_routes(Router $router, Container $container): void
 {
     $system = $container->get(SystemController::class);
     $auth = $container->get(AuthController::class);
+    $tenants = $container->get(TenantController::class);
     $offices = $container->get(OfficeController::class);
     $users = $container->get(UserController::class);
     $payroll = $container->get(PayrollController::class);
@@ -188,6 +204,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/companies/register', fn ($request) => $auth->registerCompany($request));
     $router->add('GET', '/companies/check-workspace', fn ($request) => $auth->checkWorkspace($request));
     $router->add('POST', '/auth/admin/verify-otp', fn ($request) => $auth->verifyAdminOtp($request));
+    $router->add('POST', '/auth/admin/login', fn ($request) => $auth->adminLogin($request));
     $router->add('POST', '/auth/owner-login', fn ($request) => $auth->ownerLogin($request));
     $router->add('POST', '/auth/branch-login', fn ($request) => $auth->branchLogin($request));
     $router->add('POST', '/auth/hr-login', fn ($request) => $auth->hrLogin($request));
@@ -223,4 +240,43 @@ function register_routes(Router $router, Container $container): void
     $router->add('GET', '/payslips', fn ($request) => $payslips->list($request));
     $router->add('GET', '/payslips/{id}', fn ($request) => $payslips->detail($request));
     $router->add('GET', '/payslips/{id}/download', fn ($request) => $payslips->download($request));
+
+    $router->add('POST', '/v2/tenants', fn ($request) => $tenants->create($request));
+    $router->add('GET', '/v2/tenants/check-slug', fn ($request) => $tenants->checkSlug($request));
+    $router->add('GET', '/v2/tenants/{tenantId}', fn ($request) => $tenants->detail($request));
+    $router->add('PATCH', '/v2/tenants/{tenantId}', fn ($request) => $tenants->update($request));
+    $router->add('POST', '/v2/tenants/{tenantId}/main-office', fn ($request) => $tenants->createMainOffice($request));
+
+    $router->add('POST', '/v2/auth/admin/login', fn ($request) => $auth->adminLogin($request));
+    $router->add('POST', '/v2/auth/employee/login', fn ($request) => $auth->employeeLogin($request));
+    $router->add('POST', '/v2/auth/logout', fn ($request) => $auth->logout($request));
+    $router->add('GET', '/v2/auth/me', fn ($request) => $auth->me($request));
+    $router->add('POST', '/v2/auth/otp/challenges', fn ($request) => $tenants->createOtpChallenge($request));
+    $router->add('POST', '/v2/auth/otp/verify', fn ($request) => $auth->verifyAdminOtp($request));
+
+    $router->add('GET', '/v2/offices', fn ($request) => $offices->list($request));
+    $router->add('POST', '/v2/offices', fn ($request) => $offices->create($request));
+    $router->add('GET', '/v2/offices/{id}', fn ($request) => $offices->detail($request));
+    $router->add('PATCH', '/v2/offices/{id}', fn ($request) => $offices->update($request));
+    $router->add('POST', '/v2/offices/{id}/plan-assignments', fn ($request) => $offices->assignPlan($request));
+    $router->add('GET', '/v2/offices/{id}/plan-assignments', fn ($request) => $offices->listPlans($request));
+    $router->add('POST', '/v2/offices/{id}/admins', fn ($request) => $offices->assignAdmins($request));
+
+    $router->add('GET', '/v2/users', fn ($request) => $users->list($request));
+    $router->add('POST', '/v2/users', fn ($request) => $users->create($request));
+    $router->add('GET', '/v2/users/{id}', fn ($request) => $users->detail($request));
+    $router->add('PATCH', '/v2/users/{id}', fn ($request) => $users->update($request));
+    $router->add('POST', '/v2/users/{id}/pin/reset', fn ($request) => $users->resetPin($request));
+
+    $router->add('POST', '/v2/payroll/batches', fn ($request) => $payroll->upload($request));
+    $router->add('GET', '/v2/payroll/batches', fn ($request) => $payroll->list($request));
+    $router->add('GET', '/v2/payroll/batches/{id}', fn ($request) => $payroll->detail($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/mapping', fn ($request) => $payroll->mapping($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/validate', fn ($request) => $payroll->validate($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/confirm', fn ($request) => $payroll->confirm($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/publish', fn ($request) => $payroll->publish($request));
+
+    $router->add('GET', '/v2/payslips', fn ($request) => $payslips->list($request));
+    $router->add('GET', '/v2/payslips/{id}', fn ($request) => $payslips->detail($request));
+    $router->add('GET', '/v2/payslips/{id}/download', fn ($request) => $payslips->download($request));
 }

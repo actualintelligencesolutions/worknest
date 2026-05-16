@@ -25,6 +25,13 @@ final class OfficeController extends BaseController
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
         $payload = $this->officeService->listOffices($tenantId, $actor);
 
+        if ($this->isV2($request)) {
+            return Response::success([
+                'offices' => $payload['offices'],
+                'summary' => $payload['summary'],
+            ]);
+        }
+
         if ($request->path() === '/locations') {
             return Response::success([
                 'locations' => $payload['locations'],
@@ -39,21 +46,33 @@ final class OfficeController extends BaseController
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
-        return Response::success($this->officeService->getOffice((int) $request->attribute('id'), $tenantId, $actor));
+        $payload = $this->officeService->getOffice((int) $request->attribute('id'), $tenantId, $actor);
+        return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload);
     }
 
     public function createMainOffice(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner']);
-        return Response::success($this->officeService->createMainOffice($tenantId, $actor, $request->body()), 201);
+        $payload = $this->officeService->createMainOffice($tenantId, $actor, $request->body());
+        return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload, 201);
     }
 
     public function createBranch(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
-        return Response::success($this->officeService->createBranch($tenantId, $actor, $request->body()), 201);
+        $payload = $this->officeService->createBranch($tenantId, $actor, $request->body());
+        return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload, 201);
+    }
+
+    public function create(Request $request): Response
+    {
+        $body = $request->body();
+        $officeType = (string) ($body['office_type'] ?? 'branch');
+        return $officeType === 'main_office'
+            ? $this->createMainOffice($request)
+            : $this->createBranch($request);
     }
 
     public function update(Request $request): Response
@@ -77,6 +96,17 @@ final class OfficeController extends BaseController
         ));
     }
 
+    public function listPlans(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        return Response::success($this->officeService->listPlanAssignments(
+            (int) $request->attribute('id'),
+            $tenantId,
+            $actor
+        ));
+    }
+
     public function assignAdmins(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
@@ -88,5 +118,11 @@ final class OfficeController extends BaseController
             $actor,
             array_map('intval', (array) ($body['user_ids'] ?? []))
         ));
+    }
+
+    private function canonicalOfficePayload(array $payload): array
+    {
+        unset($payload['location']);
+        return $payload;
     }
 }

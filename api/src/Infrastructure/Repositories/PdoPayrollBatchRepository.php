@@ -133,4 +133,24 @@ final class PdoPayrollBatchRepository implements PayrollBatchRepositoryInterface
         $stmt->execute($bindings);
         return $stmt->fetchAll();
     }
+
+    public function countByOfficeAndPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): int
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT COUNT(*) FROM payroll_batches
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND period_year = :period_year
+               AND period_month = :period_month
+               AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+            'period_year' => $periodYear,
+            'period_month' => $periodMonth,
+        ]);
+
+        return (int) $stmt->fetchColumn();
+    }
 }

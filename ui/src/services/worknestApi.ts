@@ -42,6 +42,7 @@ export type AuthSession = {
   token: string;
   tenantId: string;
   userName?: string;
+  userType?: 'tenant_owner' | 'branch_admin' | 'employee';
 };
 
 export type ActorProfile = {
@@ -55,6 +56,47 @@ export type ActorProfile = {
   user_type: 'tenant_owner' | 'branch_admin' | 'employee';
   status: string;
   office_ids: number[];
+};
+
+export type RegistrationResult = {
+  tenant: { tenant_id: string; name: string };
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  verification: {
+    challenge_id: number;
+    channel: 'email';
+    destination: string;
+    email_sent: boolean;
+    dev_otp?: string;
+  };
+  next_step: string;
+};
+
+export type TenantSlugAvailability = {
+  tenant_id: string;
+  available: boolean;
+  reason: string | null;
+};
+
+export type AdminAuthResult = {
+  actor: {
+    id: number;
+    name: string;
+    email: string | null;
+    role?: string;
+  };
+  tenant: {
+    tenant_id: string;
+  };
+  session: {
+    token: string;
+    session_type: 'web' | 'employee_portal';
+  };
 };
 
 type OfficeDetail = {
@@ -78,9 +120,73 @@ function authHeaders(session: AuthSession) {
   };
 }
 
+export function registerCompany(payload: {
+  company_name: string;
+  tenant_id: string;
+  admin_name: string;
+  admin_email: string;
+  admin_phone: string;
+  admin_password: string;
+}) {
+  return apiRequest<RegistrationResult>('/v2/tenants', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function checkWorkspaceSlug(tenantId: string) {
+  return apiRequest<TenantSlugAvailability>(
+    `/v2/tenants/check-slug?tenant_id=${encodeURIComponent(tenantId)}`,
+  );
+}
+
+export function loginAdmin(
+  tenantId: string,
+  payload: {
+    email: string;
+    password: string;
+  },
+) {
+  return apiRequest<AdminAuthResult>(
+    `/v2/auth/admin/login?tenant=${encodeURIComponent(tenantId)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function loginEmployee(
+  tenantId: string,
+  payload: {
+    identifier: string;
+    pin: string;
+  },
+) {
+  return apiRequest<{
+    actor: {
+      id: number;
+      employee_id: string | null;
+      name: string;
+      office_id: number | null;
+      user_type: 'employee';
+    };
+    tenant: {
+      tenant_id: string;
+    };
+    session: {
+      token: string;
+      session_type: 'employee_portal';
+    };
+  }>(`/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getCurrentActor(session: AuthSession) {
   return apiRequest<{ actor: ActorProfile }>(
-    `/auth/me?tenant=${encodeURIComponent(session.tenantId)}`,
+    `/v2/auth/me?tenant=${encodeURIComponent(session.tenantId)}`,
     {
       headers: authHeaders(session),
     },

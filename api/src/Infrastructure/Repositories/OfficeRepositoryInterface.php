@@ -15,4 +15,6 @@ interface OfficeRepositoryInterface
     public function create(array $payload): int;
 
     public function update(int $officeId, string $tenantId, array $payload): ?array;
+
+    public function listPlanAssignments(int $officeId, string $tenantId): array;
 }

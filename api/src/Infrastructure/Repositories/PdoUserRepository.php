@@ -93,6 +93,26 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $user === false ? null : $user;
     }
 
+    public function findActiveEmployeeByIdentifier(string $tenantId, string $identifier): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM users
+             WHERE tenant_id = :tenant_id
+               AND user_type = "employee"
+               AND status = "active"
+               AND deleted_at IS NULL
+               AND (email = :identifier OR phone = :identifier)
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'identifier' => $identifier,
+        ]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user === false ? null : $user;
+    }
+
     public function listAccessible(string $tenantId, array $actor, array $filters = []): array
     {
         $bindings = ['tenant_id' => $tenantId];
@@ -220,5 +240,36 @@ final class PdoUserRepository implements UserRepositoryInterface
         ]);
 
         return $stmt->fetchColumn() !== false;
+    }
+
+    public function phoneExists(string $tenantId, string $phone): bool
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT id FROM users WHERE tenant_id = :tenant_id AND phone = :phone AND deleted_at IS NULL LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'phone' => $phone,
+        ]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    public function countActiveEmployeesByOffice(string $tenantId, int $officeId): int
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT COUNT(*) FROM users
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND user_type = "employee"
+               AND status = "active"
+               AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+        ]);
+
+        return (int) $stmt->fetchColumn();
     }
 }

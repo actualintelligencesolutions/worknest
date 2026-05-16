@@ -182,9 +182,10 @@ final class AuthService
 
     public function loginEmployee(string $tenantId, string $employeeId, string $pin): array
     {
-        $user = $this->userRepository->findActiveEmployeeByEmployeeId($tenantId, trim($employeeId));
+        $identifier = $this->normalizeEmployeeIdentifier($employeeId);
+        $user = $this->userRepository->findActiveEmployeeByIdentifier($tenantId, $identifier);
         if ($user === null || empty($user['pin_hash']) || !$this->pinHasher->verify($pin, (string) $user['pin_hash'])) {
-            throw new UnauthorizedException('Invalid employee ID or PIN.');
+            throw new UnauthorizedException('Invalid employee login or PIN.');
         }
 
         $this->userRepository->updateLastLoginAt((int) $user['id']);
@@ -198,6 +199,13 @@ final class AuthService
                 'name' => $user['display_name'],
                 'office_id' => $user['office_id'] !== null ? (int) $user['office_id'] : null,
                 'user_type' => $user['user_type'],
+            ],
+            'tenant' => [
+                'tenant_id' => $tenantId,
+            ],
+            'session' => [
+                'token' => $token,
+                'session_type' => 'employee_portal',
             ],
         ];
     }
@@ -257,6 +265,13 @@ final class AuthService
                 'email' => $user['email'],
                 'role' => $user['user_type'],
             ],
+            'tenant' => [
+                'tenant_id' => $tenantId,
+            ],
+            'session' => [
+                'token' => $token,
+                'session_type' => 'web',
+            ],
         ];
     }
 
@@ -285,6 +300,16 @@ final class AuthService
     private function validPhone(string $phone): bool
     {
         return preg_match('/^\+[1-9][0-9]{9,14}$/', $phone) === 1;
+    }
+
+    private function normalizeEmployeeIdentifier(string $identifier): string
+    {
+        $trimmed = strtolower(trim($identifier));
+        if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
+            return $trimmed;
+        }
+
+        return $this->normalizePhone($identifier);
     }
 
     private function reservedTenantIds(): array

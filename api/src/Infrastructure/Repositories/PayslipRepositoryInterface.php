@@ -13,4 +13,6 @@ interface PayslipRepositoryInterface
     public function findAccessibleById(int $payslipId, string $tenantId, array $actor): ?array;
 
     public function markDownloaded(int $payslipId): void;
+
+    public function supersedePublishedForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): void;
 }

@@ -13,4 +13,9 @@ abstract class BaseController
         $header = (string) $request->header('Authorization', '');
         return str_starts_with($header, 'Bearer ') ? substr($header, 7) : '';
     }
+
+    protected function isV2(Request $request): bool
+    {
+        return str_starts_with($request->path(), '/v2/');
+    }
 }

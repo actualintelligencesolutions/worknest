@@ -57,4 +57,44 @@ final class PdoTenantRepository implements TenantRepositoryInterface
         );
         $stmt->execute(['tenant_id' => $tenantId]);
     }
+
+    public function update(string $tenantId, array $payload): ?array
+    {
+        $allowed = ['name', 'legal_name', 'status', 'onboarding_status'];
+        $sets = [];
+        $bindings = ['tenant_id' => $tenantId];
+
+        foreach ($allowed as $column) {
+            if (!array_key_exists($column, $payload)) {
+                continue;
+            }
+
+            $sets[] = $column . ' = :' . $column;
+            $bindings[$column] = $payload[$column];
+        }
+
+        if ($sets === []) {
+            return $this->findByTenantId($tenantId);
+        }
+
+        $stmt = $this->connection->pdo()->prepare(
+            'UPDATE tenants SET ' . implode(', ', $sets) . ', updated_at = CURRENT_TIMESTAMP
+             WHERE tenant_id = :tenant_id AND deleted_at IS NULL'
+        );
+        $stmt->execute($bindings);
+
+        return $this->findByTenantId($tenantId);
+    }
+
+    public function setOnboardingStatus(string $tenantId, string $status): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'UPDATE tenants SET onboarding_status = :status, updated_at = CURRENT_TIMESTAMP
+             WHERE tenant_id = :tenant_id AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'status' => $status,
+        ]);
+    }
 }

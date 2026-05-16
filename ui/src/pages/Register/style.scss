@@ -115,6 +115,10 @@
   line-height: 1.7;
 }
 
+.marketing-register-copy-wide {
+  max-width: 460px;
+}
+
 .marketing-register-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -157,6 +161,28 @@
   grid-column: 1 / -1;
 }
 
+.marketing-register-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.marketing-register-workspace-status {
+  margin: -4px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #5f7b7a;
+}
+
+.marketing-register-workspace-status.is-available {
+  color: #157347;
+}
+
+.marketing-register-workspace-status.is-taken {
+  color: #b42318;
+}
+
 .marketing-register-actions {
   display: flex;
   align-items: center;
@@ -189,10 +215,34 @@
   box-shadow: 0 16px 36px rgba(118, 212, 174, 0.24);
 }
 
+.marketing-register-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.marketing-register-submit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .marketing-register-secondary {
   border: 1px solid rgba(77, 199, 159, 0.36);
   background: rgba(255, 255, 255, 0.9);
   color: #1d6762;
+}
+
+.marketing-register-success-note {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(88, 196, 164, 0.12);
+  color: #0d4f56;
+}
+
+.marketing-register-actions-single {
+  justify-content: flex-start;
 }
 
 @media (max-width: 720px) {

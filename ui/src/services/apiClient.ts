@@ -8,13 +8,15 @@ export type ApiEnvelope<T> = {
   } | null;
 };
 
-const API_BASE_URL = 'https://worknest.actualintelligencesolutions.in/api';
+const API_BASE_URL = 'https://preview.worknestapp.com/api';
+const RESOLVED_API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? API_BASE_URL;
 
 export async function apiRequest<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${RESOLVED_API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),

@@ -122,4 +122,23 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
         );
         $stmt->execute(['id' => $payslipId]);
     }
+
+    public function supersedePublishedForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'UPDATE payslips
+             SET status = "superseded"
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND period_year = :period_year
+               AND period_month = :period_month
+               AND status = "published"'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+            'period_year' => $periodYear,
+            'period_month' => $periodMonth,
+        ]);
+    }
 }
