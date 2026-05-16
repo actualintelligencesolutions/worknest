@@ -64,11 +64,6 @@ export function LoginPage() {
               Enter your workspace and admin credentials to manage offices, payroll, and employee access.
             </p>
 
-            <div className="marketing-login-note">
-              <strong>Demo:</strong> workspace <code>demo</code>, owner <code>owner@demo.com</code> /
-              <code> Demo@1234</code>
-            </div>
-
             <form className="marketing-login-form" onSubmit={handleSubmit}>
               <label>
                 <span>Workspace</span>
