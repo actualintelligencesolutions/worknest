@@ -174,8 +174,23 @@
   transition: background 160ms ease, color 160ms ease;
 }
 
+.new-header-profile-action,
+.new-header-mobile-action {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.84);
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
 .new-header-profile-link:hover,
-.new-header-profile-link.active {
+.new-header-profile-link.active,
+.new-header-profile-action:hover,
+.new-header-mobile-action:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
@@ -235,9 +250,14 @@
   }
 
   .new-header-mobile-link:hover,
-  .new-header-mobile-link.active {
+  .new-header-mobile-link.active,
+  .new-header-mobile-action {
     background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
+  }
+
+  .new-header-mobile-action {
+    padding: 12px 14px;
   }
 }
 

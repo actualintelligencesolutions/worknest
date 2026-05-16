@@ -52,7 +52,9 @@
     "profileMenu": {
       "profile": "Profile",
       "settings": "Settings",
-      "help": "Help"
+      "help": "Help",
+      "logout": "Logout",
+      "loggingOut": "Logging out..."
     }
   },
   "common": {

@@ -184,6 +184,17 @@ export function loginEmployee(
   });
 }
 
+export function logout(session: AuthSession) {
+  return apiRequest<{ revoked: boolean }>(
+    `/v2/auth/logout?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export function getCurrentActor(session: AuthSession) {
   return apiRequest<{ actor: ActorProfile }>(
     `/v2/auth/me?tenant=${encodeURIComponent(session.tenantId)}`,

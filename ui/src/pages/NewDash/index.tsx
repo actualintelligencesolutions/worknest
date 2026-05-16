@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { PageHeader } from '../../components/organisms/PageHeader';
 import { newHeaderSetupNavItems } from '../../config/newHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { NewPrimaryLayout } from '../../layouts/NewPrimary';
-import { loadHrSession } from '../../services/hrSession';
-import { getCurrentActor, getOffice, listCompanyLocations, listPayrollBatches } from '../../services/worknestApi';
+import { clearHrSession, loadHrSession } from '../../services/hrSession';
+import { getCurrentActor, getOffice, listCompanyLocations, listPayrollBatches, logout } from '../../services/worknestApi';
 import {
   createDashboardState,
   demoActor,
@@ -19,8 +19,22 @@ import './style.scss';
 
 export function NewDashPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const session = loadHrSession();
   usePageTitle(t('pages.newDash.dashboardTitle'));
+
+  async function handleLogout() {
+    try {
+      if (session) {
+        await logout(session);
+      }
+    } catch {
+      // Local session cleanup still signs the user out even if the API call fails.
+    } finally {
+      clearHrSession();
+      navigate('/login');
+    }
+  }
 
   const actorQuery = useQuery({
     queryKey: ['new-dash-actor', session?.tenantId],
@@ -91,6 +105,7 @@ export function NewDashPage() {
   return (
     <NewPrimaryLayout
       headerNavItems={headerNavItems}
+      onLogout={session ? handleLogout : undefined}
       pageHeader={<PageHeader title={t('pages.newDash.dashboardTitle')} toolbar={toolbar} />}
     >
       <section className="new-dash-page">

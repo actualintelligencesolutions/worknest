@@ -36,12 +36,14 @@ function MenuIcon() {
 
 type NewHeaderProps = {
   navItems?: NewHeaderNavItem[];
+  onLogout?: () => void | Promise<void>;
 };
 
-export function NewHeader({ navItems = newHeaderNavItems }: NewHeaderProps) {
+export function NewHeader({ navItems = newHeaderNavItems, onLogout }: NewHeaderProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -70,6 +72,21 @@ export function NewHeader({ navItems = newHeaderNavItems }: NewHeaderProps) {
   function closeMenus() {
     setIsProfileMenuOpen(false);
     setIsMobileMenuOpen(false);
+  }
+
+  async function handleLogout() {
+    if (!onLogout || isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      await onLogout();
+    } finally {
+      closeMenus();
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -140,6 +157,20 @@ export function NewHeader({ navItems = newHeaderNavItems }: NewHeaderProps) {
                     {t(item.labelKey)}
                   </NavLink>
                 ))}
+                {onLogout ? (
+                  <button
+                    className="new-header-profile-action"
+                    onClick={() => {
+                      void handleLogout();
+                    }}
+                    role="menuitem"
+                    type="button"
+                  >
+                    {isLoggingOut
+                      ? t('newHeader.profileMenu.loggingOut')
+                      : t('newHeader.profileMenu.logout')}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -186,6 +217,19 @@ export function NewHeader({ navItems = newHeaderNavItems }: NewHeaderProps) {
               {t(item.labelKey)}
             </NavLink>
           ))}
+          {onLogout ? (
+            <button
+              className="new-header-mobile-action"
+              onClick={() => {
+                void handleLogout();
+              }}
+              type="button"
+            >
+              {isLoggingOut
+                ? t('newHeader.profileMenu.loggingOut')
+                : t('newHeader.profileMenu.logout')}
+            </button>
+          ) : null}
         </nav>
       </div>
     </header>
