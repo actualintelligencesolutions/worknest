@@ -228,6 +228,78 @@
       "setupWorkspace": {
         "title": "Setup New Workspace"
       },
+      "setupWizard": {
+        "kicker": "Guided setup",
+        "intro": "A short guided setup to prepare your first operational workspace.",
+        "progress": "Step {{current}} of {{total}}",
+        "actions": {
+          "back": "Back",
+          "continue": "Continue",
+          "finish": "Finish setup",
+          "finishing": "Finishing setup...",
+          "openDashboard": "Open dashboard"
+        },
+        "errors": {
+          "validation": "Complete this step before continuing.",
+          "incomplete": "Finish the required setup details before creating the workspace.",
+          "submit": "We could not finish workspace setup right now. Please try again."
+        },
+        "locationType": {
+          "title": "What are you setting up first?",
+          "description": "Choose the first operational location for this workspace. You can always add more later.",
+          "mainOffice": {
+            "title": "Main Office",
+            "description": "Set up a primary headquarters-style office for the company."
+          },
+          "siteOffice": {
+            "title": "Site Office",
+            "description": "Set up a location that runs day-to-day site operations with a manager."
+          }
+        },
+        "officeDetails": {
+          "mainTitle": "Tell us about your main office",
+          "siteTitle": "Tell us about your site office",
+          "mainDescription": "Add the core details for the first main office in this workspace.",
+          "siteDescription": "Add the basic details for the site that will start operations first.",
+          "mainName": "Main office name",
+          "siteName": "Site office name",
+          "mainNamePlaceholder": "Example: Bengaluru Main Office",
+          "siteNamePlaceholder": "Example: Whitefield Site Office",
+          "city": "City",
+          "cityPlaceholder": "Enter city",
+          "state": "State",
+          "statePlaceholder": "Enter state"
+        },
+        "manager": {
+          "title": "Who manages this site?",
+          "description": "Add the site operations manager who will act as the first operational contact.",
+          "name": "Manager name",
+          "namePlaceholder": "Enter full name",
+          "email": "Work email",
+          "emailPlaceholder": "name@company.com",
+          "phone": "Phone number",
+          "phonePlaceholder": "Enter phone number"
+        },
+        "planSelection": {
+          "title": "Choose the package",
+          "description": "Select the plan that matches this workspace so it is ready for rollout.",
+          "defaultDescription": "Active package for this office.",
+          "employeeLimit": "{{count}} employees",
+          "payrollLimit": "{{count}} payroll runs / month"
+        },
+        "complete": {
+          "title": "Your workspace is ready",
+          "badge": "Setup complete",
+          "heading": "Everything you need to begin is in place.",
+          "description": "The first office and package are ready. You can now continue into the dashboard and expand from there.",
+          "summary": {
+            "locationType": "Location type",
+            "locationName": "Location",
+            "region": "Region",
+            "package": "Package"
+          }
+        }
+      },
       "brandNew": {
         "title": "This workspace needs setup",
         "description": "A brand new company workspace should move through setup before the broader dashboard navigation appears. Continue in the setup workspace to configure office, plan, and payroll readiness.",

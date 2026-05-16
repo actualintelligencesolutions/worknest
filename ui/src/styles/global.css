@@ -3,6 +3,7 @@
 :root {
   color: #172e61;
   background: #f5f7fb;
+  line-height: 1.2;
   font-family:
     'Open Sans',
     ui-sans-serif,
@@ -35,6 +36,7 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   color: var(--color-text);
+  line-height: 1.2;
 }
 
 h1,
@@ -44,6 +46,7 @@ h4,
 h5,
 h6 {
   color: var(--color-text);
+  line-height: 1.2;
 }
 
 button,
@@ -51,6 +54,7 @@ input,
 textarea,
 select {
   font: inherit;
+  line-height: 1.2;
 }
 
 input,
@@ -76,7 +80,6 @@ pre {
   color: #374151;
   padding: 12px;
   font-size: 0.82rem;
-  line-height: 1.45;
 }
 
 .eyebrow {

@@ -10,7 +10,7 @@
 
 .new-dash-page-header-note {
   margin: 0;
-  color: #667085;
+  color: #567672;
   font-size: 0.95rem;
   font-weight: 600;
 }
@@ -18,8 +18,10 @@
 .new-dash-setup-card,
 .new-dash-panel,
 .new-dash-step-card {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+  border: 1px solid rgba(104, 144, 129, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 252, 249, 0.9) 100%);
+  box-shadow: 0 18px 40px rgba(127, 172, 151, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .new-dash-setup-card,
@@ -44,17 +46,16 @@
 .new-dash-panel-head h2,
 .new-dash-step-head h3 {
   margin: 0;
-  color: #111827;
+  color: #0d4f56;
 }
 
 .new-dash-setup-card-head h2 {
   font-size: clamp(1.4rem, 2.6vw, 2rem);
-  line-height: 1.05;
 }
 
 .new-dash-progress {
   margin: 0;
-  color: #344054;
+  color: #316b63;
   font-size: 0.92rem;
   font-weight: 700;
 }
@@ -62,20 +63,18 @@
 .new-dash-panel-head h2,
 .new-dash-step-head h3 {
   font-size: 1.05rem;
-  line-height: 1.15;
 }
 
 .new-dash-panel-copy,
 .new-dash-step-head p {
   margin: 0;
-  color: #667085;
+  color: #5f7b7a;
   font-size: 0.96rem;
-  line-height: 1.65;
 }
 
 .new-dash-panel-note {
   margin: 0;
-  color: #175cd3;
+  color: #2c8a73;
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -96,19 +95,20 @@
   min-width: fit-content;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d0d5dd;
+  border: 1px solid rgba(104, 144, 129, 0.22);
   padding: 7px 10px;
-  color: #344054;
+  color: #486662;
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  background: rgba(245, 250, 247, 0.88);
 }
 
 .new-dash-step-status.ready {
-  border-color: #bfd9ff;
-  background: #eef4ff;
-  color: #175cd3;
+  border-color: rgba(88, 196, 164, 0.28);
+  background: rgba(236, 249, 243, 0.96);
+  color: #207663;
 }
 
 .new-dash-step-status.blocked {
@@ -118,9 +118,9 @@
 }
 
 .new-dash-step-status.completed {
-  border-color: #cde8d4;
-  background: #edfdf3;
-  color: #027a48;
+  border-color: rgba(88, 196, 164, 0.26);
+  background: rgba(232, 248, 239, 0.96);
+  color: #117154;
 }
 
 .new-dash-step-actions {
@@ -155,7 +155,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #eceff3;
+  border-bottom: 1px solid rgba(104, 144, 129, 0.12);
   padding-bottom: 12px;
 }
 
@@ -166,12 +166,12 @@
 
 .new-dash-detail-row span {
   margin: 0;
-  color: #475467;
+  color: #5f7b7a;
   font-size: 0.94rem;
 }
 
 .new-dash-detail-row strong {
-  color: #111827;
+  color: #124e55;
   font-size: 0.95rem;
   text-align: right;
 }
@@ -180,6 +180,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.new-dash-panel .button-primary {
+  border-color: #4cc9a6;
+  background: linear-gradient(90deg, #4cc9a6 0%, #77d96f 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(118, 212, 174, 0.22);
+}
+
+.new-dash-panel .button-secondary {
+  border-color: rgba(77, 199, 159, 0.34);
+  background: rgba(255, 255, 255, 0.86);
+  color: #1d6762;
 }
 
 @media (max-width: 960px) {

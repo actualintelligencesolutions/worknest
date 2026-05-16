@@ -258,6 +258,7 @@ final class OfficeService
             $admin = null;
             $adminName = trim((string) ($payload['admin_name'] ?? ''));
             $adminEmail = strtolower(trim((string) ($payload['admin_email'] ?? '')));
+            $adminPhone = trim((string) ($payload['admin_phone'] ?? ''));
             if ($adminName !== '' && filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
                 $role = $this->roleRepository->findByKey('branch_admin');
                 $nameParts = $this->splitName($adminName);
@@ -268,6 +269,7 @@ final class OfficeService
                     'last_name' => $nameParts['last_name'],
                     'display_name' => $adminName,
                     'email' => $adminEmail,
+                    'phone' => $adminPhone !== '' ? $adminPhone : null,
                     'password_hash' => $this->passwordHasher->hash(bin2hex(random_bytes(16))),
                     'user_type' => 'branch_admin',
                     'status' => 'pending_verification',
@@ -279,6 +281,7 @@ final class OfficeService
                     'id' => $adminUserId,
                     'name' => $adminName,
                     'email' => $adminEmail,
+                    'phone' => $adminPhone !== '' ? $adminPhone : null,
                     'role' => 'branch_admin',
                     'status' => 'pending_verification',
                 ];

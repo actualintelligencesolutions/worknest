@@ -28,6 +28,10 @@ export function getMainOffice(locations: CompanyLocation[]) {
   );
 }
 
+export function getPrimaryWorkspaceLocation(locations: CompanyLocation[]) {
+  return getMainOffice(locations) ?? locations[0] ?? null;
+}
+
 export function getBranchLocations(locations: CompanyLocation[]) {
   return locations.filter(
     (location) =>
@@ -48,11 +52,11 @@ export function createDashboardState({
   hasAssignedPlan: boolean;
   payrollBatches: PayrollBatch[];
 }) {
-  const hasMainOffice = Boolean(mainOffice);
+  const hasWorkspaceLocation = Boolean(mainOffice);
   const hasBranch = branchCount > 0;
   const hasPayroll = payrollBatches.length > 0;
 
-  const officeStep: DashboardStep = hasMainOffice
+  const officeStep: DashboardStep = hasWorkspaceLocation
     ? {
         id: 'office',
         title: t('pages.newDash.setup.steps.office.title'),
@@ -74,7 +78,7 @@ export function createDashboardState({
 
   const planContextOfficeId = mainOffice?.id ?? null;
 
-  const planStep: DashboardStep = !hasMainOffice
+  const planStep: DashboardStep = !hasWorkspaceLocation
     ? {
         id: 'plan',
         title: t('pages.newDash.setup.steps.plan.title'),
@@ -119,7 +123,7 @@ export function createDashboardState({
         actionLabel: t('pages.newDash.setup.steps.payroll.completedAction'),
         actionTo: '/new-dash/reports',
       }
-    : !hasMainOffice
+    : !hasWorkspaceLocation
       ? {
           id: 'payroll',
           title: t('pages.newDash.setup.steps.payroll.title'),
@@ -164,7 +168,7 @@ export function createDashboardState({
 
   const steps = [officeStep, planStep, payrollStep];
   const completedCount = steps.filter((step) => step.status === 'completed').length;
-  const isBrandNew = !hasMainOffice && !hasAssignedPlan && !hasPayroll;
+  const isBrandNew = !hasWorkspaceLocation && !hasAssignedPlan && !hasPayroll;
   const readinessKey =
     completedCount === 3
       ? 'pages.newDash.setup.banner.complete'
@@ -172,7 +176,7 @@ export function createDashboardState({
 
   return {
     completedCount,
-    hasMainOffice,
+    hasMainOffice: hasWorkspaceLocation,
     hasAssignedPlan,
     hasPayroll,
     isBrandNew,

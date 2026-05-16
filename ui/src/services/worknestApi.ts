@@ -7,6 +7,9 @@ export type Plan = {
   price_cents: number;
   currency: string;
   description?: string | null;
+  employee_limit?: number | null;
+  monthly_payroll_limit?: number | null;
+  features_json?: string[] | string | null;
   status?: string;
 };
 
@@ -114,6 +117,34 @@ type OfficeDetail = {
   >;
 };
 
+export type OfficeCreationPayload = {
+  office_type: 'main_office' | 'branch';
+  name: string;
+  city: string;
+  state: string;
+  plan_id: number;
+  country?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  admin_name?: string;
+  admin_email?: string;
+  admin_phone?: string;
+};
+
+export type OfficeCreationResult = {
+  office: CompanyLocation;
+  location: CompanyLocation;
+  admin: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string | null;
+    role: string;
+    status: string;
+  } | null;
+  plan: Plan;
+};
+
 function authHeaders(session: AuthSession) {
   return {
     Authorization: `Bearer ${session.token}`,
@@ -204,6 +235,10 @@ export function getCurrentActor(session: AuthSession) {
   );
 }
 
+export function listPlans() {
+  return apiRequest<{ plans: Plan[] }>('/plans');
+}
+
 export function listCompanyLocations(session: AuthSession) {
   return apiRequest<{
     locations: CompanyLocation[];
@@ -222,6 +257,17 @@ export function getOffice(session: AuthSession, id: number) {
     `/offices/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
     {
       headers: authHeaders(session),
+    },
+  );
+}
+
+export function createOffice(session: AuthSession, payload: OfficeCreationPayload) {
+  return apiRequest<OfficeCreationResult>(
+    `/v2/offices?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
     },
   );
 }

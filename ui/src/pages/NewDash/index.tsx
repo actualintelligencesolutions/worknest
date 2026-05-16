@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,7 +13,7 @@ import {
   createDashboardState,
   demoActor,
   getBranchLocations,
-  getMainOffice,
+  getPrimaryWorkspaceLocation,
 } from './dashboardState';
 import './style.scss';
 
@@ -55,9 +55,12 @@ export function NewDashPage() {
   });
 
   const locations = locationsQuery.data?.locations ?? [];
-  const mainOffice = useMemo(() => getMainOffice(locations), [locations]);
+  const primaryWorkspaceLocation = useMemo(
+    () => getPrimaryWorkspaceLocation(locations),
+    [locations],
+  );
   const branchLocations = useMemo(() => getBranchLocations(locations), [locations]);
-  const planContextOfficeId = mainOffice?.id ?? null;
+  const planContextOfficeId = primaryWorkspaceLocation?.id ?? null;
 
   const planQuery = useQuery({
     queryKey: ['new-dash-office-plan', session?.tenantId, planContextOfficeId],
@@ -72,12 +75,18 @@ export function NewDashPage() {
     () =>
       createDashboardState({
         t,
-        mainOffice,
+        mainOffice: primaryWorkspaceLocation,
         branchCount: branchLocations.length,
         hasAssignedPlan: Boolean(planQuery.data?.plan?.id),
         payrollBatches: payrollQuery.data?.batches ?? [],
       }),
-    [branchLocations.length, mainOffice, payrollQuery.data?.batches, planQuery.data?.plan?.id, t],
+    [
+      branchLocations.length,
+      payrollQuery.data?.batches,
+      planQuery.data?.plan?.id,
+      primaryWorkspaceLocation,
+      t,
+    ],
   );
 
   const isBrandNew = isDemoMode || dashboardState.isBrandNew;
@@ -95,6 +104,16 @@ export function NewDashPage() {
     locationsQuery.error ||
     payrollQuery.error ||
     planQuery.error;
+
+  useEffect(() => {
+    if (!session || isDemoMode || locationsQuery.isLoading || hasError) {
+      return;
+    }
+
+    if (!primaryWorkspaceLocation) {
+      navigate('/new-dash/setup', { replace: true });
+    }
+  }, [session, isDemoMode, locationsQuery.isLoading, hasError, primaryWorkspaceLocation, navigate]);
 
   const toolbar = (
     <p className="new-dash-page-header-note">

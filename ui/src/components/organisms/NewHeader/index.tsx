@@ -37,9 +37,14 @@ function MenuIcon() {
 type NewHeaderProps = {
   navItems?: NewHeaderNavItem[];
   onLogout?: () => void | Promise<void>;
+  variant?: 'default' | 'quiet';
 };
 
-export function NewHeader({ navItems = newHeaderNavItems, onLogout }: NewHeaderProps) {
+export function NewHeader({
+  navItems = newHeaderNavItems,
+  onLogout,
+  variant = 'default',
+}: NewHeaderProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -90,7 +95,7 @@ export function NewHeader({ navItems = newHeaderNavItems, onLogout }: NewHeaderP
   }
 
   return (
-    <header className="new-header">
+    <header className={variant === 'quiet' ? 'new-header new-header-quiet' : 'new-header'}>
       <div className="new-header-shell">
         <NavLink className="new-header-brand" onClick={closeMenus} to="/new-dash">
           {t(newHeaderBrandKey)}
@@ -116,21 +121,25 @@ export function NewHeader({ navItems = newHeaderNavItems, onLogout }: NewHeaderP
         </nav>
 
         <div className="new-header-actions">
-          <button
-            aria-label={t(newHeaderActionKeys.searchLabel)}
-            className="new-header-icon-button"
-            type="button"
-          >
-            <SearchIcon />
-          </button>
+          {variant === 'default' ? (
+            <>
+              <button
+                aria-label={t(newHeaderActionKeys.searchLabel)}
+                className="new-header-icon-button"
+                type="button"
+              >
+                <SearchIcon />
+              </button>
 
-          <button
-            aria-label={t(newHeaderActionKeys.notificationsLabel)}
-            className="new-header-icon-button"
-            type="button"
-          >
-            <BellIcon />
-          </button>
+              <button
+                aria-label={t(newHeaderActionKeys.notificationsLabel)}
+                className="new-header-icon-button"
+                type="button"
+              >
+                <BellIcon />
+              </button>
+            </>
+          ) : null}
 
           <div className="new-header-profile" ref={profileMenuRef}>
             <button

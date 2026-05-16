@@ -1,24 +1,41 @@
 .new-primary-layout {
   min-height: 100vh;
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top center, rgba(169, 241, 215, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 32%, rgba(191, 233, 216, 0.14), transparent 20%),
+    linear-gradient(180deg, #f7fbf8 0%, #eef5f1 100%);
 }
 
 .new-primary-layout-main {
+  position: relative;
   width: 100%;
   margin: 0 auto;
   padding: 84px 32px 0;
 }
 
+.new-primary-layout-main::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 260px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
 .new-primary-layout-page-header {
   width: min(100%, 1280px);
   margin: 20px auto 28px;
+  position: relative;
+  z-index: 1;
 }
 
 .new-primary-layout-content {
-  width: min(100%, 960px);
+  width: min(100%, 1280px);
   margin-left: auto;
   margin-right: auto;
   padding: 0 0 28px;
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 760px) {
