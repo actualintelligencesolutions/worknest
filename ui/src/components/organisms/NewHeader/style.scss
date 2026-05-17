@@ -4,7 +4,10 @@
   left: 0;
   z-index: 50;
   width: 100%;
-  background: rgba(10, 10, 10, 0.98);
+  background: linear-gradient(180deg, rgba(9, 73, 74, 0.96) 0%, rgba(13, 92, 88, 0.94) 100%);
+  box-shadow:
+    inset 0 -1px 0 rgba(167, 226, 206, 0.12),
+    0 14px 32px rgba(11, 73, 68, 0.18);
 }
 
 .new-header-quiet {
@@ -44,7 +47,7 @@
   width: 12px;
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #ffffff 0%, #b6c2ff 100%);
+  background: linear-gradient(135deg, #8ef0cd 0%, #dff9ef 100%);
   transform: translateY(-50%) rotate(12deg);
 }
 
@@ -71,7 +74,7 @@
 
 .new-header-link {
   position: relative;
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(237, 250, 245, 0.72);
   padding: 30px 0 28px;
   font-size: 0.92rem;
   font-weight: 700;
@@ -88,14 +91,14 @@
   left: 0;
   height: 3px;
   border-radius: 999px;
-  background: #ffffff;
+  background: linear-gradient(90deg, #8ef0cd 0%, #d7f7e7 100%);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 160ms ease;
 }
 
 .new-header-link:hover {
-  color: #ffffff;
+  color: #f7fffb;
 }
 
 .new-header-link.active {
@@ -123,8 +126,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(216, 244, 232, 0.12);
+  background: rgba(232, 250, 242, 0.05);
   color: #ffffff;
   cursor: pointer;
   appearance: none;
@@ -145,8 +148,8 @@
 .new-header-icon-button:hover,
 .new-header-menu-toggle:hover,
 .new-header-profile-button:hover {
-  border-color: rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(200, 243, 224, 0.22);
+  background: rgba(223, 249, 238, 0.12);
   color: #ffffff;
   transform: translateY(-1px);
 }
@@ -173,8 +176,8 @@
   width: 44px;
   height: 44px;
   border-radius: 0;
-  background: linear-gradient(135deg, #f4d9dc 0%, #f6f1ff 100%);
-  color: #141414;
+  background: linear-gradient(135deg, #dcfaf0 0%, #a8e6cd 100%);
+  color: #0d4f56;
   font-size: 0.95rem;
   font-weight: 800;
 }
@@ -187,9 +190,10 @@
   display: grid;
   gap: 6px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(104, 144, 129, 0.14);
   border-radius: 0;
-  background: #111111;
+  background: rgba(10, 67, 65, 0.98);
+  box-shadow: 0 22px 42px rgba(8, 52, 49, 0.26);
 }
 
 .new-header-quiet .new-header-profile-menu {
@@ -213,7 +217,7 @@
 }
 
 .new-header-profile-link {
-  color: rgba(255, 255, 255, 0.84);
+  color: rgba(241, 252, 247, 0.88);
   padding: 10px 12px;
   font-weight: 700;
   transition: background 160ms ease, color 160ms ease;
@@ -223,7 +227,7 @@
 .new-header-mobile-action {
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.84);
+  color: rgba(241, 252, 247, 0.88);
   padding: 10px 12px;
   font: inherit;
   font-weight: 700;
@@ -236,7 +240,7 @@
 .new-header-profile-link.active,
 .new-header-profile-action:hover,
 .new-header-mobile-action:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(165, 240, 211, 0.14);
   color: #ffffff;
 }
 

@@ -1,3 +1,4 @@
+import { BranchSetupPage } from './BranchSetupPage';
 import { NewDashSectionPage } from './SectionPage';
 import { SetupWorkspacePage } from './SetupWorkspacePage';
 
@@ -12,6 +13,10 @@ export function NewDashOfficesPage() {
       titleKey="pages.newDash.sections.offices.title"
     />
   );
+}
+
+export function NewDashBranchSetupPage() {
+  return <BranchSetupPage />;
 }
 
 export function NewDashTeamPage() {

@@ -21,8 +21,12 @@ export type CompanyLocation = {
   name: string;
   status: string;
   created_at?: string;
+  updated_at?: string;
   city?: string | null;
   state?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  settings_json?: Record<string, unknown> | string | null;
 };
 
 export type PayrollBatch = {
@@ -39,6 +43,55 @@ export type PayrollBatch = {
   updated_at?: string;
   validation_summary_json?: string | null;
   mapping_json?: string | null;
+  mapping?: Record<string, string>;
+  validation_summary?: {
+    total_rows?: number;
+    valid_rows?: number;
+    error_rows?: number;
+    critical_errors?: string[];
+    normalized_rows?: Array<{
+      data: Record<string, unknown>;
+      errors: string[];
+    }>;
+  };
+};
+
+export type PayrollBatchUploadResult = {
+  batch: {
+    id: number;
+    upload_status: string;
+  };
+  headers: string[];
+  sample_rows: Array<Record<string, string>>;
+  mapping_suggestions: Record<
+    string,
+    {
+      source: string;
+      confidence: 'high' | 'medium' | 'low';
+    }
+  >;
+};
+
+export type PayrollBatchDetail = {
+  batch: PayrollBatch;
+  office: {
+    id: number;
+    name: string;
+    office_type: 'main_office' | 'branch';
+    status: string;
+    city?: string | null;
+    state?: string | null;
+  } | null;
+  records: Array<Record<string, unknown>>;
+  headers?: string[];
+  sample_rows?: Array<Record<string, string>>;
+  mapping_suggestions?: Record<
+    string,
+    {
+      source: string;
+      confidence: 'high' | 'medium' | 'low';
+    }
+  >;
 };
 
 export type AuthSession = {
@@ -59,6 +112,21 @@ export type ActorProfile = {
   user_type: 'tenant_owner' | 'branch_admin' | 'employee';
   status: string;
   office_ids: number[];
+};
+
+export type UserSummary = {
+  id: number;
+  tenant_id: string;
+  office_id: number | null;
+  employee_id: string | null;
+  first_name: string;
+  last_name?: string | null;
+  display_name: string;
+  email?: string | null;
+  phone?: string | null;
+  user_type: 'tenant_owner' | 'branch_admin' | 'employee';
+  status: string;
+  created_at?: string;
 };
 
 export type RegistrationResult = {
@@ -115,6 +183,14 @@ type OfficeDetail = {
     Plan,
     'id' | 'plan_code' | 'name' | 'price_cents' | 'currency'
   >;
+  usage_summary?: {
+    employee_count?: number;
+    employee_limit?: number | null;
+    employee_limit_reached?: boolean;
+    monthly_payroll_count?: number;
+    monthly_payroll_limit?: number | null;
+    monthly_payroll_limit_reached?: boolean;
+  };
 };
 
 export type OfficeCreationPayload = {
@@ -143,6 +219,22 @@ export type OfficeCreationResult = {
     status: string;
   } | null;
   plan: Plan;
+};
+
+export type OfficeUpdatePayload = {
+  name?: string;
+  status?: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  timezone?: string | null;
+  payroll_day?: number | null;
+  settings_json?: Record<string, unknown>;
 };
 
 function authHeaders(session: AuthSession) {
@@ -261,6 +353,17 @@ export function getOffice(session: AuthSession, id: number) {
   );
 }
 
+export function updateOffice(session: AuthSession, id: number, payload: OfficeUpdatePayload) {
+  return apiRequest<{ office: CompanyLocation }>(
+    `/offices/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export function createOffice(session: AuthSession, payload: OfficeCreationPayload) {
   return apiRequest<OfficeCreationResult>(
     `/v2/offices?tenant=${encodeURIComponent(session.tenantId)}`,
@@ -272,11 +375,152 @@ export function createOffice(session: AuthSession, payload: OfficeCreationPayloa
   );
 }
 
-export function listPayrollBatches(session: AuthSession) {
+export function listUsers(
+  session: AuthSession,
+  filters?: {
+    office_id?: number;
+    user_type?: 'branch_admin' | 'employee';
+  },
+) {
+  const search = new URLSearchParams({
+    tenant: session.tenantId,
+  });
+
+  if (filters?.office_id) {
+    search.set('office_id', String(filters.office_id));
+  }
+
+  if (filters?.user_type) {
+    search.set('user_type', filters.user_type);
+  }
+
+  return apiRequest<{ users: UserSummary[] }>(`/users?${search.toString()}`, {
+    headers: authHeaders(session),
+  });
+}
+
+export function updateUser(
+  session: AuthSession,
+  id: number,
+  payload: {
+    office_id?: number | null;
+    display_name?: string;
+    email?: string | null;
+    phone?: string | null;
+    status?: string;
+  },
+) {
+  return apiRequest<{ user: UserSummary }>(
+    `/users/${id}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function listPayrollBatches(
+  session: AuthSession,
+  filters?: {
+    office_id?: number;
+  },
+) {
+  const search = new URLSearchParams({
+    tenant: session.tenantId,
+  });
+
+  if (filters?.office_id) {
+    search.set('office_id', String(filters.office_id));
+  }
+
   return apiRequest<{ batches: PayrollBatch[] }>(
-    `/payroll-batches?tenant=${encodeURIComponent(session.tenantId)}`,
+    `/payroll-batches?${search.toString()}`,
     {
       headers: authHeaders(session),
+    },
+  );
+}
+
+export function getPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<PayrollBatchDetail>(
+    `/payroll-batches/${batchId}?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
+export function uploadPayrollBatch(
+  session: AuthSession,
+  payload: {
+    office_id: number;
+    period_month: number;
+    period_year: number;
+    file: File;
+  },
+) {
+  const body = new FormData();
+  body.append('office_id', String(payload.office_id));
+  body.append('period_month', String(payload.period_month));
+  body.append('period_year', String(payload.period_year));
+  body.append('file', payload.file);
+
+  return apiRequest<PayrollBatchUploadResult>(
+    `/payroll-batches?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+      },
+      body,
+    },
+  );
+}
+
+export function savePayrollMapping(
+  session: AuthSession,
+  batchId: number,
+  mapping: Record<string, string>,
+) {
+  return apiRequest<{
+    batch: {
+      id: number;
+      upload_status: string;
+      mapping: Record<string, string>;
+    };
+  }>(
+    `/payroll-batches/${batchId}/mapping?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({ mapping }),
+    },
+  );
+}
+
+export function validatePayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<{
+    batch: {
+      id: number;
+      upload_status: string;
+    };
+    summary: {
+      total_rows: number;
+      valid_rows: number;
+      error_rows: number;
+      critical_errors: string[];
+      normalized_rows: Array<{
+        data: Record<string, unknown>;
+        errors: string[];
+      }>;
+    };
+  }>(
+    `/payroll-batches/${batchId}/validate?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
     },
   );
 }

@@ -1,4 +1,7 @@
 .new-primary-layout {
+  --new-layout-rail-width: 1280px;
+  --new-layout-rail-gutter: 28px;
+  --new-layout-main-padding: 32px;
   min-height: 100vh;
   background:
     radial-gradient(circle at top center, rgba(169, 241, 215, 0.18), transparent 24%),
@@ -10,7 +13,7 @@
   position: relative;
   width: 100%;
   margin: 0 auto;
-  padding: 84px 32px 0;
+  padding: 84px var(--new-layout-main-padding) 0;
 }
 
 .new-primary-layout-main::before {
@@ -23,24 +26,32 @@
 }
 
 .new-primary-layout-page-header {
-  width: min(100%, 1280px);
+  width: min(100%, var(--new-layout-rail-width));
   margin: 20px auto 28px;
+  padding: 0 var(--new-layout-rail-gutter);
+  box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
 .new-primary-layout-content {
-  width: min(100%, 1280px);
+  width: min(100%, var(--new-layout-rail-width));
   margin-left: auto;
   margin-right: auto;
-  padding: 0 0 28px;
+  padding: 0 var(--new-layout-rail-gutter) 28px;
+  box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
 @media (max-width: 760px) {
+  .new-primary-layout {
+    --new-layout-rail-gutter: 18px;
+    --new-layout-main-padding: 24px;
+  }
+
   .new-primary-layout-main {
-    padding: 72px 24px 0;
+    padding-top: 72px;
   }
 
   .new-primary-layout-page-header {
@@ -49,8 +60,12 @@
 }
 
 @media (max-width: 520px) {
+  .new-primary-layout {
+    --new-layout-main-padding: 20px;
+  }
+
   .new-primary-layout-main {
-    padding: 72px 20px 0;
+    padding-top: 72px;
   }
 
   .new-primary-layout-page-header {

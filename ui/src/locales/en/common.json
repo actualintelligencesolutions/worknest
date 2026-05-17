@@ -300,6 +300,110 @@
           }
         }
       },
+      "branchInitialization": {
+        "superAdminToolbar": "Branch portfolio and blockers",
+        "branchOwnerToolbar": "Branch initialization",
+        "superAdminTitle": "Branch initialization portfolio",
+        "superAdminDescription": "Track every branch setup, see what is blocked, and jump straight into the next operational step.",
+        "branchOwnerTitle": "Your assigned branches",
+        "branchOwnerDescription": "Complete the remaining branch initialization steps so payroll can begin cleanly.",
+        "workspaceTitle": "Branch setup workspace",
+        "labels": {
+          "unassigned": "Unassigned"
+        },
+        "summaryCards": {
+          "unassigned": "Unassigned branches",
+          "blocked": "Blocked branches",
+          "initialized": "Initialized branches"
+        },
+        "status": {
+          "unassigned": "Unassigned",
+          "assignedNotStarted": "Pending format upload",
+          "formatUploaded": "Pending header confirmation",
+          "headersConfirmed": "Pending payslip template",
+          "templateSelected": "Pending ready mark",
+          "initialized": "Ready",
+          "blocked": "Blocked"
+        },
+        "summary": {
+          "unassigned": "Assign a site owner before this branch can move into payroll initialization.",
+          "assignedNotStarted": "The branch has an owner, but the paysheet format still needs to be uploaded.",
+          "formatUploaded": "A file has been uploaded. Confirm the detected headers and mapping next.",
+          "headersConfirmed": "Header mapping is in place. Choose the payslip template to continue.",
+          "templateSelected": "A payslip template is selected. Mark the branch ready to finish setup.",
+          "initialized": "This branch is ready for payroll operations.",
+          "blocked": "The uploaded format has validation issues that need review before setup can continue."
+        },
+        "actions": {
+          "assignOwner": "Assign or change site owner",
+          "uploadFormat": "Upload format",
+          "uploading": "Uploading...",
+          "confirmHeaders": "Save mapping and validate",
+          "confirmingHeaders": "Validating mapping...",
+          "selectTemplate": "Select payslip template",
+          "markReady": "Mark branch ready",
+          "markingReady": "Marking ready...",
+          "openBranch": "Continue to dashboard",
+          "reviewIssues": "Review issues",
+          "resumeInitialization": "Resume initialization",
+          "openBranchSetup": "Open branch setup"
+        },
+        "card": {
+          "owner": "Site owner",
+          "lastActivity": "Last activity",
+          "nextStep": "Next step"
+        },
+        "overview": {
+          "title": "Initialization overview",
+          "owner": "Assigned site owner",
+          "nextAction": "Next action",
+          "lastActivity": "Last activity"
+        },
+        "ownerAssignment": {
+          "title": "Site owner handover",
+          "description": "Assign a branch admin who will own the remaining initialization steps for this branch.",
+          "placeholder": "Choose a branch admin",
+          "action": "Assign site owner"
+        },
+        "steps": {
+          "upload": {
+            "title": "Upload paysheet format",
+            "description": "Upload the branch’s sample or first payroll file so Worknest can detect the structure.",
+            "periodMonth": "Payroll month",
+            "periodYear": "Payroll year",
+            "file": "CSV or XLSX file"
+          },
+          "mapping": {
+            "title": "Confirm headers and mapping",
+            "description": "Match the incoming headers to the required payroll fields and validate the format.",
+            "placeholder": "Choose a header",
+            "empty": "Upload a payroll format first to review detected headers.",
+            "errorSummary": "{{count}} row issues need review before this branch can move forward."
+          },
+          "template": {
+            "title": "Choose payslip template",
+            "description": "Pick the payslip format this branch will use going forward."
+          },
+          "ready": {
+            "title": "Mark branch ready",
+            "description": "Once the upload, mapping, and template are complete, mark this branch ready for handover.",
+            "uploaded": "Paysheet format uploaded",
+            "headers": "Header mapping confirmed",
+            "template": "Payslip template selected"
+          }
+        },
+        "errors": {
+          "fileRequired": "Choose a CSV or XLSX file before uploading.",
+          "upload": "We could not upload the paysheet format right now.",
+          "mapping": "We could not save the header mapping right now.",
+          "mappingBlocked": "Validation found issues in the uploaded format. Review the branch file before marking it ready.",
+          "template": "We could not save the payslip template selection.",
+          "ready": "We could not mark this branch ready yet.",
+          "owner": "Choose a branch admin to assign as site owner.",
+          "noBatch": "Upload a branch format before confirming headers.",
+          "noBranch": "This branch setup workspace could not be loaded."
+        }
+      },
       "brandNew": {
         "title": "This workspace needs setup",
         "description": "A brand new company workspace should move through setup before the broader dashboard navigation appears. Continue in the setup workspace to configure office, plan, and payroll readiness.",

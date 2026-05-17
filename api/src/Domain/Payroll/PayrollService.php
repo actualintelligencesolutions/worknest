@@ -96,6 +96,10 @@ final class PayrollService
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
         $office = $this->officeRepository->findById((int) $batch['office_id'], $tenantId);
         $records = $this->payrollRecordRepository->listByBatch($batchId, $tenantId);
+        $parsed = $this->parseFile(
+            $this->fileStorage->absolutePath((string) $batch['source_file_path']),
+            (string) $batch['source_file_name']
+        );
 
         return [
             'batch' => $this->serializeBatch($batch),
@@ -108,6 +112,9 @@ final class PayrollService
                 'state' => $office['state'] ?? null,
             ],
             'records' => array_map(fn (array $record): array => $this->serializeRecord($record), $records),
+            'headers' => $parsed['headers'],
+            'sample_rows' => array_slice($parsed['rows'], 0, 3),
+            'mapping_suggestions' => $this->mappingSuggestions($parsed['headers']),
         ];
     }
 

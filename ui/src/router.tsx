@@ -4,6 +4,7 @@ import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { NewDashPage } from './pages/NewDash';
 import {
+  NewDashBranchSetupPage,
   NewDashHelpPage,
   NewDashOfficesPage,
   NewDashProfilePage,
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
   {
     path: '/new-dash/offices',
     element: <NewDashOfficesPage />,
+  },
+  {
+    path: '/new-dash/branches/:officeId/setup',
+    element: <NewDashBranchSetupPage />,
   },
   {
     path: '/new-dash/team',
