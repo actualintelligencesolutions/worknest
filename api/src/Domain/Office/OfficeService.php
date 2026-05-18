@@ -87,6 +87,27 @@ final class OfficeService
         ];
     }
 
+    public function getSitePortal(string $tenantId, string $officeCode): array
+    {
+        $office = $this->officeRepository->findByCode($tenantId, $officeCode);
+        if ($office === null) {
+            throw new NotFoundException('Site portal not found.');
+        }
+
+        return [
+            'site' => [
+                'id' => (int) $office['id'],
+                'tenant_id' => $office['tenant_id'],
+                'office_code' => $office['office_code'],
+                'name' => $office['name'],
+                'office_type' => $office['office_type'],
+                'status' => $office['status'],
+                'city' => $office['city'] ?? null,
+                'state' => $office['state'] ?? null,
+            ],
+        ];
+    }
+
     public function createMainOffice(string $tenantId, array $actor, array $payload): array
     {
         if ($this->officeRepository->findMainOffice($tenantId) !== null) {

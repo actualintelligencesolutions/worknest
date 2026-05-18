@@ -1,4 +1,5 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
+import { EmployeeLoginPage, EmployeePortalPage } from './pages/EmployeePortal';
 import { HomePage } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
@@ -24,8 +25,20 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
+    path: '/login/:tenantId',
+    element: <LoginPage />,
+  },
+  {
     path: '/register',
     element: <RegisterPage />,
+  },
+  {
+    path: '/site/:tenantId/:officeCode/login',
+    element: <EmployeeLoginPage />,
+  },
+  {
+    path: '/site/:tenantId/:officeCode',
+    element: <EmployeePortalPage />,
   },
   {
     path: '/new-dash',

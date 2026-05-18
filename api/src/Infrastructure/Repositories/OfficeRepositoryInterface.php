@@ -10,6 +10,8 @@ interface OfficeRepositoryInterface
 
     public function findById(int $officeId, string $tenantId): ?array;
 
+    public function findByCode(string $tenantId, string $officeCode): ?array;
+
     public function findMainOffice(string $tenantId): ?array;
 
     public function create(array $payload): int;

@@ -1,39 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { PageHeader } from '../../components/organisms/PageHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { NewPrimaryLayout } from '../../layouts/NewPrimary';
+import setupIllustration from '../../assets/images/Setup.png';
 import { loadHrSession } from '../../services/hrSession';
 import {
+  buildSitePortalUrl,
+  buildTenantLoginUrl,
   getCurrentActor,
   getOffice,
-  getPayrollBatch,
   listPayrollBatches,
   listUsers,
   updateOffice,
   updateUser,
   uploadPayrollBatch,
-  savePayrollMapping,
-  validatePayrollBatch,
   type PayrollBatch,
 } from '../../services/worknestApi';
 import {
   branchPayslipTemplates,
   computeBranchInitializationState,
   parseBranchSettings,
+  type BranchInitializationState,
 } from './branchInitialization';
+import './setup.scss';
 import './branchSetup.scss';
 
-const requiredMappingFields = [
-  'employee_id',
-  'employee_name',
-  'gross_pay',
-  'total_deductions',
-  'net_pay',
-] as const;
+type BranchWizardStep = 'owner' | 'upload' | 'review' | 'template' | 'ready' | 'complete';
 
 function sortBatches(batches: PayrollBatch[]) {
   return [...batches].sort((a, b) => {
@@ -43,10 +39,61 @@ function sortBatches(batches: PayrollBatch[]) {
   });
 }
 
+function formatShortDate(value: string | null) {
+  if (!value) {
+    return 'No recent activity';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function deriveWizardStep(branchState: BranchInitializationState, isTenantOwner: boolean) {
+  if (branchState.isReadyMarked) {
+    return 'complete';
+  }
+
+  if (!branchState.owner && isTenantOwner) {
+    return 'owner';
+  }
+
+  if (!branchState.latestBatch) {
+    return 'upload';
+  }
+
+  if (branchState.isBlocked) {
+    return 'review';
+  }
+
+  if (!branchState.hasTemplate) {
+    return 'template';
+  }
+
+  return 'ready';
+}
+
+function visibleWizardSteps(branchState: BranchInitializationState, isTenantOwner: boolean) {
+  const steps: BranchWizardStep[] = [];
+
+  if (!branchState.owner && isTenantOwner) {
+    steps.push('owner');
+  }
+
+  steps.push('upload', 'review', 'template', 'ready');
+
+  if (branchState.isReadyMarked) {
+    steps.push('complete');
+  }
+
+  return steps;
+}
+
 export function BranchSetupPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { officeId: officeIdParam } = useParams();
   const session = loadHrSession();
   const officeId = Number(officeIdParam);
@@ -56,10 +103,12 @@ export function BranchSetupPage() {
   const [periodMonth, setPeriodMonth] = useState(() => new Date().getMonth() + 1);
   const [periodYear, setPeriodYear] = useState(() => new Date().getFullYear());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
   const [selectedOwnerId, setSelectedOwnerId] = useState<number | null>(null);
-  const [currentBatchId, setCurrentBatchId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
+  const [currentStep, setCurrentStep] = useState<BranchWizardStep | null>(null);
+  const [showConfiguredSettings, setShowConfiguredSettings] = useState(false);
+  const [urlFeedback, setUrlFeedback] = useState<string | null>(null);
 
   const actorQuery = useQuery({
     queryKey: ['branch-setup-actor', session?.tenantId],
@@ -94,13 +143,6 @@ export function BranchSetupPage() {
     () => sortBatches(payrollBatchesQuery.data?.batches ?? [])[0] ?? null,
     [payrollBatchesQuery.data?.batches],
   );
-  const activeBatchId = currentBatchId ?? latestBatch?.id ?? null;
-
-  const batchDetailQuery = useQuery({
-    queryKey: ['branch-setup-batch-detail', session?.tenantId, activeBatchId],
-    queryFn: () => getPayrollBatch(session!, activeBatchId!),
-    enabled: Boolean(session && activeBatchId),
-  });
 
   const currentOwner =
     adminFromOffice && adminFromOffice.id
@@ -115,47 +157,85 @@ export function BranchSetupPage() {
     return computeBranchInitializationState({
       branch: office,
       owner: currentOwner,
-      latestBatch: latestBatch
-        ? {
-            ...latestBatch,
-            validation_summary:
-              batchDetailQuery.data?.batch.validation_summary ?? latestBatch.validation_summary,
-          }
-        : null,
+      latestBatch,
     });
-  }, [batchDetailQuery.data?.batch.validation_summary, currentOwner, latestBatch, office]);
+  }, [currentOwner, latestBatch, office]);
 
   const officeSettings = useMemo(
     () => parseBranchSettings(office?.settings_json),
     [office?.settings_json],
   );
 
-  useEffect(() => {
-    const detail = batchDetailQuery.data;
-    if (!detail) {
-      return;
-    }
+  const isTenantOwner = actor?.user_type === 'tenant_owner';
+  const isConfigured = branchState?.status === 'initialized' || showConfiguredSettings;
+  const latestValidationSummary = latestBatch?.validation_summary;
+  const latestStoredCount = latestValidationSummary?.valid_rows ?? lastUploadStoredCount ?? 0;
+  const latestErrorCount = latestValidationSummary?.error_rows ?? 0;
+  const selectedTemplateKey = officeSettings.payslip_template_key ?? null;
+  const wizardTemplateOptions = branchPayslipTemplates.slice(0, 1);
+  const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
+  const sitePortalUrl = office?.office_code ? buildSitePortalUrl(office.tenant_id, office.office_code) : '';
 
-    if (Object.keys(mapping).length === 0) {
-      const existingMapping = detail.batch.mapping ?? {};
-      if (Object.keys(existingMapping).length > 0) {
-        setMapping(existingMapping);
-        return;
-      }
+  const wizardSteps = useMemo(
+    () => (branchState ? visibleWizardSteps(branchState, isTenantOwner) : []),
+    [branchState, isTenantOwner],
+  );
 
-      const suggestions = detail.mapping_suggestions ?? {};
-      const suggestionMapping = Object.fromEntries(
-        Object.entries(suggestions).map(([field, value]) => [field, value.source]),
-      );
-      setMapping(suggestionMapping);
-    }
-  }, [batchDetailQuery.data, mapping]);
+  const derivedStep = useMemo(
+    () => (branchState ? deriveWizardStep(branchState, isTenantOwner) : null),
+    [branchState, isTenantOwner],
+  );
 
   useEffect(() => {
     if (currentOwner?.id) {
       setSelectedOwnerId(currentOwner.id);
     }
   }, [currentOwner?.id]);
+
+  useEffect(() => {
+    if (!branchState || isConfigured || !derivedStep) {
+      setCurrentStep(null);
+      return;
+    }
+
+    setCurrentStep((existing) => {
+      if (!existing) {
+        return derivedStep;
+      }
+
+      if (branchState.isBlocked) {
+        return 'review';
+      }
+
+      if (existing === 'owner' && branchState.owner) {
+        return 'upload';
+      }
+
+      if (existing === 'upload' && branchState.latestBatch) {
+        return branchState.isBlocked ? 'review' : 'review';
+      }
+
+      if (existing === 'template' && branchState.hasTemplate) {
+        return 'ready';
+      }
+
+      if (existing === 'ready' && branchState.isReadyMarked) {
+        return 'complete';
+      }
+
+      if (!wizardSteps.includes(existing)) {
+        return derivedStep;
+      }
+
+      return existing;
+    });
+  }, [branchState, derivedStep, isConfigured, wizardSteps]);
+
+  useEffect(() => {
+    if (!branchState?.isReadyMarked) {
+      setShowConfiguredSettings(false);
+    }
+  }, [branchState?.isReadyMarked]);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -171,46 +251,23 @@ export function BranchSetupPage() {
       });
     },
     onSuccess: async (result) => {
-      setCurrentBatchId(result.batch.id);
-      setMapping(
-        Object.fromEntries(
-          Object.entries(result.mapping_suggestions).map(([field, value]) => [field, value.source]),
-        ),
-      );
       setErrorMessage(null);
+      setLastUploadStoredCount(result.records_created);
+      setSelectedFile(null);
+      setCurrentStep('review');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
       ]);
     },
-    onError: (error) => {
+    onError: async (error) => {
+      setLastUploadStoredCount(null);
       setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.upload'));
-    },
-  });
-
-  const mappingMutation = useMutation({
-    mutationFn: async () => {
-      if (!session || !activeBatchId) {
-        throw new Error(t('pages.newDash.branchInitialization.errors.noBatch'));
-      }
-
-      await savePayrollMapping(session, activeBatchId, mapping);
-      return validatePayrollBatch(session, activeBatchId);
-    },
-    onSuccess: async (result) => {
-      setErrorMessage(
-        result.summary.error_rows > 0
-          ? t('pages.newDash.branchInitialization.errors.mappingBlocked')
-          : null,
-      );
+      setCurrentStep('review');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['branch-setup-batch-detail', session?.tenantId, activeBatchId] }),
         queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
       ]);
-    },
-    onError: (error) => {
-      setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.mapping'));
     },
   });
 
@@ -233,6 +290,9 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
+      if (!isConfigured) {
+        setCurrentStep('ready');
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-locations', session?.tenantId] }),
@@ -261,6 +321,7 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
+      setCurrentStep('complete');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-locations', session?.tenantId] }),
@@ -283,6 +344,7 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
+      setCurrentStep('upload');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-users', session?.tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-users', session?.tenantId] }),
@@ -298,95 +360,490 @@ export function BranchSetupPage() {
     (actorQuery.isLoading || officeQuery.isLoading || payrollBatchesQuery.isLoading || usersQuery.isLoading);
   const hasError = actorQuery.error || officeQuery.error || payrollBatchesQuery.error || usersQuery.error;
   const statusClassName = branchState?.status ?? 'assigned_not_started';
-  const selectedTemplateKey = officeSettings.payslip_template_key ?? null;
-  const headers = batchDetailQuery.data?.headers ?? [];
-  const sampleRows = batchDetailQuery.data?.sample_rows ?? [];
-  const latestValidationSummary = batchDetailQuery.data?.batch.validation_summary ?? latestBatch?.validation_summary;
 
-  const toolbar = branchState
-    ? (
-        <p className="new-dash-page-header-note">
-          {t(branchState.statusLabelKey)}
-        </p>
-      )
-    : undefined;
+  function wizardTitle(step: BranchWizardStep) {
+    switch (step) {
+      case 'owner':
+        return t('pages.newDash.branchInitialization.ownerAssignment.title');
+      case 'upload':
+        return t('pages.newDash.branchInitialization.steps.upload.title');
+      case 'review':
+        return t('pages.newDash.branchInitialization.steps.mapping.title');
+      case 'template':
+        return t('pages.newDash.branchInitialization.steps.template.title');
+      case 'ready':
+        return t('pages.newDash.branchInitialization.steps.ready.title');
+      case 'complete':
+        return 'Branch setup complete';
+    }
+  }
 
-  return (
-    <NewPrimaryLayout
-      onLogout={undefined}
-      pageHeader={
-        <PageHeader
-          title={office?.name ?? t('pages.newDash.branchInitialization.workspaceTitle')}
-          toolbar={toolbar}
-        />
-      }
-    >
-      <section className="new-dash-page">
-        {!session ? (
-          <div className="new-dash-panel">
-            <div className="new-dash-panel-head">
-              <h2>{t('pages.newDash.authRequired.title')}</h2>
+  function wizardDescription(step: BranchWizardStep) {
+    switch (step) {
+      case 'owner':
+        return t('pages.newDash.branchInitialization.ownerAssignment.description');
+      case 'upload':
+        return t('pages.newDash.branchInitialization.steps.upload.description');
+      case 'review':
+        return t('pages.newDash.branchInitialization.steps.mapping.description');
+      case 'template':
+        return t('pages.newDash.branchInitialization.steps.template.description');
+      case 'ready':
+        return t('pages.newDash.branchInitialization.steps.ready.description');
+      case 'complete':
+        return 'This branch is configured and ready to move into day-to-day operations.';
+    }
+  }
+
+  function canContinue(step: BranchWizardStep) {
+    if (!branchState) {
+      return false;
+    }
+
+    switch (step) {
+      case 'owner':
+        return Boolean(selectedOwnerId) && !assignOwnerMutation.isPending;
+      case 'upload':
+        return Boolean(selectedFile) && !uploadMutation.isPending;
+      case 'review':
+        return branchState.hasUploadedFormat && !branchState.isBlocked;
+      case 'template':
+        return Boolean(selectedTemplateKey) && !templateMutation.isPending;
+      case 'ready':
+        return branchState.hasUploadedFormat && !branchState.isBlocked && branchState.hasTemplate && !readyMutation.isPending;
+      case 'complete':
+        return true;
+    }
+  }
+
+  function handleWizardBack() {
+    if (!currentStep) {
+      return;
+    }
+
+    const stepIndex = wizardSteps.indexOf(currentStep);
+    const previousStep = stepIndex > 0 ? wizardSteps[stepIndex - 1] : null;
+    if (previousStep) {
+      setErrorMessage(null);
+      setCurrentStep(previousStep);
+    }
+  }
+
+  function handleWizardContinue() {
+    if (!branchState || !currentStep) {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    if (currentStep === 'owner') {
+      void assignOwnerMutation.mutateAsync();
+      return;
+    }
+
+    if (currentStep === 'upload') {
+      void uploadMutation.mutateAsync();
+      return;
+    }
+
+    if (currentStep === 'review') {
+      setCurrentStep('template');
+      return;
+    }
+
+    if (currentStep === 'template') {
+      setCurrentStep('ready');
+      return;
+    }
+
+    if (currentStep === 'ready') {
+      void readyMutation.mutateAsync();
+      return;
+    }
+  }
+
+  function renderWizardBody(step: BranchWizardStep) {
+    if (!branchState) {
+      return null;
+    }
+
+    if (step === 'owner') {
+      return (
+        <div className="new-dash-setup-form-grid">
+          <label className="new-dash-setup-form-full">
+            <span>{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</span>
+            <select
+              className="branch-setup-wizard-select"
+              onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
+              value={selectedOwnerId ?? ''}
+            >
+              <option value="">{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</option>
+              {branchAdminOptions.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      );
+    }
+
+    if (step === 'upload') {
+      return (
+        <div className="new-dash-setup-form-grid">
+          <label>
+            <span>{t('pages.newDash.branchInitialization.steps.upload.periodMonth')}</span>
+            <select
+              className="branch-setup-wizard-select"
+              onChange={(event) => setPeriodMonth(Number(event.target.value))}
+              value={periodMonth}
+            >
+              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>{t('pages.newDash.branchInitialization.steps.upload.periodYear')}</span>
+            <input
+              onChange={(event) => setPeriodYear(Number(event.target.value))}
+              type="number"
+              value={periodYear}
+            />
+          </label>
+
+          <label className="new-dash-setup-form-full">
+            <span>{t('pages.newDash.branchInitialization.steps.upload.file')}</span>
+            <input
+              className="branch-setup-wizard-file"
+              accept=".csv,.xlsx"
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              type="file"
+            />
+          </label>
+        </div>
+      );
+    }
+
+    if (step === 'review') {
+      return (
+        <div className="branch-setup-wizard-review">
+          <div className="branch-setup-import-summary">
+            <div className="branch-setup-import-summary-item">
+              <span>Latest batch</span>
+              <strong>{latestBatch?.source_file_name ?? 'Awaiting upload'}</strong>
             </div>
-            <p className="new-dash-panel-copy">{t('pages.newDash.authRequired.description')}</p>
-            <div className="new-dash-panel-actions">
-              <Button as={Link} to="/login">
-                {t('pages.newDash.authRequired.action')}
-              </Button>
+            <div className="branch-setup-import-summary-item">
+              <span>Records stored</span>
+              <strong>{latestStoredCount}</strong>
+            </div>
+            <div className="branch-setup-import-summary-item">
+              <span>Issues found</span>
+              <strong>{latestErrorCount}</strong>
             </div>
           </div>
-        ) : isLoading ? (
-          <div className="new-dash-panel">
-            <div className="new-dash-panel-head">
-              <h2>{t('pages.newDash.loading.title')}</h2>
-            </div>
-            <p className="new-dash-panel-copy">{t('common.loading')}</p>
-          </div>
-        ) : hasError || !office || !branchState ? (
-          <div className="new-dash-panel">
-            <div className="new-dash-panel-head">
-              <h2>{t('pages.newDash.error.title')}</h2>
-            </div>
-            <p className="new-dash-panel-copy">
-              {(hasError as Error | null)?.message ?? t('pages.newDash.branchInitialization.errors.noBranch')}
+          {latestBatch?.upload_status === 'processed' ? (
+            <p className="branch-setup-inline-success">
+              Worknest accepted this paysheet and stored {latestStoredCount} payroll record{latestStoredCount === 1 ? '' : 's'} for this branch.
             </p>
+          ) : null}
+          {branchState.isBlocked ? (
+            <p className="branch-setup-inline-warning">
+              {latestValidationSummary?.critical_errors?.[0] ??
+                'This upload needs attention before the branch can move forward.'}
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (step === 'template') {
+      return (
+        <div className="branch-setup-template-wizard-stack" role="radiogroup" aria-label="Payslip template">
+          {wizardTemplateOptions.map((template) => {
+            const isSelected = selectedTemplateKey === template.key;
+
+            return (
+              <label
+                className={
+                  isSelected
+                    ? 'branch-setup-template-wizard-option is-selected'
+                    : 'branch-setup-template-wizard-option'
+                }
+                key={template.key}
+              >
+                <input
+                  checked={isSelected}
+                  name="branch-template-choice"
+                  onChange={() => {
+                    setErrorMessage(null);
+                    void templateMutation.mutateAsync(template.key);
+                  }}
+                  type="radio"
+                  value={template.key}
+                />
+                <div className="branch-setup-template-wizard-copy">
+                  <strong>{template.name}</strong>
+                  <p>{template.description}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (step === 'ready') {
+      return (
+        <div className="branch-setup-ready-checklist">
+          <div className={branchState.hasUploadedFormat ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
+            {t('pages.newDash.branchInitialization.steps.ready.uploaded')}
           </div>
-        ) : (
+          <div className={branchState.hasConfirmedHeaders ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
+            {t('pages.newDash.branchInitialization.steps.ready.headers')}
+          </div>
+          <div className={branchState.hasTemplate ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
+            {t('pages.newDash.branchInitialization.steps.ready.template')}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="new-dash-setup-complete">
+        <div className="new-dash-setup-complete-badge">Branch ready</div>
+        <h3>{office?.name ?? 'Branch setup complete'}</h3>
+        <p>This branch has completed setup and can now move into ongoing payroll configuration and day-to-day management.</p>
+        <div className="new-dash-setup-summary">
+          <div>
+            <span>Site owner</span>
+            <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+          </div>
+          <div>
+            <span>Payslip template</span>
+            <strong>{officeSettings.payslip_template_name ?? 'Not selected'}</strong>
+          </div>
+          <div>
+            <span>Latest upload</span>
+            <strong>{latestBatch?.source_file_name ?? 'No upload yet'}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderWizard() {
+    if (!branchState || !currentStep) {
+      return null;
+    }
+
+    const currentStepIndex = Math.max(wizardSteps.indexOf(currentStep), 0);
+    const progressSteps = wizardSteps.filter((step) => step !== 'complete');
+    const progressTotal = Math.max(progressSteps.length, 1);
+    const progressCurrent = Math.min(currentStepIndex + 1, progressTotal);
+    const canGoBack = currentStepIndex > 0 && currentStep !== 'complete';
+
+    return (
+      <NewPrimaryLayout onLogout={undefined} headerVariant="quiet">
+        <section className="new-dash-setup-shell branch-setup-wizard-shell">
+          <div className="new-dash-setup-card branch-setup-wizard-card">
+            <div className="new-dash-setup-visual branch-setup-wizard-visual">
+              <div className="new-dash-setup-progress">
+                <span>{`Branch setup ${progressCurrent}/${progressTotal}`}</span>
+                <div className="new-dash-setup-progress-dots" aria-hidden="true">
+                  {progressSteps.map((step, index) => (
+                    <span
+                      className={
+                        index <= currentStepIndex
+                          ? 'new-dash-setup-progress-dot is-active'
+                          : 'new-dash-setup-progress-dot'
+                      }
+                      key={step}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="new-dash-setup-visual-copy">
+                <p className="new-dash-setup-kicker">{t(branchState.statusLabelKey)}</p>
+                <h1>{office?.name ?? t('pages.newDash.branchInitialization.workspaceTitle')}</h1>
+                <p>{t(branchState.summaryKey)}</p>
+              </div>
+
+              <div className="branch-setup-wizard-context">
+                <div>
+                  <span>Owner</span>
+                  <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+                </div>
+                <div>
+                  <span>Latest activity</span>
+                  <strong>{formatShortDate(branchState.lastActivityAt)}</strong>
+                </div>
+                <div>
+                  <span>Next action</span>
+                  <strong>{t(branchState.nextActionLabelKey)}</strong>
+                </div>
+              </div>
+
+              <div className="branch-setup-wizard-illustration" aria-hidden="true">
+                <img alt="" className="branch-setup-wizard-illustration-image" src={setupIllustration} />
+              </div>
+            </div>
+
+            <div className="new-dash-setup-content">
+              <div className="new-dash-setup-step-head">
+                <h2>{wizardTitle(currentStep)}</h2>
+                <p className="new-dash-setup-copy">{wizardDescription(currentStep)}</p>
+              </div>
+
+              {renderWizardBody(currentStep)}
+
+              {errorMessage ? <p className="new-dash-setup-error">{errorMessage}</p> : null}
+
+              <div className="new-dash-setup-actions">
+                {currentStep === 'complete' ? (
+                  <Button
+                    onClick={() => {
+                      setShowConfiguredSettings(true);
+                    }}
+                    type="button"
+                  >
+                    Open branch settings
+                  </Button>
+                ) : (
+                  <>
+                    <button
+                      className="new-dash-setup-back"
+                      disabled={!canGoBack}
+                      onClick={handleWizardBack}
+                      type="button"
+                    >
+                      Back
+                    </button>
+                    <Button
+                      disabled={!canContinue(currentStep)}
+                      onClick={handleWizardContinue}
+                      type="button"
+                    >
+                      {currentStep === 'ready'
+                        ? readyMutation.isPending
+                          ? t('pages.newDash.branchInitialization.actions.markingReady')
+                          : t('pages.newDash.branchInitialization.actions.markReady')
+                        : currentStep === 'upload'
+                          ? uploadMutation.isPending
+                            ? t('pages.newDash.branchInitialization.actions.uploading')
+                            : 'Continue'
+                          : 'Continue'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      </NewPrimaryLayout>
+    );
+  }
+
+  function renderConfiguredSettings() {
+    const toolbar = branchState
+      ? <p className="new-dash-page-header-note">General branch settings</p>
+      : undefined;
+
+    return (
+      <NewPrimaryLayout
+        onLogout={undefined}
+        pageHeader={
+          <PageHeader
+            title={office?.name ?? t('pages.newDash.branchInitialization.workspaceTitle')}
+            toolbar={toolbar}
+          />
+        }
+      >
+        <section className="new-dash-page">
           <div className="new-dash-stack">
-            <section className="new-dash-panel branch-setup-overview">
+            <section className="new-dash-panel branch-settings-hero">
               <div className="new-dash-panel-head">
                 <div>
-                  <h2>{t('pages.newDash.branchInitialization.overview.title')}</h2>
-                  <p className="new-dash-panel-copy">{t(branchState.summaryKey)}</p>
+                  <h2>Branch configuration</h2>
+                  <p className="new-dash-panel-copy">
+                    This branch is already initialized. Update the operational settings below when ownership, template, or payroll uploads change.
+                  </p>
                 </div>
                 <span className={`new-dash-step-status ${statusClassName}`}>
-                  {t(branchState.statusLabelKey)}
+                  {t(branchState?.statusLabelKey ?? '')}
                 </span>
               </div>
 
               <div className="branch-setup-overview-grid">
                 <div className="branch-setup-overview-item">
-                  <span>{t('pages.newDash.branchInitialization.overview.owner')}</span>
+                  <span>Site owner</span>
                   <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
                 </div>
                 <div className="branch-setup-overview-item">
-                  <span>{t('pages.newDash.branchInitialization.overview.nextAction')}</span>
-                  <strong>{t(branchState.nextActionLabelKey)}</strong>
+                  <span>Latest upload</span>
+                  <strong>{latestBatch?.source_file_name ?? 'No upload yet'}</strong>
                 </div>
                 <div className="branch-setup-overview-item">
-                  <span>{t('pages.newDash.branchInitialization.overview.lastActivity')}</span>
-                  <strong>{branchState.lastActivityAt ? new Date(branchState.lastActivityAt).toLocaleDateString() : t('pages.newDash.workspace.fallback')}</strong>
+                  <span>Last activity</span>
+                  <strong>{formatShortDate(branchState?.lastActivityAt ?? null)}</strong>
                 </div>
               </div>
             </section>
 
-            {actor?.user_type === 'tenant_owner' ? (
+            <section className="new-dash-panel branch-setup-links-panel">
+              <div className="new-dash-panel-head">
+                <h2>Shareable access links</h2>
+              </div>
+              <p className="new-dash-panel-copy">Use these direct URLs so admins and employees land in the right workspace or site without typing the company slug.</p>
+              <div className="branch-setup-link-grid">
+                <label className="branch-setup-link-field">
+                  <span>Company admin login</span>
+                  <input readOnly type="text" value={adminLoginUrl} />
+                </label>
+                <label className="branch-setup-link-field">
+                  <span>Site employee portal</span>
+                  <input readOnly type="text" value={sitePortalUrl} />
+                </label>
+              </div>
+              <div className="new-dash-panel-actions">
+                <Button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(adminLoginUrl);
+                    setUrlFeedback('Company login URL copied.');
+                  }}
+                  type="button"
+                  variant="secondary"
+                >
+                  Copy company login URL
+                </Button>
+                <Button
+                  disabled={sitePortalUrl === ''}
+                  onClick={() => {
+                    if (!sitePortalUrl) {
+                      return;
+                    }
+                    void navigator.clipboard.writeText(sitePortalUrl);
+                    setUrlFeedback('Site employee portal URL copied.');
+                  }}
+                  type="button"
+                >
+                  Copy site portal URL
+                </Button>
+              </div>
+              {urlFeedback ? <p className="new-dash-panel-note">{urlFeedback}</p> : null}
+            </section>
+
+            {isTenantOwner ? (
               <section className="new-dash-panel branch-setup-owner-panel">
                 <div className="new-dash-panel-head">
                   <h2>{t('pages.newDash.branchInitialization.ownerAssignment.title')}</h2>
                 </div>
-                <p className="new-dash-panel-copy">
-                  {t('pages.newDash.branchInitialization.ownerAssignment.description')}
-                </p>
+                <p className="new-dash-panel-copy">Change who owns this branch configuration and payroll coordination.</p>
                 <div className="branch-setup-owner-actions">
                   <select
                     onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
@@ -406,7 +863,7 @@ export function BranchSetupPage() {
                     }}
                     type="button"
                   >
-                    {t('pages.newDash.branchInitialization.ownerAssignment.action')}
+                    {t('pages.newDash.branchInitialization.actions.assignOwner')}
                   </Button>
                 </div>
               </section>
@@ -415,11 +872,64 @@ export function BranchSetupPage() {
             <div className="branch-setup-step-grid">
               <section className="new-dash-panel branch-setup-step-panel">
                 <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.steps.upload.title')}</h2>
+                  <h2>{t('pages.newDash.branchInitialization.steps.template.title')}</h2>
                 </div>
-                <p className="new-dash-panel-copy">
-                  {t('pages.newDash.branchInitialization.steps.upload.description')}
-                </p>
+                <p className="new-dash-panel-copy">Switch the default payslip presentation this branch should use going forward.</p>
+                <div className="branch-setup-template-grid">
+                  {branchPayslipTemplates.map((template) => (
+                    <button
+                      className={
+                        selectedTemplateKey === template.key
+                          ? 'branch-setup-template-card is-selected'
+                          : 'branch-setup-template-card'
+                      }
+                      key={template.key}
+                      onClick={() => {
+                        void templateMutation.mutateAsync(template.key);
+                      }}
+                      type="button"
+                    >
+                      <strong>{template.name}</strong>
+                      <p>{template.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="new-dash-panel branch-setup-step-panel">
+                <div className="new-dash-panel-head">
+                  <h2>Latest payroll upload</h2>
+                </div>
+                <p className="new-dash-panel-copy">Monitor the most recent import status and upload a fresh paysheet when branch payroll changes.</p>
+                {latestBatch ? (
+                  <>
+                    <div className="branch-setup-import-summary">
+                      <div className="branch-setup-import-summary-item">
+                        <span>Latest batch</span>
+                        <strong>{latestBatch.source_file_name}</strong>
+                      </div>
+                      <div className="branch-setup-import-summary-item">
+                        <span>Records stored</span>
+                        <strong>{latestStoredCount}</strong>
+                      </div>
+                      <div className="branch-setup-import-summary-item">
+                        <span>Issues found</span>
+                        <strong>{latestErrorCount}</strong>
+                      </div>
+                    </div>
+                    {latestBatch.upload_status === 'processed' ? (
+                      <p className="branch-setup-inline-success">
+                        This branch upload is healthy and ready for downstream payroll publishing.
+                      </p>
+                    ) : latestErrorCount > 0 ? (
+                      <p className="branch-setup-inline-warning">
+                        {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="new-dash-panel-note">No payroll upload has been stored for this branch yet.</p>
+                )}
                 <div className="branch-setup-upload-grid">
                   <label>
                     <span>{t('pages.newDash.branchInitialization.steps.upload.periodMonth')}</span>
@@ -462,165 +972,66 @@ export function BranchSetupPage() {
                   </Button>
                 </div>
               </section>
-
-              <section className="new-dash-panel branch-setup-step-panel">
-                <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.steps.mapping.title')}</h2>
-                </div>
-                <p className="new-dash-panel-copy">
-                  {t('pages.newDash.branchInitialization.steps.mapping.description')}
-                </p>
-                {headers.length > 0 ? (
-                  <>
-                    <div className="branch-setup-mapping-grid">
-                      {requiredMappingFields.map((field) => (
-                        <label key={field}>
-                          <span>{t(`fieldLabels.${field}`)}</span>
-                          <select
-                            onChange={(event) =>
-                              setMapping((current) => ({
-                                ...current,
-                                [field]: event.target.value,
-                              }))
-                            }
-                            value={mapping[field] ?? ''}
-                          >
-                            <option value="">{t('pages.newDash.branchInitialization.steps.mapping.placeholder')}</option>
-                            {headers.map((header) => (
-                              <option key={header} value={header}>
-                                {header}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                    {sampleRows.length > 0 ? (
-                      <div className="branch-setup-sample-table">
-                        <div className="branch-setup-sample-row branch-setup-sample-row-head">
-                          {headers.slice(0, 4).map((header) => (
-                            <span key={header}>{header}</span>
-                          ))}
-                        </div>
-                        {sampleRows.slice(0, 2).map((row, index) => (
-                          <div className="branch-setup-sample-row" key={index}>
-                            {headers.slice(0, 4).map((header) => (
-                              <span key={header}>{String(row[header] ?? '—')}</span>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="new-dash-panel-actions">
-                      <Button
-                        disabled={
-                          !activeBatchId ||
-                          requiredMappingFields.some((field) => !mapping[field]) ||
-                          mappingMutation.isPending
-                        }
-                        onClick={() => {
-                          void mappingMutation.mutateAsync();
-                        }}
-                        type="button"
-                      >
-                        {mappingMutation.isPending
-                          ? t('pages.newDash.branchInitialization.actions.confirmingHeaders')
-                          : t('pages.newDash.branchInitialization.actions.confirmHeaders')}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="new-dash-panel-note">
-                    {t('pages.newDash.branchInitialization.steps.mapping.empty')}
-                  </p>
-                )}
-                {latestValidationSummary?.error_rows ? (
-                  <p className="branch-setup-inline-warning">
-                    {t('pages.newDash.branchInitialization.steps.mapping.errorSummary', {
-                      count: latestValidationSummary.error_rows,
-                    })}
-                  </p>
-                ) : null}
-              </section>
-            </div>
-
-            <div className="branch-setup-step-grid">
-              <section className="new-dash-panel branch-setup-step-panel">
-                <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.steps.template.title')}</h2>
-                </div>
-                <p className="new-dash-panel-copy">
-                  {t('pages.newDash.branchInitialization.steps.template.description')}
-                </p>
-                <div className="branch-setup-template-grid">
-                  {branchPayslipTemplates.map((template) => (
-                    <button
-                      className={
-                        selectedTemplateKey === template.key
-                          ? 'branch-setup-template-card is-selected'
-                          : 'branch-setup-template-card'
-                      }
-                      key={template.key}
-                      onClick={() => {
-                        void templateMutation.mutateAsync(template.key);
-                      }}
-                      type="button"
-                    >
-                      <strong>{template.name}</strong>
-                      <p>{template.description}</p>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="new-dash-panel branch-setup-step-panel">
-                <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.steps.ready.title')}</h2>
-                </div>
-                <p className="new-dash-panel-copy">
-                  {t('pages.newDash.branchInitialization.steps.ready.description')}
-                </p>
-                <div className="branch-setup-ready-checklist">
-                  <div className={branchState.hasUploadedFormat ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
-                    {t('pages.newDash.branchInitialization.steps.ready.uploaded')}
-                  </div>
-                  <div className={branchState.hasConfirmedHeaders ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
-                    {t('pages.newDash.branchInitialization.steps.ready.headers')}
-                  </div>
-                  <div className={branchState.hasTemplate ? 'branch-setup-ready-item is-complete' : 'branch-setup-ready-item'}>
-                    {t('pages.newDash.branchInitialization.steps.ready.template')}
-                  </div>
-                </div>
-                <div className="new-dash-panel-actions">
-                  <Button
-                    disabled={
-                      !branchState.hasUploadedFormat ||
-                      !branchState.hasConfirmedHeaders ||
-                      !branchState.hasTemplate ||
-                      readyMutation.isPending
-                    }
-                    onClick={() => {
-                      void readyMutation.mutateAsync();
-                    }}
-                    type="button"
-                  >
-                    {readyMutation.isPending
-                      ? t('pages.newDash.branchInitialization.actions.markingReady')
-                      : t('pages.newDash.branchInitialization.actions.markReady')}
-                  </Button>
-                  {branchState.isReadyMarked ? (
-                    <Button as={Link} to="/new-dash" variant="secondary">
-                      {t('pages.newDash.branchInitialization.actions.openBranch')}
-                    </Button>
-                  ) : null}
-                </div>
-              </section>
             </div>
 
             {errorMessage ? <p className="branch-setup-error">{errorMessage}</p> : null}
           </div>
-        )}
-      </section>
-    </NewPrimaryLayout>
-  );
+        </section>
+      </NewPrimaryLayout>
+    );
+  }
+
+  if (!session) {
+    return (
+      <NewPrimaryLayout onLogout={undefined}>
+        <section className="new-dash-page">
+          <div className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>{t('pages.newDash.authRequired.title')}</h2>
+            </div>
+            <p className="new-dash-panel-copy">{t('pages.newDash.authRequired.description')}</p>
+            <div className="new-dash-panel-actions">
+              <Button as={Link} to="/login">
+                {t('pages.newDash.authRequired.action')}
+              </Button>
+            </div>
+          </div>
+        </section>
+      </NewPrimaryLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <NewPrimaryLayout onLogout={undefined}>
+        <section className="new-dash-page">
+          <div className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>{t('pages.newDash.loading.title')}</h2>
+            </div>
+            <p className="new-dash-panel-copy">{t('common.loading')}</p>
+          </div>
+        </section>
+      </NewPrimaryLayout>
+    );
+  }
+
+  if (hasError || !office || !branchState) {
+    return (
+      <NewPrimaryLayout onLogout={undefined}>
+        <section className="new-dash-page">
+          <div className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>{t('pages.newDash.error.title')}</h2>
+            </div>
+            <p className="new-dash-panel-copy">
+              {(hasError as Error | null)?.message ?? t('pages.newDash.branchInitialization.errors.noBranch')}
+            </p>
+          </div>
+        </section>
+      </NewPrimaryLayout>
+    );
+  }
+
+  return isConfigured ? renderConfiguredSettings() : renderWizard();
 }

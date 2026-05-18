@@ -9,7 +9,7 @@ export type ApiEnvelope<T> = {
 };
 
 const API_BASE_URL = 'https://preview.worknestapp.com/api';
-const RESOLVED_API_BASE_URL =
+export const RESOLVED_API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? API_BASE_URL;
 
 export async function apiRequest<T>(

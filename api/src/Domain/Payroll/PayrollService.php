@@ -75,14 +75,54 @@ final class PayrollService
 
         $this->auditLogger->log($tenantId, $officeId, (int) $actor['id'], 'payroll.uploaded', 'payroll_batch', (string) $batchId, ['period_month' => $periodMonth, 'period_year' => $periodYear]);
 
+        try {
+            $mapping = $this->autoDetectMapping($parsed['headers']);
+            $summary = $this->buildValidationSummary($parsed['rows'], $mapping, $tenantId, $officeId);
+
+            if (($summary['error_rows'] ?? 0) > 0) {
+                $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary): void {
+                    $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                    $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+                });
+
+                throw $this->uploadFailureForSummary($summary);
+            }
+
+            $records = $this->recordsFromSummary($summary, $tenantId, $officeId);
+
+            $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary, $records): void {
+                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                $this->payrollRecordRepository->replaceForBatch($batchId, $tenantId, $records);
+                $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'processed', $summary);
+            });
+        } catch (ValidationException|ApiException $exception) {
+            $summary = $exception->details()['summary'] ?? [
+                'total_rows' => 0,
+                'valid_rows' => 0,
+                'error_rows' => 1,
+                'critical_errors' => [$exception->getMessage()],
+                'normalized_rows' => [],
+            ];
+            $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+            throw $exception;
+        } catch (\Throwable $exception) {
+            $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', [
+                'total_rows' => 0,
+                'valid_rows' => 0,
+                'error_rows' => 0,
+                'critical_errors' => ['Unexpected payroll import failure.'],
+                'normalized_rows' => [],
+            ]);
+
+            throw $exception;
+        }
+
         return [
             'batch' => [
                 'id' => $batchId,
-                'upload_status' => 'uploaded',
+                'upload_status' => 'processed',
             ],
-            'headers' => $parsed['headers'],
-            'sample_rows' => array_slice($parsed['rows'], 0, 3),
-            'mapping_suggestions' => $this->mappingSuggestions($parsed['headers']),
+            'records_created' => count($records),
         ];
     }
 
@@ -144,42 +184,24 @@ final class PayrollService
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
         $this->assertBatchMutable($batch);
-        $mapping = json_decode((string) ($batch['mapping_json'] ?? 'null'), true);
-        if (!is_array($mapping)) {
-            throw new ValidationException('Batch must be mapped before validation.');
-        }
-
         $parsed = $this->parseFile($this->fileStorage->absolutePath((string) $batch['source_file_path']), (string) $batch['source_file_name']);
-        $summary = [
-            'total_rows' => 0,
-            'valid_rows' => 0,
-            'error_rows' => 0,
-            'critical_errors' => [],
-            'normalized_rows' => [],
-        ];
-        $seenEmployeeIds = [];
+        $mapping = $this->existingOrDetectedMapping($batch, $parsed['headers']);
+        $summary = $this->buildValidationSummary($parsed['rows'], $mapping, $tenantId, (int) $batch['office_id']);
+        $status = $summary['error_rows'] > 0 ? 'failed' : 'processed';
 
-        foreach ($parsed['rows'] as $row) {
-            $normalized = $this->normalizeRow($row, $mapping);
-            $errors = $this->validateNormalizedRow($normalized, $seenEmployeeIds);
-            if ($normalized['employee_id'] !== '') {
-                $seenEmployeeIds[$normalized['employee_id']] = true;
-            }
-            $summary['total_rows']++;
-            if ($errors === []) {
-                $summary['valid_rows']++;
-            } else {
-                $summary['error_rows']++;
-                array_push($summary['critical_errors'], ...$errors);
-            }
-            $summary['normalized_rows'][] = [
-                'data' => $normalized,
-                'errors' => $errors,
-            ];
+        if ($summary['error_rows'] === 0) {
+            $records = $this->recordsFromSummary($summary, $tenantId, (int) $batch['office_id']);
+            $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary, $records): void {
+                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                $this->payrollRecordRepository->replaceForBatch($batchId, $tenantId, $records);
+                $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'processed', $summary);
+            });
+        } else {
+            $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary): void {
+                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+            });
         }
-
-        $status = $summary['error_rows'] > 0 ? 'validated' : 'processed';
-        $this->payrollBatchRepository->updateValidation($batchId, $tenantId, $status, $summary);
 
         return [
             'batch' => [
@@ -391,11 +413,15 @@ final class PayrollService
     private function parseFile(string $absolutePath, string $originalFilename): array
     {
         $extension = strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
-        return match ($extension) {
+        $parsed = match ($extension) {
             'csv' => $this->csvParser->parse($absolutePath),
             'xlsx' => $this->excelImportAdapter->parse($absolutePath),
             default => throw new ValidationException('Upload must be CSV or XLSX.'),
         };
+
+        $this->assertParsedSheetIsTwoDimensional($parsed);
+
+        return $parsed;
     }
 
     private function mappingSuggestions(array $headers): array
@@ -434,22 +460,146 @@ final class PayrollService
         return $suggestions;
     }
 
+    private function autoDetectMapping(array $headers): array
+    {
+        $suggestions = $this->mappingSuggestions($headers);
+        $mapping = [];
+        foreach ($suggestions as $field => $suggestion) {
+            $mapping[$field] = $suggestion['source'];
+        }
+
+        $requiredFields = ['employee_id', 'employee_name', 'gross_pay', 'total_deductions', 'net_pay'];
+        $missingFields = array_values(array_filter(
+            $requiredFields,
+            static fn (string $field): bool => empty($mapping[$field])
+        ));
+
+        if ($missingFields !== []) {
+            throw new ValidationException(
+                'Required payroll columns could not be recognized automatically.',
+                ['missing_fields' => $missingFields]
+            );
+        }
+
+        return $mapping;
+    }
+
+    private function existingOrDetectedMapping(array $batch, array $headers): array
+    {
+        $existing = json_decode((string) ($batch['mapping_json'] ?? 'null'), true);
+        if (is_array($existing) && $existing !== []) {
+            return $existing;
+        }
+
+        return $this->autoDetectMapping($headers);
+    }
+
+    private function buildValidationSummary(array $rows, array $mapping, string $tenantId, int $officeId): array
+    {
+        $summary = [
+            'total_rows' => 0,
+            'valid_rows' => 0,
+            'error_rows' => 0,
+            'critical_errors' => [],
+            'normalized_rows' => [],
+        ];
+        $seenEmployeeIds = [];
+
+        foreach ($rows as $row) {
+            $normalized = $this->normalizeRow($row, $mapping);
+            $errors = $this->validateNormalizedRow($normalized, $seenEmployeeIds);
+            $employee = null;
+
+            if ($normalized['employee_id'] !== '') {
+                $employee = $this->userRepository->findActiveEmployeeByEmployeeId($tenantId, $normalized['employee_id']);
+                if ($employee === null) {
+                    $errors[] = 'Employee ' . $normalized['employee_id'] . ' is not in Worknest yet. Add the employee first and upload again.';
+                } elseif ((int) $employee['office_id'] !== $officeId) {
+                    $errors[] = 'Employee ' . $normalized['employee_id'] . ' is assigned to a different branch.';
+                }
+            }
+
+            if ($normalized['employee_id'] !== '') {
+                $seenEmployeeIds[$normalized['employee_id']] = true;
+            }
+
+            $summary['total_rows']++;
+            if ($errors === []) {
+                $summary['valid_rows']++;
+            } else {
+                $summary['error_rows']++;
+                array_push($summary['critical_errors'], ...$errors);
+            }
+
+            $summary['normalized_rows'][] = [
+                'data' => $normalized,
+                'errors' => $errors,
+                'user_id' => $employee !== null ? (int) $employee['id'] : null,
+            ];
+        }
+
+        $summary['critical_errors'] = array_values(array_unique($summary['critical_errors']));
+
+        return $summary;
+    }
+
+    private function recordsFromSummary(array $summary, string $tenantId, int $officeId): array
+    {
+        $records = [];
+
+        foreach ($summary['normalized_rows'] as $item) {
+            if (($item['errors'] ?? []) !== []) {
+                continue;
+            }
+
+            $normalized = $item['data'];
+            $records[] = [
+                'office_id' => $officeId,
+                'user_id' => (int) $item['user_id'],
+                'employee_id' => $normalized['employee_id'],
+                'employee_name_snapshot' => $normalized['employee_name'],
+                'designation_snapshot' => null,
+                'gross_pay' => $normalized['gross_pay'],
+                'total_deductions' => $normalized['total_deductions'],
+                'net_pay' => $normalized['net_pay'],
+                'earnings_json' => $normalized['earnings'],
+                'deductions_json' => $normalized['deductions'],
+                'currency' => 'INR',
+                'record_status' => 'valid',
+                'validation_errors_json' => [],
+            ];
+        }
+
+        return $records;
+    }
+
+    private function uploadFailureForSummary(array $summary): ValidationException
+    {
+        $message = $summary['critical_errors'][0] ?? 'The uploaded paysheet could not be processed.';
+        return new ValidationException($message, ['summary' => $summary]);
+    }
+
     private function normalizeRow(array $row, array $mapping): array
     {
-        $get = static fn (string $field): string => isset($mapping[$field]) ? trim((string) ($row[$mapping[$field]] ?? '')) : '';
+        $get = fn (string $field): string => isset($mapping[$field])
+            ? $this->sanitizeCellValue($row[$mapping[$field]] ?? '')
+            : '';
+        $optionalMoney = fn (string $field): ?float => $this->moneyOrNull($get($field));
         $earnings = [
-            'basic' => $this->money($get('basic')),
-            'hra' => $this->money($get('hra')),
-            'allowances' => $this->money($get('allowances')),
+            'basic' => $optionalMoney('basic'),
+            'hra' => $optionalMoney('hra'),
+            'allowances' => $optionalMoney('allowances'),
         ];
         $deductions = [
-            'pf' => $this->money($get('pf')),
-            'esi' => $this->money($get('esi')),
-            'professional_tax' => $this->money($get('professional_tax')),
-            'tds' => $this->money($get('tds')),
+            'pf' => $optionalMoney('pf'),
+            'esi' => $optionalMoney('esi'),
+            'professional_tax' => $optionalMoney('professional_tax'),
+            'tds' => $optionalMoney('tds'),
         ];
-        $gross = $get('gross_pay') !== '' ? $this->money($get('gross_pay')) : array_sum($earnings);
-        $deductionTotal = $get('total_deductions') !== '' ? $this->money($get('total_deductions')) : array_sum($deductions);
+        $visibleEarnings = array_filter($earnings, static fn (?float $value): bool => $value !== null);
+        $visibleDeductions = array_filter($deductions, static fn (?float $value): bool => $value !== null);
+        $gross = $get('gross_pay') !== '' ? $this->money($get('gross_pay')) : array_sum($visibleEarnings);
+        $deductionTotal = $get('total_deductions') !== '' ? $this->money($get('total_deductions')) : array_sum($visibleDeductions);
 
         return [
             'employee_id' => $get('employee_id'),
@@ -457,8 +607,8 @@ final class PayrollService
             'gross_pay' => $gross,
             'total_deductions' => $deductionTotal,
             'net_pay' => $get('net_pay') !== '' ? $this->money($get('net_pay')) : round($gross - $deductionTotal, 2),
-            'earnings' => $earnings,
-            'deductions' => $deductions,
+            'earnings' => $visibleEarnings,
+            'deductions' => $visibleDeductions,
         ];
     }
 
@@ -495,6 +645,63 @@ final class PayrollService
     {
         $clean = preg_replace('/[^0-9.\-]/', '', (string) $value) ?? '0';
         return round((float) ($clean === '' ? 0 : $clean), 2);
+    }
+
+    private function moneyOrNull(mixed $value): ?float
+    {
+        $sanitized = $this->sanitizeCellValue($value);
+        if ($sanitized === '') {
+            return null;
+        }
+
+        return $this->money($sanitized);
+    }
+
+    private function sanitizeCellValue(mixed $value): string
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return '';
+        }
+
+        $placeholder = strtolower($normalized);
+        if (in_array($placeholder, ['na', 'n/a', 'null', 'nil', 'none', '-'], true)) {
+            return '';
+        }
+
+        return $normalized;
+    }
+
+    private function assertParsedSheetIsTwoDimensional(array $parsed): void
+    {
+        $headers = $parsed['headers'] ?? null;
+        $rows = $parsed['rows'] ?? null;
+
+        if (!is_array($headers) || $headers === []) {
+            throw new ValidationException('Payroll file must include a header row.');
+        }
+
+        foreach ($headers as $header) {
+            if (!is_string($header) || trim($header) === '') {
+                throw new ValidationException('Payroll file must use a flat two-dimensional table with named columns.');
+            }
+        }
+
+        if (!is_array($rows)) {
+            throw new ValidationException('Payroll file must contain sheet rows in a two-dimensional table.');
+        }
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                throw new ValidationException('Payroll file must contain sheet rows in a two-dimensional table.');
+            }
+
+            foreach ($row as $cell) {
+                if (is_array($cell) || is_object($cell)) {
+                    throw new ValidationException('Payroll file must contain plain cell values in a two-dimensional table.');
+                }
+            }
+        }
     }
 
     private function slugify(string $value): string

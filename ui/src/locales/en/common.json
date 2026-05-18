@@ -319,7 +319,7 @@
         "status": {
           "unassigned": "Unassigned",
           "assignedNotStarted": "Pending format upload",
-          "formatUploaded": "Pending header confirmation",
+          "formatUploaded": "Pending sheet review",
           "headersConfirmed": "Pending payslip template",
           "templateSelected": "Pending ready mark",
           "initialized": "Ready",
@@ -328,8 +328,8 @@
         "summary": {
           "unassigned": "Assign a site owner before this branch can move into payroll initialization.",
           "assignedNotStarted": "The branch has an owner, but the paysheet format still needs to be uploaded.",
-          "formatUploaded": "A file has been uploaded. Confirm the detected headers and mapping next.",
-          "headersConfirmed": "Header mapping is in place. Choose the payslip template to continue.",
+          "formatUploaded": "A file has been uploaded. Review the detected columns and run a basic sheet validation next.",
+          "headersConfirmed": "Sheet structure is validated. Choose the payslip template to continue.",
           "templateSelected": "A payslip template is selected. Mark the branch ready to finish setup.",
           "initialized": "This branch is ready for payroll operations.",
           "blocked": "The uploaded format has validation issues that need review before setup can continue."
@@ -338,8 +338,8 @@
           "assignOwner": "Assign or change site owner",
           "uploadFormat": "Upload format",
           "uploading": "Uploading...",
-          "confirmHeaders": "Save mapping and validate",
-          "confirmingHeaders": "Validating mapping...",
+          "confirmHeaders": "Validate sheet structure",
+          "confirmingHeaders": "Validating sheet...",
           "selectTemplate": "Select payslip template",
           "markReady": "Mark branch ready",
           "markingReady": "Marking ready...",
@@ -368,16 +368,16 @@
         "steps": {
           "upload": {
             "title": "Upload paysheet format",
-            "description": "Upload the branch’s sample or first payroll file so Worknest can detect the structure.",
+            "description": "Upload the branch payroll sheet so Worknest can check the structure, validate the rows, and store the payroll records automatically.",
             "periodMonth": "Payroll month",
             "periodYear": "Payroll year",
             "file": "CSV or XLSX file"
           },
           "mapping": {
-            "title": "Confirm headers and mapping",
-            "description": "Match the incoming headers to the required payroll fields and validate the format.",
+            "title": "Review sheet structure",
+            "description": "Map the detected columns to the required payroll fields. Worknest then runs a basic two-dimensional sheet validation automatically.",
             "placeholder": "Choose a header",
-            "empty": "Upload a payroll format first to review detected headers.",
+            "empty": "Upload a payroll format first to review the detected columns.",
             "errorSummary": "{{count}} row issues need review before this branch can move forward."
           },
           "template": {
@@ -386,21 +386,21 @@
           },
           "ready": {
             "title": "Mark branch ready",
-            "description": "Once the upload, mapping, and template are complete, mark this branch ready for handover.",
+            "description": "Once the upload, sheet review, and template are complete, mark this branch ready for handover.",
             "uploaded": "Paysheet format uploaded",
-            "headers": "Header mapping confirmed",
+            "headers": "Sheet structure validated",
             "template": "Payslip template selected"
           }
         },
         "errors": {
           "fileRequired": "Choose a CSV or XLSX file before uploading.",
           "upload": "We could not upload the paysheet format right now.",
-          "mapping": "We could not save the header mapping right now.",
-          "mappingBlocked": "Validation found issues in the uploaded format. Review the branch file before marking it ready.",
+          "mapping": "We could not save the sheet mapping right now.",
+          "mappingBlocked": "Validation found issues in the uploaded sheet. Review the branch file before marking it ready.",
           "template": "We could not save the payslip template selection.",
           "ready": "We could not mark this branch ready yet.",
           "owner": "Choose a branch admin to assign as site owner.",
-          "noBatch": "Upload a branch format before confirming headers.",
+          "noBatch": "Upload a branch format before validating the sheet.",
           "noBranch": "This branch setup workspace could not be loaded."
         }
       },

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { MarketingLayout } from '../../layouts/MarketingLayout';
 import { saveHrSession } from '../../services/hrSession';
 import { loginAdmin } from '../../services/worknestApi';
@@ -7,16 +7,22 @@ import './style.scss';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { tenantId: tenantIdParam } = useParams();
   const [searchParams] = useSearchParams();
   const presetWorkspace = useMemo(
-    () => searchParams.get('workspace')?.trim() ?? '',
-    [searchParams],
+    () => tenantIdParam?.trim() || searchParams.get('workspace')?.trim() || '',
+    [searchParams, tenantIdParam],
   );
   const [workspace, setWorkspace] = useState(presetWorkspace);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasDirectWorkspace = tenantIdParam?.trim() !== '';
+
+  useEffect(() => {
+    setWorkspace(presetWorkspace);
+  }, [presetWorkspace]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,19 +67,28 @@ export function LoginPage() {
             <p className="marketing-login-kicker">Admin Workspace Access</p>
             <h1>Sign in to Worknest</h1>
             <p className="marketing-login-card-copy">
-              Enter your workspace and admin credentials to manage offices, payroll, and employee access.
+              {hasDirectWorkspace
+                ? `Sign in to ${workspace} with your admin email and password.`
+                : 'Enter your workspace and admin credentials to manage offices, payroll, and employee access.'}
             </p>
 
             <form className="marketing-login-form" onSubmit={handleSubmit}>
-              <label>
-                <span>Workspace</span>
-                <input
-                  onChange={(event) => setWorkspace(event.target.value)}
-                  placeholder="your-company"
-                  type="text"
-                  value={workspace}
-                />
-              </label>
+              {hasDirectWorkspace ? (
+                <div className="marketing-login-locked-workspace">
+                  <span>Workspace</span>
+                  <strong>{workspace}</strong>
+                </div>
+              ) : (
+                <label>
+                  <span>Workspace</span>
+                  <input
+                    onChange={(event) => setWorkspace(event.target.value)}
+                    placeholder="your-company"
+                    type="text"
+                    value={workspace}
+                  />
+                </label>
+              )}
 
               <label>
                 <span>Work email</span>
@@ -98,6 +113,12 @@ export function LoginPage() {
               <a className="marketing-login-help" href="/#contact">
                 Having trouble signing in?
               </a>
+
+              {hasDirectWorkspace ? (
+                <Link className="marketing-login-switch" to="/login">
+                  Use a different workspace
+                </Link>
+              ) : null}
 
               {error ? <p className="marketing-login-error">{error}</p> : null}
 

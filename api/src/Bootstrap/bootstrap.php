@@ -94,6 +94,7 @@ function build_app(array $config): App
     ));
     $container->singleton(AuthService::class, fn ($c) => new AuthService(
         $c->get(TenantRepositoryInterface::class),
+        $c->get(OfficeRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class),
         $c->get(RoleRepositoryInterface::class),
         $c->get(PasswordHasher::class),
@@ -214,6 +215,7 @@ function register_routes(Router $router, Container $container): void
 
     $router->add('GET', '/offices', fn ($request) => $offices->list($request));
     $router->add('GET', '/locations', fn ($request) => $offices->list($request));
+    $router->add('GET', '/site', fn ($request) => $offices->sitePortal($request));
     $router->add('GET', '/offices/{id}', fn ($request) => $offices->detail($request));
     $router->add('GET', '/branches/{id}', fn ($request) => $offices->detail($request));
     $router->add('POST', '/main-office', fn ($request) => $offices->createMainOffice($request));
@@ -255,6 +257,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/v2/auth/otp/verify', fn ($request) => $auth->verifyAdminOtp($request));
 
     $router->add('GET', '/v2/offices', fn ($request) => $offices->list($request));
+    $router->add('GET', '/v2/site', fn ($request) => $offices->sitePortal($request));
     $router->add('POST', '/v2/offices', fn ($request) => $offices->create($request));
     $router->add('GET', '/v2/offices/{id}', fn ($request) => $offices->detail($request));
     $router->add('PATCH', '/v2/offices/{id}', fn ($request) => $offices->update($request));

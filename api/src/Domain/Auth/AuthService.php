@@ -10,6 +10,7 @@ use Worknest\Api\Application\Exceptions\UnauthorizedException;
 use Worknest\Api\Application\Exceptions\ValidationException;
 use Worknest\Api\Domain\Audit\AuditLogger;
 use Worknest\Api\Infrastructure\Database\TransactionManager;
+use Worknest\Api\Infrastructure\Repositories\OfficeRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\RoleRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\TenantRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\UserRepositoryInterface;
@@ -20,6 +21,7 @@ final class AuthService
 {
     public function __construct(
         private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly OfficeRepositoryInterface $officeRepository,
         private readonly UserRepositoryInterface $userRepository,
         private readonly RoleRepositoryInterface $roleRepository,
         private readonly PasswordHasher $passwordHasher,
@@ -208,6 +210,21 @@ final class AuthService
                 'session_type' => 'employee_portal',
             ],
         ];
+    }
+
+    public function loginEmployeeForOffice(string $tenantId, string $officeCode, string $employeeId, string $pin): array
+    {
+        $office = $this->officeRepository->findByCode($tenantId, $officeCode);
+        if ($office === null) {
+            throw new ValidationException('The requested site portal could not be found.');
+        }
+
+        $payload = $this->loginEmployee($tenantId, $employeeId, $pin);
+        if ((int) ($payload['user']['office_id'] ?? 0) !== (int) $office['id']) {
+            throw new ForbiddenException('This employee does not belong to the requested site.');
+        }
+
+        return $payload;
     }
 
     public function logout(string $token): array

@@ -1,4 +1,4 @@
-import { apiRequest } from './apiClient';
+import { RESOLVED_API_BASE_URL, apiRequest } from './apiClient';
 
 export type Plan = {
   id: number;
@@ -16,6 +16,7 @@ export type Plan = {
 export type CompanyLocation = {
   id: number;
   tenant_id: string;
+  office_code?: string;
   location_type?: 'main_office' | 'branch';
   office_type?: 'main_office' | 'branch';
   name: string;
@@ -61,15 +62,7 @@ export type PayrollBatchUploadResult = {
     id: number;
     upload_status: string;
   };
-  headers: string[];
-  sample_rows: Array<Record<string, string>>;
-  mapping_suggestions: Record<
-    string,
-    {
-      source: string;
-      confidence: 'high' | 'medium' | 'low';
-    }
-  >;
+  records_created: number;
 };
 
 export type PayrollBatchDetail = {
@@ -168,6 +161,54 @@ export type AdminAuthResult = {
     token: string;
     session_type: 'web' | 'employee_portal';
   };
+};
+
+export type EmployeeAuthResult = {
+  actor: {
+    id: number;
+    employee_id: string | null;
+    name: string;
+    office_id: number | null;
+    user_type: 'employee';
+  };
+  tenant: {
+    tenant_id: string;
+  };
+  session: {
+    token: string;
+    session_type: 'employee_portal';
+  };
+};
+
+export type SitePortal = {
+  id: number;
+  tenant_id: string;
+  office_code: string;
+  name: string;
+  office_type: 'main_office' | 'branch';
+  status: string;
+  city?: string | null;
+  state?: string | null;
+};
+
+export type PayslipSummary = {
+  id: number;
+  tenant_id: string;
+  office_id: number | null;
+  payroll_record_id: number;
+  user_id: number;
+  period_year: number;
+  period_month: number;
+  file_path: string;
+  file_format: string;
+  generated_at: string | null;
+  published_at: string | null;
+  status: string;
+  employee_id: string | null;
+  employee_name_snapshot: string | null;
+  gross_pay: number;
+  total_deductions: number;
+  net_pay: number;
 };
 
 type OfficeDetail = {
@@ -286,25 +327,89 @@ export function loginEmployee(
     pin: string;
   },
 ) {
-  return apiRequest<{
-    actor: {
-      id: number;
-      employee_id: string | null;
-      name: string;
-      office_id: number | null;
-      user_type: 'employee';
-    };
-    tenant: {
-      tenant_id: string;
-    };
-    session: {
-      token: string;
-      session_type: 'employee_portal';
-    };
-  }>(`/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}`, {
+  return apiRequest<EmployeeAuthResult>(`/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function loginEmployeeForSite(
+  tenantId: string,
+  officeCode: string,
+  payload: {
+    identifier: string;
+    pin: string;
+  },
+) {
+  return apiRequest<EmployeeAuthResult>(
+    `/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}&office_code=${encodeURIComponent(officeCode)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function getSitePortal(tenantId: string, officeCode: string) {
+  return apiRequest<{ site: SitePortal }>(
+    `/v2/site?tenant=${encodeURIComponent(tenantId)}&office_code=${encodeURIComponent(officeCode)}`,
+  );
+}
+
+export function listPayslips(session: AuthSession) {
+  return apiRequest<{ payslips: PayslipSummary[] }>(
+    `/v2/payslips?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+}
+
+export async function downloadPayslip(session: AuthSession, payslipId: number, filename?: string) {
+  const response = await fetch(
+    `${RESOLVED_API_BASE_URL}/v2/payslips/${payslipId}/download?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      headers: authHeaders(session),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Unable to download payslip.');
+  }
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const anchor = window.document.createElement('a');
+  anchor.href = blobUrl;
+  anchor.download = filename ?? `worknest-payslip-${payslipId}.pdf`;
+  window.document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+export function buildSitePortalUrl(tenantId: string, officeCode: string) {
+  if (typeof window === 'undefined') {
+    return `/site/${tenantId}/${officeCode}/login`;
+  }
+
+  return `${window.location.origin}/site/${tenantId}/${officeCode}/login`;
+}
+
+export function buildTenantLoginUrl(tenantId: string) {
+  if (typeof window === 'undefined') {
+    return `/login/${tenantId}`;
+  }
+
+  return `${window.location.origin}/login/${tenantId}`;
+}
+
+export function getOfficeDisplayCode(office?: Pick<CompanyLocation, 'office_code' | 'name'> | null) {
+  if (office?.office_code && office.office_code.trim() !== '') {
+    return office.office_code;
+  }
+
+  return office?.name ?? 'SITE';
 }
 
 export function logout(session: AuthSession) {

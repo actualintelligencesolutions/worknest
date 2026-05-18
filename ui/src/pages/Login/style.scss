@@ -98,10 +98,24 @@
   gap: 10px;
 }
 
+.marketing-login-locked-workspace {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(120, 170, 149, 0.22);
+  border-radius: 16px;
+  background: rgba(245, 251, 248, 0.96);
+}
+
 .marketing-login-form span {
   color: #234949;
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.marketing-login-locked-workspace strong {
+  color: #0d4f56;
+  font-size: 1rem;
 }
 
 .marketing-login-form input {
@@ -118,6 +132,13 @@
   color: #4d7b79;
   font-size: 0.92rem;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.marketing-login-switch {
+  color: #1a7e6d;
+  font-size: 0.92rem;
+  font-weight: 700;
   text-decoration: none;
 }
 

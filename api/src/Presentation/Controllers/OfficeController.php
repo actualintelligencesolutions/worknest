@@ -50,6 +50,13 @@ final class OfficeController extends BaseController
         return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload);
     }
 
+    public function sitePortal(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $officeCode = strtoupper(trim((string) ($request->query('office_code', ''))));
+        return Response::success($this->officeService->getSitePortal($tenantId, $officeCode));
+    }
+
     public function createMainOffice(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);

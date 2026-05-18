@@ -122,14 +122,14 @@ export function computeBranchInitializationState({
   const hasConfirmedHeaders = Boolean(
     latestBatch &&
       (
-        uploadStatus === 'mapped' ||
         uploadStatus === 'processed' ||
         uploadStatus === 'confirmed' ||
         uploadStatus === 'published' ||
         (uploadStatus === 'validated' && errorRows === 0)
       ),
   );
-  const isBlocked = uploadStatus === 'validated' && errorRows > 0;
+  const isBlocked =
+    (uploadStatus === 'validated' || uploadStatus === 'failed') && errorRows > 0;
 
   let status: BranchInitializationStatus;
   if (!owner) {

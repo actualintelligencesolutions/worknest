@@ -87,11 +87,19 @@ final class AuthController extends BaseController
     {
         $tenantId = $this->tenantResolver->fromRequest($request);
         $body = $request->body();
-        $payload = $this->authService->loginEmployee(
-            (string) $tenantId,
-            (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
-            (string) ($body['pin'] ?? '')
-        );
+        $officeCode = strtoupper(trim((string) ($request->query('office_code', ''))));
+        $payload = $officeCode !== ''
+            ? $this->authService->loginEmployeeForOffice(
+                (string) $tenantId,
+                $officeCode,
+                (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
+                (string) ($body['pin'] ?? '')
+            )
+            : $this->authService->loginEmployee(
+                (string) $tenantId,
+                (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
+                (string) ($body['pin'] ?? '')
+            );
 
         if (!$this->isV2($request)) {
             return Response::success($payload);

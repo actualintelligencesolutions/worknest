@@ -84,6 +84,40 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
         return $office === false ? null : $office;
     }
 
+    public function findByCode(string $tenantId, string $officeCode): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT o.*,
+                    tp.id AS tenant_plan_id,
+                    tp.status AS tenant_plan_status,
+                    tp.starts_on,
+                    tp.ends_on,
+                    p.id AS plan_id,
+                    p.plan_code,
+                    p.name AS plan_name,
+                    p.price_cents,
+                    p.currency
+             FROM offices o
+             LEFT JOIN tenant_plans tp
+                ON tp.office_id = o.id
+               AND tp.tenant_id = o.tenant_id
+               AND tp.status = "active"
+             LEFT JOIN plans p
+                ON p.id = tp.plan_id
+             WHERE o.office_code = :office_code
+               AND o.tenant_id = :tenant_id
+               AND o.deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'office_code' => $officeCode,
+            'tenant_id' => $tenantId,
+        ]);
+        $office = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $office === false ? null : $office;
+    }
+
     public function findMainOffice(string $tenantId): ?array
     {
         $stmt = $this->connection->pdo()->prepare(
