@@ -72,4 +72,15 @@ final class UserController extends BaseController
             (string) ($body['pin'] ?? '')
         ));
     }
+
+    public function resetPinsForOffice(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        return Response::success($this->userService->resetPinsForOffice(
+            (int) $request->attribute('id'),
+            $tenantId,
+            $actor
+        ));
+    }
 }

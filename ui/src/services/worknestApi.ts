@@ -119,7 +119,27 @@ export type UserSummary = {
   phone?: string | null;
   user_type: 'tenant_owner' | 'branch_admin' | 'employee';
   status: string;
+  has_pin?: boolean;
   created_at?: string;
+};
+
+export type EmployeePinResetResult = {
+  user: UserSummary | null;
+  pin_reset: boolean;
+  revealed_pin: string;
+};
+
+export type OfficeEmployeePinBulkResetResult = {
+  office_id: number;
+  pin_reset_count: number;
+  employees: Array<{
+    user_id: number;
+    employee_id: string | null;
+    display_name: string;
+    phone?: string | null;
+    email?: string | null;
+    revealed_pin: string;
+  }>;
 };
 
 export type RegistrationResult = {
@@ -521,6 +541,34 @@ export function updateUser(
       method: 'PATCH',
       headers: authHeaders(session),
       body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function resetEmployeePin(
+  session: AuthSession,
+  userId: number,
+  payload?: {
+    pin?: string;
+  },
+) {
+  return apiRequest<EmployeePinResetResult>(
+    `/v2/users/${userId}/pin/reset?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload ?? {}),
+    },
+  );
+}
+
+export function resetOfficeEmployeePins(session: AuthSession, officeId: number) {
+  return apiRequest<OfficeEmployeePinBulkResetResult>(
+    `/v2/offices/${officeId}/employee-pins/reset?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
     },
   );
 }

@@ -8,6 +8,11 @@ export type ApiEnvelope<T> = {
   } | null;
 };
 
+export class ApiRequestError extends Error {
+  code?: string;
+  details?: Record<string, unknown>;
+}
+
 const API_BASE_URL = 'https://preview.worknestapp.com/api';
 export const RESOLVED_API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? API_BASE_URL;
@@ -27,7 +32,10 @@ export async function apiRequest<T>(
   const envelope = (await response.json()) as ApiEnvelope<T>;
 
   if (!response.ok || !envelope.success || envelope.data === null) {
-    throw new Error(envelope.error?.message ?? 'API request failed');
+    const error = new ApiRequestError(envelope.error?.message ?? 'API request failed');
+    error.code = envelope.error?.code;
+    error.details = envelope.error?.details;
+    throw error;
   }
 
   return envelope.data;

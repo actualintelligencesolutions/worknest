@@ -166,24 +166,79 @@ final class UserService
 
     public function resetPin(int $userId, string $tenantId, array $actor, string $pin): array
     {
-        if (strlen(trim($pin)) < 4) {
-            throw new ValidationException('PIN must be at least 4 digits.');
-        }
-
         $existing = $this->userRepository->findById($userId, $tenantId);
         if ($existing === null || $existing['user_type'] !== 'employee') {
             throw new NotFoundException('Employee not found.');
         }
         $this->assertUserAccess($existing, $actor);
 
+        $nextPin = $this->resolvedPin($pin);
         $user = $this->userRepository->update($userId, $tenantId, [
-            'pin_hash' => $this->pinHasher->hash($pin),
+            'pin_hash' => $this->pinHasher->hash($nextPin),
             'status' => 'active',
         ]);
 
         $this->auditLogger->log($tenantId, $existing['office_id'] !== null ? (int) $existing['office_id'] : null, (int) $actor['id'], 'employee.pin_reset', 'user', (string) $userId);
 
-        return ['user' => $user, 'pin_reset' => true];
+        return [
+            'user' => $user,
+            'pin_reset' => true,
+            'revealed_pin' => $nextPin,
+        ];
+    }
+
+    public function resetPinsForOffice(int $officeId, string $tenantId, array $actor): array
+    {
+        $office = $this->officeRepository->findById($officeId, $tenantId);
+        if ($office === null) {
+            throw new NotFoundException('Office not found.');
+        }
+
+        if (($office['office_type'] ?? '') !== 'branch') {
+            throw new ValidationException('Employee PIN management is available only for branch offices.');
+        }
+
+        if (($actor['user_type'] ?? '') === 'branch_admin' && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
+            throw new ForbiddenException();
+        }
+
+        $employees = $this->userRepository->listAccessible($tenantId, $actor, [
+            'office_id' => $officeId,
+            'user_type' => 'employee',
+        ]);
+
+        $results = [];
+        foreach ($employees as $employee) {
+            $pin = $this->generatePin();
+            $this->userRepository->update((int) $employee['id'], $tenantId, [
+                'pin_hash' => $this->pinHasher->hash($pin),
+                'status' => 'active',
+            ]);
+            $results[] = [
+                'user_id' => (int) $employee['id'],
+                'employee_id' => $employee['employee_id'],
+                'display_name' => $employee['display_name'],
+                'phone' => $employee['phone'] ?? null,
+                'email' => $employee['email'] ?? null,
+                'revealed_pin' => $pin,
+            ];
+        }
+
+        $this->auditLogger->log(
+            $tenantId,
+            $officeId,
+            (int) $actor['id'],
+            'employee.pin_bulk_reset',
+            'office',
+            (string) $officeId,
+            ['employee_count' => count($results)]
+        );
+
+        return [
+            'office_id' => $officeId,
+            'employees' => $results,
+            'pin_reset_count' => count($results),
+        ];
     }
 
     private function assertUserAccess(array $user, array $actor): void
@@ -215,5 +270,24 @@ final class UserService
         }
 
         return '+' . $digits;
+    }
+
+    private function resolvedPin(string $pin): string
+    {
+        $trimmed = trim($pin);
+        if ($trimmed === '') {
+            return $this->generatePin();
+        }
+
+        if (preg_match('/^[0-9]{4,8}$/', $trimmed) !== 1) {
+            throw new ValidationException('PIN must be 4 to 8 digits.');
+        }
+
+        return $trimmed;
+    }
+
+    private function generatePin(): string
+    {
+        return str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
     }
 }

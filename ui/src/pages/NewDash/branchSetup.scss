@@ -214,6 +214,133 @@
   padding: 0 14px;
 }
 
+.branch-setup-pin-panel,
+.branch-setup-pin-list,
+.branch-setup-pin-actions,
+.branch-setup-pin-toolbar,
+.branch-setup-pin-bulk-results {
+  display: grid;
+}
+
+.branch-setup-pin-panel {
+  gap: 18px;
+}
+
+.branch-setup-pin-toolbar {
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 12px;
+  align-items: center;
+}
+
+.branch-setup-pin-bulk-results {
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(88, 196, 164, 0.2);
+  border-radius: 20px;
+  background: rgba(236, 249, 243, 0.7);
+}
+
+.branch-setup-pin-bulk-item,
+.branch-setup-pin-reveal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.branch-setup-pin-bulk-item strong,
+.branch-setup-pin-card h3 {
+  color: #124e55;
+}
+
+.branch-setup-pin-bulk-item span,
+.branch-setup-pin-card-head p,
+.branch-setup-pin-reveal span,
+.branch-setup-pin-input span {
+  margin: 0;
+  color: #5f7b7a;
+  font-size: 0.88rem;
+}
+
+.branch-setup-pin-bulk-item code,
+.branch-setup-pin-reveal code {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0d4f56;
+  font-weight: 700;
+}
+
+.branch-setup-pin-list {
+  gap: 14px;
+}
+
+.branch-setup-pin-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(104, 144, 129, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.branch-setup-pin-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.branch-setup-pin-card h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.branch-setup-pin-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(243, 245, 244, 0.95);
+  color: #5f7b7a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.branch-setup-pin-status.is-set {
+  background: rgba(236, 249, 243, 0.96);
+  color: #207663;
+}
+
+.branch-setup-pin-actions {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.branch-setup-pin-input {
+  display: grid;
+  gap: 10px;
+}
+
+.branch-setup-pin-input input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(120, 170, 149, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0d4f56;
+  padding: 0 14px;
+}
+
+.branch-setup-pin-button-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .branch-setup-step-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
@@ -369,6 +496,7 @@
   .branch-setup-overview-grid,
   .branch-setup-step-grid,
   .branch-setup-link-grid,
+  .branch-setup-pin-toolbar,
   .branch-setup-template-grid,
   .branch-setup-import-summary,
   .branch-setup-template-wizard-option {
@@ -380,7 +508,11 @@
   .branch-setup-owner-actions,
   .branch-setup-upload-grid,
   .branch-setup-mapping-grid,
-  .branch-setup-sample-row {
+  .branch-setup-sample-row,
+  .branch-setup-pin-actions,
+  .branch-setup-pin-card-head,
+  .branch-setup-pin-bulk-item,
+  .branch-setup-pin-reveal {
     grid-template-columns: 1fr;
   }
 

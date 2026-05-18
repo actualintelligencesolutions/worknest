@@ -101,7 +101,7 @@ final class PdoUserRepository implements UserRepositoryInterface
                AND user_type = "employee"
                AND status = "active"
                AND deleted_at IS NULL
-               AND (email = :identifier OR phone = :identifier)
+               AND (email = :identifier OR phone = :identifier OR employee_id = :identifier)
              LIMIT 1'
         );
         $stmt->execute([
@@ -113,10 +113,33 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $user === false ? null : $user;
     }
 
+    public function findActiveEmployeeByOfficeAndId(string $tenantId, int $officeId, string $employeeId): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM users
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND employee_id = :employee_id
+               AND user_type = "employee"
+               AND status = "active"
+               AND deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+            'employee_id' => $employeeId,
+        ]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user === false ? null : $user;
+    }
+
     public function listAccessible(string $tenantId, array $actor, array $filters = []): array
     {
         $bindings = ['tenant_id' => $tenantId];
-        $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at
+        $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at,
+                       CASE WHEN pin_hash IS NULL OR pin_hash = "" THEN 0 ELSE 1 END AS has_pin
                 FROM users
                 WHERE tenant_id = :tenant_id AND deleted_at IS NULL';
 
@@ -126,7 +149,8 @@ final class PdoUserRepository implements UserRepositoryInterface
                 return [];
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
-            $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at
+            $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at,
+                       CASE WHEN pin_hash IS NULL OR pin_hash = "" THEN 0 ELSE 1 END AS has_pin
                 FROM users
                 WHERE tenant_id = ? AND deleted_at IS NULL AND office_id IN (' . $placeholders . ')';
             $params = array_merge([$tenantId], $officeIds);

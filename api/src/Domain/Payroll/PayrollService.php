@@ -427,11 +427,11 @@ final class PayrollService
     private function mappingSuggestions(array $headers): array
     {
         $targets = [
-            'employee_id' => ['emp code', 'employee code', 'employee id', 'staff id'],
-            'employee_name' => ['emp name', 'employee name', 'name'],
+            'employee_id' => ['id', 'emp id', 'emp code', 'employee code', 'employee id', 'employee number', 'staff id'],
+            'employee_name' => ['full name', 'emp name', 'employee name', 'name'],
             'gross_pay' => ['gross', 'gross pay', 'gross salary'],
             'total_deductions' => ['deduction', 'deductions', 'total deduction'],
-            'net_pay' => ['net', 'net pay', 'net salary', 'net amt'],
+            'net_pay' => ['net', 'net pay', 'net salary', 'net amt', 'net pay credited to bank a/c'],
             'basic' => ['basic', 'basic salary'],
             'hra' => ['hra', 'house rent'],
             'allowances' => ['allowance', 'allowances', 'special allowance'],

@@ -229,6 +229,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('GET', '/users/{id}', fn ($request) => $users->detail($request));
     $router->add('PATCH', '/users/{id}', fn ($request) => $users->update($request));
     $router->add('POST', '/users/{id}/reset-pin', fn ($request) => $users->resetPin($request));
+    $router->add('POST', '/offices/{id}/employee-pins/reset', fn ($request) => $users->resetPinsForOffice($request));
     $router->add('GET', '/employees', fn ($request) => $users->list($request));
 
     $router->add('POST', '/payroll-batches', fn ($request) => $payroll->upload($request));
@@ -270,6 +271,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('GET', '/v2/users/{id}', fn ($request) => $users->detail($request));
     $router->add('PATCH', '/v2/users/{id}', fn ($request) => $users->update($request));
     $router->add('POST', '/v2/users/{id}/pin/reset', fn ($request) => $users->resetPin($request));
+    $router->add('POST', '/v2/offices/{id}/employee-pins/reset', fn ($request) => $users->resetPinsForOffice($request));
 
     $router->add('POST', '/v2/payroll/batches', fn ($request) => $payroll->upload($request));
     $router->add('GET', '/v2/payroll/batches', fn ($request) => $payroll->list($request));

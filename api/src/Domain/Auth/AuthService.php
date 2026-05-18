@@ -321,12 +321,17 @@ final class AuthService
 
     private function normalizeEmployeeIdentifier(string $identifier): string
     {
-        $trimmed = strtolower(trim($identifier));
-        if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
-            return $trimmed;
+        $trimmed = trim($identifier);
+        $lowered = strtolower($trimmed);
+        if (filter_var($lowered, FILTER_VALIDATE_EMAIL)) {
+            return $lowered;
         }
 
-        return $this->normalizePhone($identifier);
+        if (preg_match('/^\+?[0-9][0-9\s\-]{7,}$/', $trimmed) === 1) {
+            return $this->normalizePhone($trimmed);
+        }
+
+        return $trimmed;
     }
 
     private function reservedTenantIds(): array

@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/organisms/PageHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { NewPrimaryLayout } from '../../layouts/NewPrimary';
 import setupIllustration from '../../assets/images/Setup.png';
+import { ApiRequestError } from '../../services/apiClient';
 import { loadHrSession } from '../../services/hrSession';
 import {
   buildSitePortalUrl,
@@ -15,10 +16,13 @@ import {
   getOffice,
   listPayrollBatches,
   listUsers,
+  resetEmployeePin,
+  resetOfficeEmployeePins,
   updateOffice,
   updateUser,
   uploadPayrollBatch,
   type PayrollBatch,
+  type UserSummary,
 } from '../../services/worknestApi';
 import {
   branchPayslipTemplates,
@@ -49,6 +53,20 @@ function formatShortDate(value: string | null) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function formatPayrollUploadError(error: unknown) {
+  if (error instanceof ApiRequestError && error.code === 'VALIDATION_ERROR') {
+    const missingFields = Array.isArray(error.details?.missing_fields)
+      ? error.details.missing_fields.filter((value): value is string => typeof value === 'string')
+      : [];
+
+    if (missingFields.length > 0) {
+      return `${error.message} Missing: ${missingFields.join(', ')}.`;
+    }
+  }
+
+  return error instanceof Error ? error.message : 'We could not process this payroll upload.';
 }
 
 function deriveWizardStep(branchState: BranchInitializationState, isTenantOwner: boolean) {
@@ -109,6 +127,16 @@ export function BranchSetupPage() {
   const [currentStep, setCurrentStep] = useState<BranchWizardStep | null>(null);
   const [showConfiguredSettings, setShowConfiguredSettings] = useState(false);
   const [urlFeedback, setUrlFeedback] = useState<string | null>(null);
+  const [revealedPins, setRevealedPins] = useState<Record<number, string>>({});
+  const [customPins, setCustomPins] = useState<Record<number, string>>({});
+  const [bulkRevealedPins, setBulkRevealedPins] = useState<Array<{
+    user_id: number;
+    employee_id: string | null;
+    display_name: string;
+    email?: string | null;
+    phone?: string | null;
+    revealed_pin: string;
+  }>>([]);
 
   const actorQuery = useQuery({
     queryKey: ['branch-setup-actor', session?.tenantId],
@@ -134,10 +162,17 @@ export function BranchSetupPage() {
     enabled: Boolean(session),
   });
 
+  const employeeUsersQuery = useQuery({
+    queryKey: ['branch-setup-employees', session?.tenantId, officeId],
+    queryFn: () => listUsers(session!, { office_id: officeId, user_type: 'employee' }),
+    enabled: Boolean(session && Number.isFinite(officeId) && officeId > 0),
+  });
+
   const actor = actorQuery.data?.actor ?? null;
   const office = officeQuery.data?.office ?? null;
   const adminFromOffice = officeQuery.data?.admin ?? null;
   const branchAdmins = usersQuery.data?.users ?? [];
+  const branchEmployees = employeeUsersQuery.data?.users ?? [];
   const branchAdminOptions = branchAdmins.filter((user) => user.user_type === 'branch_admin');
   const latestBatch = useMemo(
     () => sortBatches(payrollBatchesQuery.data?.batches ?? [])[0] ?? null,
@@ -175,6 +210,7 @@ export function BranchSetupPage() {
   const wizardTemplateOptions = branchPayslipTemplates.slice(0, 1);
   const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
   const sitePortalUrl = office?.office_code ? buildSitePortalUrl(office.tenant_id, office.office_code) : '';
+  const showEmployeePinSettings = isConfigured && office?.office_type === 'branch';
 
   const wizardSteps = useMemo(
     () => (branchState ? visibleWizardSteps(branchState, isTenantOwner) : []),
@@ -262,7 +298,7 @@ export function BranchSetupPage() {
     },
     onError: async (error) => {
       setLastUploadStoredCount(null);
-      setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.upload'));
+      setErrorMessage(formatPayrollUploadError(error) ?? t('pages.newDash.branchInitialization.errors.upload'));
       setCurrentStep('review');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
@@ -352,6 +388,52 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.owner'));
+    },
+  });
+
+  const employeePinMutation = useMutation({
+    mutationFn: async ({ user, pin }: { user: UserSummary; pin?: string }) => {
+      if (!session) {
+        throw new Error('You must be signed in to manage employee PINs.');
+      }
+
+      return resetEmployeePin(session, user.id, pin ? { pin } : {});
+    },
+    onSuccess: async (result, variables) => {
+      setErrorMessage(null);
+      setBulkRevealedPins([]);
+      setRevealedPins((current) => ({
+        ...current,
+        [variables.user.id]: result.revealed_pin,
+      }));
+      setCustomPins((current) => ({
+        ...current,
+        [variables.user.id]: '',
+      }));
+      await queryClient.invalidateQueries({ queryKey: ['branch-setup-employees', session?.tenantId, officeId] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'We could not update the employee PIN.');
+    },
+  });
+
+  const bulkEmployeePinMutation = useMutation({
+    mutationFn: async () => {
+      if (!session) {
+        throw new Error('You must be signed in to manage employee PINs.');
+      }
+
+      return resetOfficeEmployeePins(session, officeId);
+    },
+    onSuccess: async (result) => {
+      setErrorMessage(null);
+      setRevealedPins({});
+      setCustomPins({});
+      setBulkRevealedPins(result.employees);
+      await queryClient.invalidateQueries({ queryKey: ['branch-setup-employees', session?.tenantId, officeId] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'We could not reset the employee PINs.');
     },
   });
 
@@ -973,6 +1055,137 @@ export function BranchSetupPage() {
                 </div>
               </section>
             </div>
+
+            {showEmployeePinSettings ? (
+              <section className="new-dash-panel branch-setup-step-panel branch-setup-pin-panel">
+                <div className="new-dash-panel-head">
+                  <h2>Employee PIN access</h2>
+                </div>
+                <p className="new-dash-panel-copy">Assign, reset, reveal, and share employee login PINs for this branch. Revealed PINs are shown only right after you set or regenerate them.</p>
+
+                <div className="branch-setup-pin-toolbar">
+                  <Button
+                    disabled={branchEmployees.length === 0 || bulkEmployeePinMutation.isPending}
+                    onClick={() => {
+                      if (!window.confirm('Reset PINs for every employee in this branch? Existing PINs will stop working immediately.')) {
+                        return;
+                      }
+                      void bulkEmployeePinMutation.mutateAsync();
+                    }}
+                    type="button"
+                  >
+                    {bulkEmployeePinMutation.isPending ? 'Resetting all PINs...' : 'Reset all employee PINs'}
+                  </Button>
+                  <Button
+                    disabled={bulkRevealedPins.length === 0}
+                    onClick={() => {
+                      const text = bulkRevealedPins
+                        .map((employee) => `${employee.display_name} (${employee.employee_id ?? 'No ID'}): ${employee.revealed_pin}`)
+                        .join('\n');
+                      void navigator.clipboard.writeText(text);
+                      setUrlFeedback('All regenerated employee PINs copied.');
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Copy all revealed PINs
+                  </Button>
+                </div>
+
+                {bulkRevealedPins.length > 0 ? (
+                  <div className="branch-setup-pin-bulk-results">
+                    {bulkRevealedPins.map((employee) => (
+                      <div className="branch-setup-pin-bulk-item" key={employee.user_id}>
+                        <strong>{employee.display_name}</strong>
+                        <span>{employee.employee_id ?? 'No employee ID'}</span>
+                        <code>{employee.revealed_pin}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="branch-setup-pin-list">
+                  {branchEmployees.length === 0 ? (
+                    <p className="new-dash-panel-note">No employees are assigned to this branch yet.</p>
+                  ) : (
+                    branchEmployees.map((employee) => {
+                      const loginContact = employee.email || employee.phone || 'No login contact';
+                      const revealedPin = revealedPins[employee.id] ?? null;
+                      const customPin = customPins[employee.id] ?? '';
+
+                      return (
+                        <article className="branch-setup-pin-card" key={employee.id}>
+                          <div className="branch-setup-pin-card-head">
+                            <div>
+                              <h3>{employee.display_name}</h3>
+                              <p>{employee.employee_id ?? 'No employee ID'} · {loginContact}</p>
+                            </div>
+                            <span className={employee.has_pin ? 'branch-setup-pin-status is-set' : 'branch-setup-pin-status'}>
+                              {employee.has_pin ? 'Set' : 'Not set'}
+                            </span>
+                          </div>
+
+                          <div className="branch-setup-pin-actions">
+                            <label className="branch-setup-pin-input">
+                              <span>Custom PIN</span>
+                              <input
+                                inputMode="numeric"
+                                maxLength={8}
+                                onChange={(event) => {
+                                  setCustomPins((current) => ({
+                                    ...current,
+                                    [employee.id]: event.target.value.replace(/\D+/g, ''),
+                                  }));
+                                }}
+                                placeholder="4 to 8 digits"
+                                type="text"
+                                value={customPin}
+                              />
+                            </label>
+
+                            <div className="branch-setup-pin-button-row">
+                              <Button
+                                disabled={employeePinMutation.isPending}
+                                onClick={() => {
+                                  void employeePinMutation.mutateAsync({
+                                    user: employee,
+                                    pin: customPin.trim() !== '' ? customPin.trim() : undefined,
+                                  });
+                                }}
+                                type="button"
+                              >
+                                {customPin.trim() !== '' ? 'Assign custom PIN' : 'Generate PIN'}
+                              </Button>
+                              <Button
+                                disabled={!revealedPin}
+                                onClick={() => {
+                                  if (!revealedPin) {
+                                    return;
+                                  }
+                                  void navigator.clipboard.writeText(revealedPin);
+                                  setUrlFeedback(`PIN copied for ${employee.display_name}.`);
+                                }}
+                                type="button"
+                                variant="secondary"
+                              >
+                                Copy revealed PIN
+                              </Button>
+                            </div>
+                          </div>
+
+                          {revealedPin ? (
+                            <div className="branch-setup-pin-reveal">
+                              <span>Fresh PIN</span>
+                              <code>{revealedPin}</code>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             {errorMessage ? <p className="branch-setup-error">{errorMessage}</p> : null}
           </div>

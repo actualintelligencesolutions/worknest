@@ -31,4 +31,6 @@ interface UserRepositoryInterface
     public function employeeIdExists(string $tenantId, string $employeeId): bool;
 
     public function countActiveEmployeesByOffice(string $tenantId, int $officeId): int;
+
+    public function findActiveEmployeeByOfficeAndId(string $tenantId, int $officeId, string $employeeId): ?array;
 }
