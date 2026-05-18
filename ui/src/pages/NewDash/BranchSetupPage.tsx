@@ -69,6 +69,23 @@ function formatPayrollUploadError(error: unknown) {
   return error instanceof Error ? error.message : 'We could not process this payroll upload.';
 }
 
+function missingEmployeeIds(summary?: PayrollBatch['validation_summary'] | null) {
+  const criticalErrors = summary?.critical_errors ?? [];
+  const ids = new Set<string>();
+
+  for (const error of criticalErrors) {
+    const match = typeof error === 'string'
+      ? error.match(/^Employee\s+(.+?)\s+is not in Worknest yet\./)
+      : null;
+
+    if (match?.[1]) {
+      ids.add(match[1]);
+    }
+  }
+
+  return [...ids];
+}
+
 function deriveWizardStep(branchState: BranchInitializationState, isTenantOwner: boolean) {
   if (branchState.isReadyMarked) {
     return 'complete';
@@ -206,6 +223,10 @@ export function BranchSetupPage() {
   const latestValidationSummary = latestBatch?.validation_summary;
   const latestStoredCount = latestValidationSummary?.valid_rows ?? lastUploadStoredCount ?? 0;
   const latestErrorCount = latestValidationSummary?.error_rows ?? 0;
+  const missingEmployees = useMemo(
+    () => missingEmployeeIds(latestValidationSummary),
+    [latestValidationSummary],
+  );
   const selectedTemplateKey = officeSettings.payslip_template_key ?? null;
   const wizardTemplateOptions = branchPayslipTemplates.slice(0, 1);
   const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
@@ -634,10 +655,31 @@ export function BranchSetupPage() {
             </p>
           ) : null}
           {branchState.isBlocked ? (
-            <p className="branch-setup-inline-warning">
-              {latestValidationSummary?.critical_errors?.[0] ??
-                'This upload needs attention before the branch can move forward.'}
-            </p>
+            <>
+              {missingEmployees.length > 0 ? (
+                <div className="branch-setup-guidance-card">
+                  <p className="branch-setup-guidance-kicker">Employee setup required</p>
+                  <h3>Add employees before re-uploading this sheet</h3>
+                  <p>
+                    This payroll file references {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} that do not exist in Worknest yet.
+                    Add them to this branch first, then upload the same payroll file again.
+                  </p>
+                  <div className="branch-setup-guidance-chip-row">
+                    {missingEmployees.slice(0, 8).map((employeeId) => (
+                      <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
+                    ))}
+                    {missingEmployees.length > 8 ? (
+                      <span className="branch-setup-guidance-chip">+{missingEmployees.length - 8} more</span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <p className="branch-setup-inline-warning">
+                  {latestValidationSummary?.critical_errors?.[0] ??
+                    'This upload needs attention before the branch can move forward.'}
+                </p>
+              )}
+            </>
           ) : null}
         </div>
       );
@@ -1004,9 +1046,25 @@ export function BranchSetupPage() {
                         This branch upload is healthy and ready for downstream payroll publishing.
                       </p>
                     ) : latestErrorCount > 0 ? (
-                      <p className="branch-setup-inline-warning">
-                        {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
-                      </p>
+                      missingEmployees.length > 0 ? (
+                        <div className="branch-setup-guidance-card is-compact">
+                          <p className="branch-setup-guidance-kicker">Employee setup required</p>
+                          <h3>Missing employees in this upload</h3>
+                          <p>
+                            {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} from the payroll sheet are not in this branch yet.
+                            Add them first, then upload the sheet again.
+                          </p>
+                          <div className="branch-setup-guidance-chip-row">
+                            {missingEmployees.slice(0, 6).map((employeeId) => (
+                              <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="branch-setup-inline-warning">
+                          {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
+                        </p>
+                      )
                     ) : null}
                   </>
                 ) : (

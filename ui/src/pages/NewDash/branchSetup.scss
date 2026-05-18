@@ -404,6 +404,65 @@
   font-weight: 700;
 }
 
+.branch-setup-guidance-card,
+.branch-setup-guidance-chip-row {
+  display: grid;
+}
+
+.branch-setup-guidance-card {
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(244, 187, 68, 0.26);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.98) 0%, rgba(255, 245, 224, 0.96) 100%);
+}
+
+.branch-setup-guidance-card.is-compact {
+  padding: 16px;
+}
+
+.branch-setup-guidance-kicker {
+  margin: 0;
+  color: #9a6700;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.branch-setup-guidance-card h3,
+.branch-setup-guidance-card p {
+  margin: 0;
+}
+
+.branch-setup-guidance-card h3 {
+  color: #7a4b00;
+  font-size: 1.05rem;
+}
+
+.branch-setup-guidance-card p {
+  color: #7f6240;
+  line-height: 1.55;
+}
+
+.branch-setup-guidance-chip-row {
+  grid-template-columns: repeat(auto-fit, minmax(90px, max-content));
+  gap: 10px;
+}
+
+.branch-setup-guidance-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #7a4b00;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .branch-setup-inline-warning {
   color: #b54708;
 }
