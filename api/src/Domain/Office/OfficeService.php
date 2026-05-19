@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Worknest\Api\Domain\Office;
 
+use Throwable;
 use Worknest\Api\Application\Exceptions\ApiException;
 use Worknest\Api\Application\Exceptions\ForbiddenException;
 use Worknest\Api\Application\Exceptions\NotFoundException;
@@ -716,8 +717,16 @@ final class OfficeService
 
     private function pendingSiteOwnerInvite(string $tenantId, int $officeId): ?array
     {
-        $invite = $this->siteOwnerInviteRepository->findLatestPendingByOffice($tenantId, $officeId);
-        return $invite ? $this->invitePayload($invite) : null;
+        try {
+            $invite = $this->siteOwnerInviteRepository->findLatestPendingByOffice($tenantId, $officeId);
+            return $invite ? $this->invitePayload($invite) : null;
+        } catch (Throwable $exception) {
+            if ($this->isMissingSiteOwnerInvitesTable($exception)) {
+                return null;
+            }
+
+            throw $exception;
+        }
     }
 
     private function invitePayload(array $invite): array
@@ -776,5 +785,11 @@ final class OfficeService
             'period_year' => $periodYear,
             'period_month' => $periodMonth,
         ];
+    }
+
+    private function isMissingSiteOwnerInvitesTable(Throwable $exception): bool
+    {
+        return str_contains($exception->getMessage(), 'site_owner_invites')
+            && str_contains($exception->getMessage(), 'Base table or view not found');
     }
 }
