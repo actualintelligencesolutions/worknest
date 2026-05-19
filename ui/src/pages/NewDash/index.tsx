@@ -340,7 +340,13 @@ export function NewDashPage() {
                   {!isBrandNew ? (
                     <Button
                       as={Link}
-                      to={pendingBranch ? `/new-dash/branches/${pendingBranch.branch.id}/setup` : '/new-dash/offices'}
+                      to={
+                        pendingBranch
+                          ? pendingBranch.status === 'initialized'
+                            ? `/new-dash/branches/${pendingBranch.branch.id}`
+                            : `/new-dash/branches/${pendingBranch.branch.id}/setup`
+                          : '/new-dash/offices'
+                      }
                     >
                       {pendingBranch
                         ? t('pages.newDash.branchInitialization.actions.openBranchSetup')
@@ -434,7 +440,14 @@ export function NewDashPage() {
                         </div>
                       </div>
                       <div className="new-dash-panel-actions">
-                        <Button as={Link} to={`/new-dash/branches/${branchState.branch.id}/setup`}>
+                        <Button
+                          as={Link}
+                          to={
+                            branchState.status === 'initialized'
+                              ? `/new-dash/branches/${branchState.branch.id}`
+                              : `/new-dash/branches/${branchState.branch.id}/setup`
+                          }
+                        >
                           {actor?.user_type === 'branch_admin'
                             ? t('pages.newDash.branchInitialization.actions.resumeInitialization')
                             : t('pages.newDash.branchInitialization.actions.openBranchSetup')}
@@ -500,7 +513,14 @@ export function NewDashPage() {
                     </span>
                     <strong>{pendingBranch.branch.name}</strong>
                     <p>{t(pendingBranch.summaryKey)}</p>
-                    <Button as={Link} to={`/new-dash/branches/${pendingBranch.branch.id}/setup`}>
+                    <Button
+                      as={Link}
+                      to={
+                        pendingBranch.status === 'initialized'
+                          ? `/new-dash/branches/${pendingBranch.branch.id}`
+                          : `/new-dash/branches/${pendingBranch.branch.id}/setup`
+                      }
+                    >
                       {t(pendingBranch.nextActionLabelKey)}
                     </Button>
                   </div>

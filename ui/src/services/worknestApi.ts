@@ -357,7 +357,10 @@ export function loginAdmin(
     `/v2/auth/admin/login?tenant=${encodeURIComponent(tenantId)}`,
     {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        tenant_id: tenantId,
+      }),
     },
   );
 }

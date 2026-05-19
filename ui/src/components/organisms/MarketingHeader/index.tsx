@@ -44,8 +44,8 @@ export function MarketingHeader() {
           ))}
         </nav>
 
-        <a className="marketing-header-cta" href="/#contact">
-          <span>Enquire</span>
+        <a className="marketing-header-cta" href="/register">
+          <span>Register Now</span>
           <span aria-hidden="true">→</span>
         </a>
       </div>

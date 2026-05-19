@@ -25,9 +25,9 @@
 .marketing-section:nth-of-type(odd)::before {
   opacity: 1;
   background:
-    radial-gradient(circle at 20% 18%, rgba(182, 241, 218, 0.16), transparent 28%),
-    radial-gradient(circle at 78% 70%, rgba(164, 233, 205, 0.14), transparent 24%),
-    linear-gradient(180deg, rgba(245, 250, 247, 0.72) 0%, rgba(237, 244, 240, 0.42) 100%);
+    radial-gradient(circle at 20% 18%, rgba(169, 204, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 70%, rgba(176, 202, 255, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(247, 250, 255, 0.72) 0%, rgba(237, 243, 255, 0.42) 100%);
 }
 
 .marketing-hero::before {
@@ -35,12 +35,12 @@
 }
 
 .marketing-section + .marketing-section {
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-section-kicker {
   margin: 0 0 18px;
-  color: #58c4a4;
+  color: var(--color-eyebrow);
   font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -74,7 +74,7 @@
 
 .marketing-section-intro h2 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: clamp(1.9rem, 3.5vw, 3rem);
   letter-spacing: -0.05em;
   text-wrap: balance;
@@ -83,7 +83,7 @@
 .marketing-section-description {
   max-width: 520px;
   margin: 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 1.04rem;
 }
 
@@ -129,7 +129,7 @@
 
 .marketing-hero-kicker {
   margin: 0 0 18px;
-  color: #58c4a4;
+  color: var(--color-eyebrow);
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -138,7 +138,7 @@
 
 .marketing-hero-content h1 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: clamp(3.2rem, 7vw, 6rem);
   letter-spacing: -0.07em;
 }
@@ -146,7 +146,7 @@
 .marketing-hero-copy {
   width: min(100%, 620px);
   margin: 28px auto 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 1.12rem;
 }
 
@@ -157,8 +157,8 @@
   margin-top: 34px;
   padding: 6px;
   border-radius: 999px;
-  background: rgba(165, 240, 211, 0.18);
-  box-shadow: 0 20px 44px rgba(118, 212, 174, 0.24);
+  background: rgba(169, 204, 255, 0.18);
+  box-shadow: 0 20px 44px rgba(93, 123, 191, 0.24);
 }
 
 .marketing-hero-primary,
@@ -169,7 +169,7 @@
 .marketing-hero-primary {
   padding: 18px 36px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #4cc9a6 0%, #77d96f 100%);
+  background: var(--gradient-primary);
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
@@ -183,9 +183,9 @@
   min-width: 162px;
   height: 62px;
   padding: 0 28px;
-  border: 2px solid rgba(77, 199, 159, 0.5);
+  border: 2px solid rgba(74, 125, 255, 0.4);
   border-radius: 999px;
-  color: #1d6762;
+  color: var(--color-heading-strong);
   background: rgba(255, 255, 255, 0.96);
   font-size: 1rem;
   font-weight: 700;
@@ -202,30 +202,30 @@
   top: 116px;
   width: min(76vw, 610px);
   height: min(76vw, 610px);
-  border: 34px solid rgba(182, 240, 213, 0.22);
+  border: 34px solid rgba(184, 208, 255, 0.22);
   box-shadow:
-    0 0 60px rgba(121, 224, 181, 0.26),
-    inset 0 18px 26px rgba(87, 200, 159, 0.18);
+    0 0 60px rgba(105, 145, 232, 0.24),
+    inset 0 18px 26px rgba(87, 124, 223, 0.18);
 }
 
 .marketing-hero-orbit-two {
   top: 178px;
   width: min(60vw, 468px);
   height: min(60vw, 468px);
-  border: 30px solid rgba(146, 231, 187, 0.32);
+  border: 30px solid rgba(154, 191, 255, 0.3);
   box-shadow:
-    0 0 32px rgba(118, 216, 173, 0.18),
-    inset 0 14px 24px rgba(102, 198, 155, 0.22);
+    0 0 32px rgba(104, 146, 230, 0.18),
+    inset 0 14px 24px rgba(102, 141, 228, 0.22);
 }
 
 .marketing-hero-orbit-three {
   top: 246px;
   width: min(44vw, 332px);
   height: min(44vw, 332px);
-  border: 26px solid rgba(115, 220, 170, 0.4);
+  border: 26px solid rgba(117, 163, 255, 0.34);
   box-shadow:
-    0 0 26px rgba(112, 210, 163, 0.18),
-    inset 0 12px 20px rgba(88, 190, 146, 0.24);
+    0 0 26px rgba(97, 143, 228, 0.18),
+    inset 0 12px 20px rgba(88, 129, 223, 0.24);
 }
 
 .marketing-hero-haze {
@@ -241,14 +241,14 @@
   top: 240px;
   width: min(58vw, 470px);
   height: min(58vw, 470px);
-  background: radial-gradient(circle, rgba(159, 241, 210, 0.28) 0%, transparent 72%);
+  background: radial-gradient(circle, rgba(169, 204, 255, 0.28) 0%, transparent 72%);
 }
 
 .marketing-hero-haze-bottom {
   bottom: -120px;
   width: min(52vw, 420px);
   height: min(52vw, 420px);
-  background: radial-gradient(circle, rgba(182, 241, 218, 0.24) 0%, transparent 72%);
+  background: radial-gradient(circle, rgba(191, 216, 255, 0.24) 0%, transparent 72%);
 }
 
 .marketing-hero-badge {
@@ -259,7 +259,7 @@
   gap: 8px;
   justify-items: center;
   width: 152px;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   text-align: center;
 }
 
@@ -269,18 +269,18 @@
   justify-content: center;
   width: 74px;
   height: 74px;
-  border: 1px solid rgba(157, 230, 195, 0.58);
+  border: 1px solid rgba(169, 204, 255, 0.58);
   border-radius: 50%;
-  color: #58c4a4;
+  color: var(--color-accent-strong);
   font-size: 1.5rem;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 18px 34px rgba(147, 177, 164, 0.12);
+  box-shadow: 0 18px 34px rgba(93, 123, 191, 0.12);
   backdrop-filter: blur(12px);
 }
 
 .marketing-hero-badge small {
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -300,8 +300,8 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
-  border-bottom: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-stat {
@@ -309,26 +309,26 @@
 }
 
 .marketing-stat + .marketing-stat {
-  border-left: 1px solid rgba(104, 144, 129, 0.14);
+  border-left: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-stat p {
   margin: 0 0 8px;
-  color: #6d8782;
+  color: #7384a8;
   font-size: 0.92rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .marketing-stat strong {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: clamp(1.4rem, 2.2vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.04em;
 }
 
 .marketing-list-block {
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-list-row {
@@ -337,7 +337,7 @@
   gap: 16px;
   align-items: start;
   padding: 18px 0;
-  border-bottom: 1px solid rgba(104, 144, 129, 0.14);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-list-row span {
@@ -345,18 +345,18 @@
   height: 10px;
   margin-top: 0.45rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4cc9a6 0%, #77d96f 100%);
+  background: var(--gradient-primary-strong);
 }
 
 .marketing-list-row p {
   margin: 0;
-  color: #244c4d;
+  color: #28406f;
   font-size: 1.05rem;
 }
 
 .marketing-feature-list {
   margin-top: 56px;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-feature-row {
@@ -364,19 +364,19 @@
   grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1fr);
   gap: 32px;
   padding: 28px 0;
-  border-bottom: 1px solid rgba(104, 144, 129, 0.14);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-feature-row h3 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.4rem;
   letter-spacing: -0.04em;
 }
 
 .marketing-feature-row p {
   margin: 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 1.03rem;
 }
 
@@ -385,25 +385,25 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-top: 52px;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-workflow-step {
   min-height: 164px;
   padding: 28px 24px 24px 0;
-  border-bottom: 1px solid rgba(104, 144, 129, 0.14);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-workflow-step:nth-child(3n + 2),
 .marketing-workflow-step:nth-child(3n + 3) {
-  border-left: 1px solid rgba(104, 144, 129, 0.14);
+  border-left: 1px solid rgba(109, 137, 198, 0.14);
   padding-left: 24px;
 }
 
 .marketing-workflow-step span {
   display: inline-block;
   margin-bottom: 24px;
-  color: #58c4a4;
+  color: var(--color-eyebrow);
   font-size: 1.2rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -411,7 +411,7 @@
 
 .marketing-workflow-step p {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.18rem;
   font-weight: 600;
 }
@@ -419,7 +419,7 @@
 .marketing-workflow-step small {
   display: block;
   margin-top: 12px;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -435,7 +435,7 @@
   display: inline-flex;
   gap: 6px;
   padding: 6px;
-  border: 1px solid rgba(104, 144, 129, 0.14);
+  border: 1px solid rgba(109, 137, 198, 0.14);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.34);
 }
@@ -445,15 +445,15 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #6d8782;
+  color: #7384a8;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
 }
 
 .marketing-toggle .active {
-  background: rgba(88, 196, 164, 0.16);
-  color: #0d4f56;
+  background: rgba(74, 125, 255, 0.14);
+  color: var(--color-heading-strong);
 }
 
 .marketing-plan-grid {
@@ -462,8 +462,8 @@
   gap: 0;
   width: 100%;
   margin-top: 56px;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
-  border-bottom: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-plan {
@@ -471,11 +471,11 @@
 }
 
 .marketing-plan-featured {
-  background: linear-gradient(180deg, #163c3f 0%, #0d2d31 100%);
+  background: linear-gradient(180deg, #203a78 0%, #162a59 100%);
 }
 
 .marketing-plan + .marketing-plan {
-  border-left: 1px solid rgba(104, 144, 129, 0.14);
+  border-left: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-plan-head {
@@ -486,7 +486,7 @@
 
 .marketing-plan-head h3 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.5rem;
   letter-spacing: -0.04em;
 }
@@ -500,7 +500,7 @@
 .marketing-plan-head em {
   display: inline-block;
   margin-top: 10px;
-  color: #58c4a4;
+  color: var(--color-eyebrow);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 800;
@@ -509,7 +509,7 @@
 }
 
 .marketing-plan-head strong {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 2rem;
   letter-spacing: -0.05em;
 }
@@ -517,7 +517,7 @@
 .marketing-plan-note,
 .marketing-plan-description {
   margin: 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
 }
 
 .marketing-plan-featured .marketing-plan-note,
@@ -537,11 +537,11 @@
 
 .marketing-plan-divider {
   margin: 28px 0 24px;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-plan-featured .marketing-plan-divider {
-  border-top-color: rgba(180, 226, 208, 0.18);
+  border-top-color: rgba(187, 212, 255, 0.18);
 }
 
 .marketing-plan-list {
@@ -555,7 +555,7 @@
 .marketing-plan-list li {
   position: relative;
   padding-left: 24px;
-  color: #244c4d;
+  color: #28406f;
 }
 
 .marketing-plan-list li::before {
@@ -563,24 +563,24 @@
   position: absolute;
   left: 0;
   top: 0;
-  color: #58c4a4;
+  color: var(--color-accent-strong);
   font-weight: 800;
 }
 
 .marketing-plan-link {
-  color: #58c4a4;
+  color: var(--color-accent-strong);
   font-weight: 700;
   text-decoration: none;
 }
 
 .marketing-plan-featured .marketing-plan-link {
-  color: #8ef0cd;
+  color: #a9c6ff;
 }
 
 .marketing-pricing-info {
   margin-top: 40px;
   padding-top: 28px;
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-pricing-info-head {
@@ -592,13 +592,13 @@
 
 .marketing-pricing-info-head h3 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.4rem;
   letter-spacing: -0.04em;
 }
 
 .marketing-pricing-info-head strong {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.5rem;
   letter-spacing: -0.04em;
 }
@@ -606,7 +606,7 @@
 .marketing-pricing-info-description {
   max-width: 760px;
   margin: 18px 0 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
 }
 
 .marketing-pricing-info-list {
@@ -621,7 +621,7 @@
 .marketing-pricing-info-list li {
   position: relative;
   padding-left: 22px;
-  color: #244c4d;
+  color: #28406f;
 }
 
 .marketing-pricing-info-list li::before {
@@ -629,7 +629,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  color: #58c4a4;
+  color: var(--color-accent-strong);
   font-weight: 800;
 }
 
@@ -645,7 +645,7 @@
 }
 
 .marketing-form span {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -655,16 +655,16 @@
   width: 100%;
   padding: 0 0 14px;
   border: 0;
-  border-bottom: 1px solid rgba(104, 144, 129, 0.2);
+  border-bottom: 1px solid rgba(109, 137, 198, 0.2);
   border-radius: 0;
   background: transparent;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   outline: none;
 }
 
 .marketing-form input:focus,
 .marketing-form textarea:focus {
-  border-bottom-color: #58c4a4;
+  border-bottom-color: var(--color-accent-strong);
 }
 
 .marketing-form textarea {
@@ -679,14 +679,14 @@
   padding: 16px 28px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, #4cc9a6 0%, #77d96f 100%);
+  background: var(--gradient-primary);
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
 }
 
 .marketing-footer {
-  border-top: 1px solid rgba(104, 144, 129, 0.14);
+  border-top: 1px solid rgba(109, 137, 198, 0.14);
 }
 
 .marketing-footer-shell {
@@ -704,7 +704,7 @@
 }
 
 .marketing-footer-brand {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.05em;
@@ -717,7 +717,7 @@
 }
 
 .marketing-footer-links a {
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 
@@ -728,7 +728,7 @@
 
   .marketing-plan:nth-child(3),
   .marketing-plan:nth-child(4) {
-    border-top: 1px solid rgba(104, 144, 129, 0.14);
+    border-top: 1px solid rgba(109, 137, 198, 0.14);
   }
 
   .marketing-plan:nth-child(3) {

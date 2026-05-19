@@ -13,7 +13,7 @@
 
 .marketing-header-opaque {
   padding-top: 0;
-  background: rgba(242, 247, 244, 0.92);
+  background: rgba(245, 249, 255, 0.92);
   backdrop-filter: blur(20px);
 }
 
@@ -34,7 +34,7 @@
 }
 
 .marketing-header-brand {
-  color: #58c4a4;
+  color: var(--color-accent-strong);
   font-size: 1.95rem;
   font-weight: 700;
   letter-spacing: -0.06em;
@@ -47,7 +47,7 @@
 }
 
 .marketing-header-link {
-  color: #1f4e4d;
+  color: var(--color-heading-strong);
   font-size: 0.98rem;
   font-weight: 500;
 }
@@ -62,12 +62,12 @@
   align-items: center;
   gap: 10px;
   padding: 13px 22px;
-  border: 1px solid rgba(32, 80, 80, 0.32);
+  border: 1px solid rgba(82, 114, 198, 0.28);
   border-radius: 999px;
-  color: #234949;
+  color: var(--color-heading-strong);
   font-size: 1rem;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.54);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 @media (max-width: 960px) {

@@ -13,6 +13,11 @@ final class TenantResolver
     {
         $tenantId = trim((string) ($request->query('tenant') ?? $request->header('X-TENANT-ID', '')));
         if ($tenantId === '') {
+            $body = $request->body();
+            $tenantId = trim((string) ($body['tenant_id'] ?? $body['tenant'] ?? $body['workspace'] ?? ''));
+        }
+
+        if ($tenantId === '') {
             if ($required) {
                 throw new ValidationException('Tenant must be a non-empty slug containing only letters, numbers, hyphens, or underscores.');
             }

@@ -273,18 +273,15 @@ export function HomePage() {
             </p>
 
             <div className="marketing-hero-actions">
-              <a className="marketing-hero-secondary" href="/#contact">
-                Enquire
-              </a>
-              <a className="marketing-hero-primary" href="/login">
-                Try now
+              <a className="marketing-hero-primary" href="/register">
+                Register Now
               </a>
             </div>
           </div>
 
           <div className="marketing-hero-badge marketing-hero-badge-left">
-            <span>12</span>
-            <small>Branches active</small>
+            <span>HQ +</span>
+            <small>Built for multi-branch payroll</small>
           </div>
           <div className="marketing-hero-badge marketing-hero-badge-right">
             <span>✓</span>
@@ -297,7 +294,7 @@ export function HomePage() {
         <div className="marketing-shell marketing-stat-grid">
           <article className="marketing-stat">
             <p>Branches</p>
-            <strong>12 active</strong>
+            <strong>Structured branch operations</strong>
           </article>
           <article className="marketing-stat">
             <p>Uploads</p>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { PageHeader } from '../../components/organisms/PageHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -35,6 +35,7 @@ import './setup.scss';
 import './branchSetup.scss';
 
 type BranchWizardStep = 'owner' | 'upload' | 'review' | 'template' | 'ready' | 'complete';
+type BranchSettingsSection = 'overview' | 'payroll' | 'employees' | 'pins' | 'access';
 
 function sortBatches(batches: PayrollBatch[]) {
   return [...batches].sort((a, b) => {
@@ -61,9 +62,20 @@ function formatPayrollUploadError(error: unknown) {
     const missingFields = Array.isArray(error.details?.missing_fields)
       ? error.details.missing_fields.filter((value): value is string => typeof value === 'string')
       : [];
+    const summary = error.details?.summary;
+    const criticalErrors =
+      summary && typeof summary === 'object' && Array.isArray((summary as { critical_errors?: unknown[] }).critical_errors)
+        ? (summary as { critical_errors?: unknown[] }).critical_errors.filter(
+            (value): value is string => typeof value === 'string' && value.trim() !== '',
+          )
+        : [];
 
     if (missingFields.length > 0) {
       return `${error.message} Missing: ${missingFields.join(', ')}.`;
+    }
+
+    if (criticalErrors.length > 0) {
+      return criticalErrors[0];
     }
   }
 
@@ -71,7 +83,10 @@ function formatPayrollUploadError(error: unknown) {
 }
 
 function missingEmployeeIds(summary?: PayrollBatch['validation_summary'] | null) {
-  const criticalErrors = summary?.critical_errors ?? [];
+  return missingEmployeeIdsFromCriticalErrors(summary?.critical_errors ?? []);
+}
+
+function missingEmployeeIdsFromCriticalErrors(criticalErrors: string[] = []) {
   const ids = new Set<string>();
 
   for (const error of criticalErrors) {
@@ -127,9 +142,61 @@ function visibleWizardSteps(branchState: BranchInitializationState, isTenantOwne
   return steps;
 }
 
+function branchSettingsSectionFromPath(pathname: string, officeId: number): BranchSettingsSection {
+  const basePath = `/new-dash/branches/${officeId}`;
+
+  if (pathname === `${basePath}/payroll`) {
+    return 'payroll';
+  }
+  if (pathname === `${basePath}/employees`) {
+    return 'employees';
+  }
+  if (pathname === `${basePath}/pins`) {
+    return 'pins';
+  }
+  if (pathname === `${basePath}/access`) {
+    return 'access';
+  }
+
+  return 'overview';
+}
+
+function branchPendingItems(branchState: BranchInitializationState, ownerLabel: string) {
+  const items = [
+    {
+      key: 'owner',
+      label: 'Site owner assigned',
+      complete: Boolean(branchState.owner),
+      detail: branchState.owner?.display_name ?? ownerLabel,
+    },
+    {
+      key: 'payroll',
+      label: 'Payroll upload accepted',
+      complete: branchState.hasConfirmedHeaders && !branchState.isBlocked,
+      detail: branchState.latestBatch?.source_file_name ?? 'No accepted upload yet',
+    },
+    {
+      key: 'template',
+      label: 'Payslip template selected',
+      complete: branchState.hasTemplate,
+      detail: branchState.settings.payslip_template_name ?? 'Template not selected',
+    },
+    {
+      key: 'ready',
+      label: 'Branch marked ready',
+      complete: branchState.isReadyMarked,
+      detail: branchState.isReadyMarked ? 'Ready for operations' : 'Ready mark still pending',
+    },
+  ];
+
+  return items;
+}
+
 export function BranchSetupPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { officeId: officeIdParam } = useParams();
   const session = loadHrSession();
   const officeId = Number(officeIdParam);
@@ -143,8 +210,10 @@ export function BranchSetupPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
+  const [missingEmployeePromptIds, setMissingEmployeePromptIds] = useState<string[]>([]);
+  const [missingEmployeePromptOpen, setMissingEmployeePromptOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<BranchWizardStep | null>(null);
-  const [showConfiguredSettings, setShowConfiguredSettings] = useState(false);
+  const [forceConfiguredShell, setForceConfiguredShell] = useState(false);
   const [urlFeedback, setUrlFeedback] = useState<string | null>(null);
   const [revealedPins, setRevealedPins] = useState<Record<number, string>>({});
   const [customPins, setCustomPins] = useState<Record<number, string>>({});
@@ -221,7 +290,13 @@ export function BranchSetupPage() {
   );
 
   const isTenantOwner = actor?.user_type === 'tenant_owner';
-  const isConfigured = branchState?.status === 'initialized' || showConfiguredSettings;
+  const isSetupRoute = location.pathname.endsWith('/setup');
+  const currentSection = useMemo(
+    () => branchSettingsSectionFromPath(location.pathname, officeId),
+    [location.pathname, officeId],
+  );
+  const canAccessConfiguredShell = branchState?.status === 'initialized' || forceConfiguredShell;
+  const isConfigured = canAccessConfiguredShell && !isSetupRoute;
   const latestValidationSummary = latestBatch?.validation_summary;
   const latestStoredCount = latestValidationSummary?.valid_rows ?? lastUploadStoredCount ?? 0;
   const latestErrorCount = latestValidationSummary?.error_rows ?? 0;
@@ -233,7 +308,12 @@ export function BranchSetupPage() {
   const wizardTemplateOptions = branchPayslipTemplates.slice(0, 1);
   const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
   const sitePortalUrl = office?.office_code ? buildSitePortalUrl(office.tenant_id, office.office_code) : '';
-  const showEmployeePinSettings = isConfigured && office?.office_type === 'branch';
+  const showEmployeePinSettings = office?.office_type === 'branch';
+  const pendingItems = useMemo(
+    () => (branchState ? branchPendingItems(branchState, t('pages.newDash.branchInitialization.labels.unassigned')) : []),
+    [branchState, t],
+  );
+  const pendingCount = pendingItems.filter((item) => !item.complete).length;
 
   const wizardSteps = useMemo(
     () => (branchState ? visibleWizardSteps(branchState, isTenantOwner) : []),
@@ -250,6 +330,10 @@ export function BranchSetupPage() {
       setSelectedOwnerId(currentOwner.id);
     }
   }, [currentOwner?.id]);
+
+  useEffect(() => {
+    setForceConfiguredShell(false);
+  }, [officeId]);
 
   useEffect(() => {
     if (!branchState || isConfigured || !derivedStep) {
@@ -291,10 +375,24 @@ export function BranchSetupPage() {
   }, [branchState, derivedStep, isConfigured, wizardSteps]);
 
   useEffect(() => {
-    if (!branchState?.isReadyMarked) {
-      setShowConfiguredSettings(false);
+    if (!branchState) {
+      return;
     }
-  }, [branchState?.isReadyMarked]);
+
+    const basePath = `/new-dash/branches/${officeId}`;
+    const setupPath = `${basePath}/setup`;
+
+    if (branchState.status === 'initialized' || forceConfiguredShell) {
+      if (isSetupRoute) {
+        navigate(basePath, { replace: true });
+      }
+      return;
+    }
+
+    if (!isSetupRoute) {
+      navigate(setupPath, { replace: true });
+    }
+  }, [branchState, forceConfiguredShell, isSetupRoute, navigate, officeId]);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -312,6 +410,8 @@ export function BranchSetupPage() {
     onSuccess: async (result) => {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
+      setMissingEmployeePromptIds([]);
+      setMissingEmployeePromptOpen(false);
       setLastUploadStoredCount(result.records_created);
       setSelectedFile(null);
       setCurrentStep('review');
@@ -321,8 +421,20 @@ export function BranchSetupPage() {
       ]);
     },
     onError: async (error) => {
+      const promptIds =
+        error instanceof ApiRequestError && error.code === 'VALIDATION_ERROR'
+          ? missingEmployeeIdsFromCriticalErrors(
+              Array.isArray((error.details?.summary as { critical_errors?: unknown[] } | undefined)?.critical_errors)
+                ? ((error.details?.summary as { critical_errors?: unknown[] }).critical_errors ?? []).filter(
+                    (value): value is string => typeof value === 'string',
+                  )
+                : [],
+            )
+          : [];
       setLastUploadStoredCount(null);
       setImportEmployeesMessage(null);
+      setMissingEmployeePromptIds(promptIds);
+      setMissingEmployeePromptOpen(promptIds.length > 0);
       setErrorMessage(formatPayrollUploadError(error) ?? t('pages.newDash.branchInitialization.errors.upload'));
       setCurrentStep('review');
       await Promise.all([
@@ -342,6 +454,8 @@ export function BranchSetupPage() {
     },
     onSuccess: async (result) => {
       setErrorMessage(null);
+      setMissingEmployeePromptOpen(false);
+      setMissingEmployeePromptIds([]);
       setLastUploadStoredCount(result.records_created);
       setImportEmployeesMessage(
         result.batch.upload_status === 'processed'
@@ -359,9 +473,11 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setImportEmployeesMessage(null);
-      setErrorMessage(error instanceof Error ? error.message : 'We could not add the missing employees from this paysheet.');
+      setErrorMessage(formatPayrollUploadError(error) ?? 'We could not add the missing employees from this paysheet.');
     },
   });
+
+  const showUploadErrorInline = Boolean(errorMessage) && (uploadMutation.isError || importMissingEmployeesMutation.isError);
 
   const templateMutation = useMutation({
     mutationFn: async (templateKey: string) => {
@@ -414,11 +530,12 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
-      setCurrentStep('complete');
+      setForceConfiguredShell(true);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-locations', session?.tenantId] }),
       ]);
+      navigate(`/new-dash/branches/${officeId}`, { replace: true });
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.ready'));
@@ -696,6 +813,9 @@ export function BranchSetupPage() {
           {importEmployeesMessage ? (
             <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
           ) : null}
+          {showUploadErrorInline ? (
+            <p className="branch-setup-error">{errorMessage}</p>
+          ) : null}
           {branchState.isBlocked ? (
             <>
               {missingEmployees.length > 0 ? (
@@ -717,9 +837,12 @@ export function BranchSetupPage() {
                   <div className="branch-setup-guidance-actions">
                     <Button
                       disabled={importMissingEmployeesMutation.isPending}
-                      onClick={() => void importMissingEmployeesMutation.mutateAsync()}
+                      onClick={() => {
+                        setMissingEmployeePromptIds(missingEmployees);
+                        setMissingEmployeePromptOpen(true);
+                      }}
                     >
-                      {importMissingEmployeesMutation.isPending ? 'Adding employees…' : 'Add missing employees now'}
+                      Review missing employees
                     </Button>
                   </div>
                 </div>
@@ -810,6 +933,60 @@ export function BranchSetupPage() {
     );
   }
 
+  function renderMissingEmployeesModal() {
+    if (!missingEmployeePromptOpen || missingEmployeePromptIds.length === 0) {
+      return null;
+    }
+
+    return (
+      <div
+        aria-modal="true"
+        className="branch-setup-modal-backdrop"
+        onClick={() => setMissingEmployeePromptOpen(false)}
+        role="dialog"
+      >
+        <div
+          className="branch-setup-modal"
+          onClick={(event) => event.stopPropagation()}
+          role="document"
+        >
+          <p className="branch-setup-modal-kicker">Employee sync needed</p>
+          <h3>
+            {missingEmployeePromptIds.length} user{missingEmployeePromptIds.length === 1 ? '' : 's'} are not in the DB
+          </h3>
+          <p>
+            This paysheet references {missingEmployeePromptIds.length} employee{missingEmployeePromptIds.length === 1 ? '' : 's'} that do not exist in Worknest yet.
+            Do you want to add them now?
+          </p>
+          <div className="branch-setup-guidance-chip-row">
+            {missingEmployeePromptIds.slice(0, 10).map((employeeId) => (
+              <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
+            ))}
+            {missingEmployeePromptIds.length > 10 ? (
+              <span className="branch-setup-guidance-chip">+{missingEmployeePromptIds.length - 10} more</span>
+            ) : null}
+          </div>
+          <div className="branch-setup-modal-actions">
+            <Button
+              onClick={() => setMissingEmployeePromptOpen(false)}
+              type="button"
+              variant="secondary"
+            >
+              Not now
+            </Button>
+            <Button
+              disabled={importMissingEmployeesMutation.isPending}
+              onClick={() => void importMissingEmployeesMutation.mutateAsync()}
+              type="button"
+            >
+              {importMissingEmployeesMutation.isPending ? 'Adding users…' : 'Add users now'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderWizard() {
     if (!branchState || !currentStep) {
       return null;
@@ -861,6 +1038,10 @@ export function BranchSetupPage() {
                   <span>Next action</span>
                   <strong>{t(branchState.nextActionLabelKey)}</strong>
                 </div>
+                <div>
+                  <span>Pending items</span>
+                  <strong>{pendingCount === 0 ? 'All complete' : `${pendingCount} remaining`}</strong>
+                </div>
               </div>
 
               <div className="branch-setup-wizard-illustration" aria-hidden="true">
@@ -876,13 +1057,31 @@ export function BranchSetupPage() {
 
               {renderWizardBody(currentStep)}
 
+              {pendingItems.length > 0 ? (
+                <div className="branch-setup-pending-panel">
+                  <div className="branch-setup-pending-head">
+                    <h3>What&apos;s pending</h3>
+                    <span>{pendingCount === 0 ? 'All set' : `${pendingCount} left`}</span>
+                  </div>
+                  <div className="branch-setup-pending-list">
+                    {pendingItems.map((item) => (
+                      <div className={item.complete ? 'branch-setup-pending-item is-complete' : 'branch-setup-pending-item'} key={item.key}>
+                        <strong>{item.label}</strong>
+                        <span>{item.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {errorMessage ? <p className="new-dash-setup-error">{errorMessage}</p> : null}
 
               <div className="new-dash-setup-actions">
                 {currentStep === 'complete' ? (
                   <Button
                     onClick={() => {
-                      setShowConfiguredSettings(true);
+                      setForceConfiguredShell(true);
+                      navigate(`/new-dash/branches/${officeId}`);
                     }}
                     type="button"
                   >
@@ -919,14 +1118,534 @@ export function BranchSetupPage() {
             </div>
           </div>
         </section>
+        {renderMissingEmployeesModal()}
       </NewPrimaryLayout>
     );
   }
 
   function renderConfiguredSettings() {
-    const toolbar = branchState
-      ? <p className="new-dash-page-header-note">General branch settings</p>
-      : undefined;
+    const toolbar = branchState ? (
+      <div className="branch-shell-toolbar">
+        <p className="new-dash-page-header-note">General branch settings</p>
+        <span className={`new-dash-step-status ${statusClassName}`}>
+          {t(branchState.statusLabelKey)}
+        </span>
+      </div>
+    ) : undefined;
+
+    const navItems: Array<{ section: BranchSettingsSection; label: string; path: string }> = [
+      { section: 'overview', label: 'Overview', path: `/new-dash/branches/${officeId}` },
+      { section: 'payroll', label: 'Payroll', path: `/new-dash/branches/${officeId}/payroll` },
+      { section: 'employees', label: 'Employees', path: `/new-dash/branches/${officeId}/employees` },
+      { section: 'pins', label: 'PIN Access', path: `/new-dash/branches/${officeId}/pins` },
+      { section: 'access', label: 'Access & Ownership', path: `/new-dash/branches/${officeId}/access` },
+    ];
+
+    function renderOverviewSection() {
+      return (
+        <div className="new-dash-stack">
+          <section className="new-dash-panel branch-settings-hero">
+            <div className="new-dash-panel-head">
+              <div>
+                <h2>Branch overview</h2>
+                <p className="new-dash-panel-copy">
+                  Track the health of this branch at a glance and jump into the area that needs attention.
+                </p>
+              </div>
+            </div>
+            <div className="branch-setup-pending-banner">
+              <strong>{pendingCount === 0 ? 'This branch is fully configured.' : `${pendingCount} setup item${pendingCount === 1 ? '' : 's'} still pending.`}</strong>
+              <span>
+                {pendingCount === 0
+                  ? 'All branch prerequisites are complete.'
+                  : pendingItems.filter((item) => !item.complete).map((item) => item.label).join(' · ')}
+              </span>
+            </div>
+            <div className="branch-setup-overview-grid">
+              <div className="branch-setup-overview-item">
+                <span>Site owner</span>
+                <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+              </div>
+              <div className="branch-setup-overview-item">
+                <span>Latest upload</span>
+                <strong>{latestBatch?.source_file_name ?? 'No upload yet'}</strong>
+              </div>
+              <div className="branch-setup-overview-item">
+                <span>Last activity</span>
+                <strong>{formatShortDate(branchState?.lastActivityAt ?? null)}</strong>
+              </div>
+              <div className="branch-setup-overview-item">
+                <span>Payslip template</span>
+                <strong>{officeSettings.payslip_template_name ?? 'Not selected'}</strong>
+              </div>
+              <div className="branch-setup-overview-item">
+                <span>Payroll health</span>
+                <strong>{latestBatch?.upload_status === 'processed' ? 'Healthy' : latestBatch ? 'Needs review' : 'Awaiting upload'}</strong>
+              </div>
+              <div className="branch-setup-overview-item">
+                <span>Employees</span>
+                <strong>{branchEmployees.length}</strong>
+              </div>
+            </div>
+            <div className="branch-setup-pending-list">
+              {pendingItems.map((item) => (
+                <div className={item.complete ? 'branch-setup-pending-item is-complete' : 'branch-setup-pending-item'} key={item.key}>
+                  <strong>{item.label}</strong>
+                  <span>{item.detail}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>{t('pages.newDash.branchInitialization.steps.template.title')}</h2>
+            </div>
+            <p className="new-dash-panel-copy">Choose the default payslip presentation this branch should use going forward.</p>
+            <div className="branch-setup-template-grid">
+              {branchPayslipTemplates.map((template) => (
+                <button
+                  className={
+                    selectedTemplateKey === template.key
+                      ? 'branch-setup-template-card is-selected'
+                      : 'branch-setup-template-card'
+                  }
+                  key={template.key}
+                  onClick={() => {
+                    void templateMutation.mutateAsync(template.key);
+                  }}
+                  type="button"
+                >
+                  <strong>{template.name}</strong>
+                  <p>{template.description}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>Quick links</h2>
+            </div>
+            <div className="branch-shell-quick-links">
+              {navItems.filter((item) => item.section !== 'overview').map((item) => (
+                <NavLink className="branch-shell-quick-link" key={item.section} to={item.path}>
+                  <strong>{item.label}</strong>
+                  <span>Open this branch section</span>
+                </NavLink>
+              ))}
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    function renderPayrollSection() {
+      const batches = sortBatches(payrollBatchesQuery.data?.batches ?? []);
+
+      return (
+        <div className="new-dash-stack">
+          <section className="new-dash-panel branch-setup-step-panel">
+            <div className="new-dash-panel-head">
+              <h2>Latest payroll upload</h2>
+            </div>
+            <p className="new-dash-panel-copy">Monitor import health, upload a fresh paysheet, and resolve missing employees without leaving this section.</p>
+            {latestBatch ? (
+              <>
+                <div className="branch-setup-import-summary">
+                  <div className="branch-setup-import-summary-item">
+                    <span>Latest batch</span>
+                    <strong>{latestBatch.source_file_name}</strong>
+                  </div>
+                  <div className="branch-setup-import-summary-item">
+                    <span>Records stored</span>
+                    <strong>{latestStoredCount}</strong>
+                  </div>
+                  <div className="branch-setup-import-summary-item">
+                    <span>Issues found</span>
+                    <strong>{latestErrorCount}</strong>
+                  </div>
+                </div>
+                {latestBatch.upload_status === 'processed' ? (
+                  <p className="branch-setup-inline-success">
+                    This branch upload is healthy and ready for downstream payroll publishing.
+                  </p>
+                ) : latestErrorCount > 0 ? (
+                  missingEmployees.length > 0 ? (
+                    <div className="branch-setup-guidance-card is-compact">
+                      <p className="branch-setup-guidance-kicker">Employee setup required</p>
+                      <h3>Missing employees in this upload</h3>
+                      <p>
+                        {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} from the payroll sheet are not in this branch yet.
+                        Review them and decide whether to add them now.
+                      </p>
+                      <div className="branch-setup-guidance-chip-row">
+                        {missingEmployees.slice(0, 6).map((employeeId) => (
+                          <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
+                        ))}
+                      </div>
+                      <div className="branch-setup-guidance-actions">
+                        <Button
+                          disabled={importMissingEmployeesMutation.isPending}
+                          onClick={() => {
+                            setMissingEmployeePromptIds(missingEmployees);
+                            setMissingEmployeePromptOpen(true);
+                          }}
+                          type="button"
+                        >
+                          Review missing employees
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="branch-setup-inline-warning">
+                      {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
+                    </p>
+                  )
+                ) : null}
+                {importEmployeesMessage ? (
+                  <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="new-dash-panel-note">No payroll upload has been stored for this branch yet.</p>
+            )}
+            <div className="branch-setup-upload-grid">
+              <label>
+                <span>{t('pages.newDash.branchInitialization.steps.upload.periodMonth')}</span>
+                <select onChange={(event) => setPeriodMonth(Number(event.target.value))} value={periodMonth}>
+                  {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('pages.newDash.branchInitialization.steps.upload.periodYear')}</span>
+                <input
+                  onChange={(event) => setPeriodYear(Number(event.target.value))}
+                  type="number"
+                  value={periodYear}
+                />
+              </label>
+              <label className="branch-setup-upload-file">
+                <span>{t('pages.newDash.branchInitialization.steps.upload.file')}</span>
+                <input
+                  accept=".csv,.xlsx"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+              </label>
+            </div>
+            <div className="new-dash-panel-actions">
+              <Button
+                disabled={!selectedFile || uploadMutation.isPending}
+                onClick={() => {
+                  void uploadMutation.mutateAsync();
+                }}
+                type="button"
+              >
+                {uploadMutation.isPending
+                  ? t('pages.newDash.branchInitialization.actions.uploading')
+                  : t('pages.newDash.branchInitialization.actions.uploadFormat')}
+              </Button>
+            </div>
+            {showUploadErrorInline ? (
+              <p className="branch-setup-error">{errorMessage}</p>
+            ) : null}
+          </section>
+
+          <section className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>Payroll history</h2>
+            </div>
+            {batches.length === 0 ? (
+              <p className="new-dash-panel-note">No payroll history is available for this branch yet.</p>
+            ) : (
+              <div className="branch-shell-history-list">
+                {batches.map((batch) => (
+                  <div className="branch-shell-history-item" key={batch.id}>
+                    <div>
+                      <strong>{batch.source_file_name}</strong>
+                      <span>{`Period ${batch.period_month}/${batch.period_year}`}</span>
+                    </div>
+                    <div>
+                      <strong>{batch.upload_status}</strong>
+                      <span>{formatShortDate(batch.updated_at ?? batch.created_at ?? null)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      );
+    }
+
+    function renderEmployeesSection() {
+      return (
+        <section className="new-dash-panel">
+          <div className="new-dash-panel-head">
+            <div>
+              <h2>Employees</h2>
+              <p className="new-dash-panel-copy">Review the employee roster for this branch separately from payroll and PIN operations.</p>
+            </div>
+          </div>
+          {branchEmployees.length === 0 ? (
+            <p className="new-dash-panel-note">No employees are assigned to this branch yet.</p>
+          ) : (
+            <div className="branch-shell-employee-list">
+              {branchEmployees.map((employee) => (
+                <article className="branch-shell-employee-card" key={employee.id}>
+                  <div>
+                    <strong>{employee.display_name}</strong>
+                    <span>{employee.employee_id ?? 'No employee ID'}</span>
+                  </div>
+                  <div>
+                    <strong>{employee.email || employee.phone || 'No login contact'}</strong>
+                    <span>{employee.status}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    function renderPinsSection() {
+      if (!showEmployeePinSettings) {
+        return null;
+      }
+
+      return (
+        <section className="new-dash-panel branch-setup-step-panel branch-setup-pin-panel">
+          <div className="new-dash-panel-head">
+            <h2>Employee PIN access</h2>
+          </div>
+          <p className="new-dash-panel-copy">Assign, reset, reveal, and share employee login PINs for this branch. Revealed PINs are shown only right after you set or regenerate them.</p>
+
+          <div className="branch-setup-pin-toolbar">
+            <Button
+              disabled={branchEmployees.length === 0 || bulkEmployeePinMutation.isPending}
+              onClick={() => {
+                if (!window.confirm('Reset PINs for every employee in this branch? Existing PINs will stop working immediately.')) {
+                  return;
+                }
+                void bulkEmployeePinMutation.mutateAsync();
+              }}
+              type="button"
+            >
+              {bulkEmployeePinMutation.isPending ? 'Resetting all PINs...' : 'Reset all employee PINs'}
+            </Button>
+            <Button
+              disabled={bulkRevealedPins.length === 0}
+              onClick={() => {
+                const text = bulkRevealedPins
+                  .map((employee) => `${employee.display_name} (${employee.employee_id ?? 'No ID'}): ${employee.revealed_pin}`)
+                  .join('\n');
+                void navigator.clipboard.writeText(text);
+                setUrlFeedback('All regenerated employee PINs copied.');
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Copy all revealed PINs
+            </Button>
+          </div>
+
+          {bulkRevealedPins.length > 0 ? (
+            <div className="branch-setup-pin-bulk-results">
+              {bulkRevealedPins.map((employee) => (
+                <div className="branch-setup-pin-bulk-item" key={employee.user_id}>
+                  <strong>{employee.display_name}</strong>
+                  <span>{employee.employee_id ?? 'No employee ID'}</span>
+                  <code>{employee.revealed_pin}</code>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="branch-setup-pin-list">
+            {branchEmployees.length === 0 ? (
+              <p className="new-dash-panel-note">No employees are assigned to this branch yet.</p>
+            ) : (
+              branchEmployees.map((employee) => {
+                const loginContact = employee.email || employee.phone || 'No login contact';
+                const revealedPin = revealedPins[employee.id] ?? null;
+                const customPin = customPins[employee.id] ?? '';
+
+                return (
+                  <article className="branch-setup-pin-card" key={employee.id}>
+                    <div className="branch-setup-pin-card-head">
+                      <div>
+                        <h3>{employee.display_name}</h3>
+                        <p>{employee.employee_id ?? 'No employee ID'} · {loginContact}</p>
+                      </div>
+                      <span className={employee.has_pin ? 'branch-setup-pin-status is-set' : 'branch-setup-pin-status'}>
+                        {employee.has_pin ? 'Set' : 'Not set'}
+                      </span>
+                    </div>
+
+                    <div className="branch-setup-pin-actions">
+                      <label className="branch-setup-pin-input">
+                        <span>Custom PIN</span>
+                        <input
+                          inputMode="numeric"
+                          maxLength={8}
+                          onChange={(event) => {
+                            setCustomPins((current) => ({
+                              ...current,
+                              [employee.id]: event.target.value.replace(/\D+/g, ''),
+                            }));
+                          }}
+                          placeholder="4 to 8 digits"
+                          type="text"
+                          value={customPin}
+                        />
+                      </label>
+
+                      <div className="branch-setup-pin-button-row">
+                        <Button
+                          disabled={employeePinMutation.isPending}
+                          onClick={() => {
+                            void employeePinMutation.mutateAsync({
+                              user: employee,
+                              pin: customPin.trim() !== '' ? customPin.trim() : undefined,
+                            });
+                          }}
+                          type="button"
+                        >
+                          {customPin.trim() !== '' ? 'Assign custom PIN' : 'Generate PIN'}
+                        </Button>
+                        <Button
+                          disabled={!revealedPin}
+                          onClick={() => {
+                            if (!revealedPin) {
+                              return;
+                            }
+                            void navigator.clipboard.writeText(revealedPin);
+                            setUrlFeedback(`PIN copied for ${employee.display_name}.`);
+                          }}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Copy revealed PIN
+                        </Button>
+                      </div>
+                    </div>
+
+                    {revealedPin ? (
+                      <div className="branch-setup-pin-reveal">
+                        <span>Fresh PIN</span>
+                        <code>{revealedPin}</code>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </section>
+      );
+    }
+
+    function renderAccessSection() {
+      return (
+        <div className="new-dash-stack">
+          <section className="new-dash-panel branch-setup-links-panel">
+            <div className="new-dash-panel-head">
+              <h2>Shareable access links</h2>
+            </div>
+            <p className="new-dash-panel-copy">Use these direct URLs so admins and employees land in the right workspace or site without typing the company slug.</p>
+            <div className="branch-setup-link-grid">
+              <label className="branch-setup-link-field">
+                <span>Company admin login</span>
+                <input readOnly type="text" value={adminLoginUrl} />
+              </label>
+              <label className="branch-setup-link-field">
+                <span>Site employee portal</span>
+                <input readOnly type="text" value={sitePortalUrl} />
+              </label>
+            </div>
+            <div className="new-dash-panel-actions">
+              <Button
+                onClick={() => {
+                  void navigator.clipboard.writeText(adminLoginUrl);
+                  setUrlFeedback('Company login URL copied.');
+                }}
+                type="button"
+                variant="secondary"
+              >
+                Copy company login URL
+              </Button>
+              <Button
+                disabled={sitePortalUrl === ''}
+                onClick={() => {
+                  if (!sitePortalUrl) {
+                    return;
+                  }
+                  void navigator.clipboard.writeText(sitePortalUrl);
+                  setUrlFeedback('Site employee portal URL copied.');
+                }}
+                type="button"
+              >
+                Copy site portal URL
+              </Button>
+            </div>
+            {urlFeedback ? <p className="new-dash-panel-note">{urlFeedback}</p> : null}
+          </section>
+
+          {isTenantOwner ? (
+            <section className="new-dash-panel branch-setup-owner-panel">
+              <div className="new-dash-panel-head">
+                <h2>{t('pages.newDash.branchInitialization.ownerAssignment.title')}</h2>
+              </div>
+              <p className="new-dash-panel-copy">Change who owns this branch configuration and payroll coordination.</p>
+              <div className="branch-setup-owner-actions">
+                <select
+                  onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
+                  value={selectedOwnerId ?? ''}
+                >
+                  <option value="">{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</option>
+                  {branchAdminOptions.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.display_name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  disabled={!selectedOwnerId || assignOwnerMutation.isPending}
+                  onClick={() => {
+                    void assignOwnerMutation.mutateAsync();
+                  }}
+                  type="button"
+                >
+                  {t('pages.newDash.branchInitialization.actions.assignOwner')}
+                </Button>
+              </div>
+            </section>
+          ) : null}
+        </div>
+      );
+    }
+
+    function renderConfiguredSection() {
+      switch (currentSection) {
+        case 'payroll':
+          return renderPayrollSection();
+        case 'employees':
+          return renderEmployeesSection();
+        case 'pins':
+          return renderPinsSection();
+        case 'access':
+          return renderAccessSection();
+        case 'overview':
+        default:
+          return renderOverviewSection();
+      }
+    }
 
     return (
       <NewPrimaryLayout
@@ -939,377 +1658,36 @@ export function BranchSetupPage() {
         }
       >
         <section className="new-dash-page">
-          <div className="new-dash-stack">
-            <section className="new-dash-panel branch-settings-hero">
-              <div className="new-dash-panel-head">
-                <div>
-                  <h2>Branch configuration</h2>
-                  <p className="new-dash-panel-copy">
-                    This branch is already initialized. Update the operational settings below when ownership, template, or payroll uploads change.
-                  </p>
-                </div>
-                <span className={`new-dash-step-status ${statusClassName}`}>
-                  {t(branchState?.statusLabelKey ?? '')}
-                </span>
+          <div className="branch-shell">
+            <aside className="branch-shell-nav">
+              <div className="branch-shell-nav-card">
+                <p className="branch-shell-nav-kicker">Branch settings</p>
+                <strong>{office?.name ?? 'Branch'}</strong>
+                <span>{formatShortDate(branchState?.lastActivityAt ?? null)}</span>
               </div>
-
-              <div className="branch-setup-overview-grid">
-                <div className="branch-setup-overview-item">
-                  <span>Site owner</span>
-                  <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
-                </div>
-                <div className="branch-setup-overview-item">
-                  <span>Latest upload</span>
-                  <strong>{latestBatch?.source_file_name ?? 'No upload yet'}</strong>
-                </div>
-                <div className="branch-setup-overview-item">
-                  <span>Last activity</span>
-                  <strong>{formatShortDate(branchState?.lastActivityAt ?? null)}</strong>
-                </div>
-              </div>
-            </section>
-
-            <section className="new-dash-panel branch-setup-links-panel">
-              <div className="new-dash-panel-head">
-                <h2>Shareable access links</h2>
-              </div>
-              <p className="new-dash-panel-copy">Use these direct URLs so admins and employees land in the right workspace or site without typing the company slug.</p>
-              <div className="branch-setup-link-grid">
-                <label className="branch-setup-link-field">
-                  <span>Company admin login</span>
-                  <input readOnly type="text" value={adminLoginUrl} />
-                </label>
-                <label className="branch-setup-link-field">
-                  <span>Site employee portal</span>
-                  <input readOnly type="text" value={sitePortalUrl} />
-                </label>
-              </div>
-              <div className="new-dash-panel-actions">
-                <Button
-                  onClick={() => {
-                    void navigator.clipboard.writeText(adminLoginUrl);
-                    setUrlFeedback('Company login URL copied.');
-                  }}
-                  type="button"
-                  variant="secondary"
-                >
-                  Copy company login URL
-                </Button>
-                <Button
-                  disabled={sitePortalUrl === ''}
-                  onClick={() => {
-                    if (!sitePortalUrl) {
-                      return;
+              <nav aria-label="Branch settings sections" className="branch-shell-nav-links">
+                {navItems.map((item) => (
+                  <NavLink
+                    className={({ isActive }) =>
+                      isActive ? 'branch-shell-nav-link is-active' : 'branch-shell-nav-link'
                     }
-                    void navigator.clipboard.writeText(sitePortalUrl);
-                    setUrlFeedback('Site employee portal URL copied.');
-                  }}
-                  type="button"
-                >
-                  Copy site portal URL
-                </Button>
-              </div>
-              {urlFeedback ? <p className="new-dash-panel-note">{urlFeedback}</p> : null}
-            </section>
-
-            {isTenantOwner ? (
-              <section className="new-dash-panel branch-setup-owner-panel">
-                <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.ownerAssignment.title')}</h2>
-                </div>
-                <p className="new-dash-panel-copy">Change who owns this branch configuration and payroll coordination.</p>
-                <div className="branch-setup-owner-actions">
-                  <select
-                    onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
-                    value={selectedOwnerId ?? ''}
+                    end={item.section === 'overview'}
+                    key={item.section}
+                    to={item.path}
                   >
-                    <option value="">{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</option>
-                    {branchAdminOptions.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.display_name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    disabled={!selectedOwnerId || assignOwnerMutation.isPending}
-                    onClick={() => {
-                      void assignOwnerMutation.mutateAsync();
-                    }}
-                    type="button"
-                  >
-                    {t('pages.newDash.branchInitialization.actions.assignOwner')}
-                  </Button>
-                </div>
-              </section>
-            ) : null}
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
+            </aside>
 
-            <div className="branch-setup-step-grid">
-              <section className="new-dash-panel branch-setup-step-panel">
-                <div className="new-dash-panel-head">
-                  <h2>{t('pages.newDash.branchInitialization.steps.template.title')}</h2>
-                </div>
-                <p className="new-dash-panel-copy">Switch the default payslip presentation this branch should use going forward.</p>
-                <div className="branch-setup-template-grid">
-                  {branchPayslipTemplates.map((template) => (
-                    <button
-                      className={
-                        selectedTemplateKey === template.key
-                          ? 'branch-setup-template-card is-selected'
-                          : 'branch-setup-template-card'
-                      }
-                      key={template.key}
-                      onClick={() => {
-                        void templateMutation.mutateAsync(template.key);
-                      }}
-                      type="button"
-                    >
-                      <strong>{template.name}</strong>
-                      <p>{template.description}</p>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="new-dash-panel branch-setup-step-panel">
-                <div className="new-dash-panel-head">
-                  <h2>Latest payroll upload</h2>
-                </div>
-                <p className="new-dash-panel-copy">Monitor the most recent import status and upload a fresh paysheet when branch payroll changes.</p>
-                {latestBatch ? (
-                  <>
-                    <div className="branch-setup-import-summary">
-                      <div className="branch-setup-import-summary-item">
-                        <span>Latest batch</span>
-                        <strong>{latestBatch.source_file_name}</strong>
-                      </div>
-                      <div className="branch-setup-import-summary-item">
-                        <span>Records stored</span>
-                        <strong>{latestStoredCount}</strong>
-                      </div>
-                      <div className="branch-setup-import-summary-item">
-                        <span>Issues found</span>
-                        <strong>{latestErrorCount}</strong>
-                      </div>
-                    </div>
-                    {latestBatch.upload_status === 'processed' ? (
-                      <p className="branch-setup-inline-success">
-                        This branch upload is healthy and ready for downstream payroll publishing.
-                      </p>
-                    ) : latestErrorCount > 0 ? (
-                      missingEmployees.length > 0 ? (
-                        <div className="branch-setup-guidance-card is-compact">
-                          <p className="branch-setup-guidance-kicker">Employee setup required</p>
-                          <h3>Missing employees in this upload</h3>
-                          <p>
-                            {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} from the payroll sheet are not in this branch yet.
-                            Add them from this same paysheet and Worknest will retry validation automatically.
-                          </p>
-                          <div className="branch-setup-guidance-chip-row">
-                            {missingEmployees.slice(0, 6).map((employeeId) => (
-                              <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
-                            ))}
-                          </div>
-                          <div className="branch-setup-guidance-actions">
-                            <Button
-                              disabled={importMissingEmployeesMutation.isPending}
-                              onClick={() => void importMissingEmployeesMutation.mutateAsync()}
-                              type="button"
-                            >
-                              {importMissingEmployeesMutation.isPending ? 'Adding employees…' : 'Add missing employees now'}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="branch-setup-inline-warning">
-                          {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
-                        </p>
-                      )
-                    ) : null}
-                    {importEmployeesMessage ? (
-                      <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="new-dash-panel-note">No payroll upload has been stored for this branch yet.</p>
-                )}
-                <div className="branch-setup-upload-grid">
-                  <label>
-                    <span>{t('pages.newDash.branchInitialization.steps.upload.periodMonth')}</span>
-                    <select onChange={(event) => setPeriodMonth(Number(event.target.value))} value={periodMonth}>
-                      {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                        <option key={month} value={month}>
-                          {month}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>{t('pages.newDash.branchInitialization.steps.upload.periodYear')}</span>
-                    <input
-                      onChange={(event) => setPeriodYear(Number(event.target.value))}
-                      type="number"
-                      value={periodYear}
-                    />
-                  </label>
-                  <label className="branch-setup-upload-file">
-                    <span>{t('pages.newDash.branchInitialization.steps.upload.file')}</span>
-                    <input
-                      accept=".csv,.xlsx"
-                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                      type="file"
-                    />
-                  </label>
-                </div>
-                <div className="new-dash-panel-actions">
-                  <Button
-                    disabled={!selectedFile || uploadMutation.isPending}
-                    onClick={() => {
-                      void uploadMutation.mutateAsync();
-                    }}
-                    type="button"
-                  >
-                    {uploadMutation.isPending
-                      ? t('pages.newDash.branchInitialization.actions.uploading')
-                      : t('pages.newDash.branchInitialization.actions.uploadFormat')}
-                  </Button>
-                </div>
-              </section>
+            <div className="branch-shell-content">
+              {renderConfiguredSection()}
+              {errorMessage && !showUploadErrorInline ? <p className="branch-setup-error">{errorMessage}</p> : null}
             </div>
-
-            {showEmployeePinSettings ? (
-              <section className="new-dash-panel branch-setup-step-panel branch-setup-pin-panel">
-                <div className="new-dash-panel-head">
-                  <h2>Employee PIN access</h2>
-                </div>
-                <p className="new-dash-panel-copy">Assign, reset, reveal, and share employee login PINs for this branch. Revealed PINs are shown only right after you set or regenerate them.</p>
-
-                <div className="branch-setup-pin-toolbar">
-                  <Button
-                    disabled={branchEmployees.length === 0 || bulkEmployeePinMutation.isPending}
-                    onClick={() => {
-                      if (!window.confirm('Reset PINs for every employee in this branch? Existing PINs will stop working immediately.')) {
-                        return;
-                      }
-                      void bulkEmployeePinMutation.mutateAsync();
-                    }}
-                    type="button"
-                  >
-                    {bulkEmployeePinMutation.isPending ? 'Resetting all PINs...' : 'Reset all employee PINs'}
-                  </Button>
-                  <Button
-                    disabled={bulkRevealedPins.length === 0}
-                    onClick={() => {
-                      const text = bulkRevealedPins
-                        .map((employee) => `${employee.display_name} (${employee.employee_id ?? 'No ID'}): ${employee.revealed_pin}`)
-                        .join('\n');
-                      void navigator.clipboard.writeText(text);
-                      setUrlFeedback('All regenerated employee PINs copied.');
-                    }}
-                    type="button"
-                    variant="secondary"
-                  >
-                    Copy all revealed PINs
-                  </Button>
-                </div>
-
-                {bulkRevealedPins.length > 0 ? (
-                  <div className="branch-setup-pin-bulk-results">
-                    {bulkRevealedPins.map((employee) => (
-                      <div className="branch-setup-pin-bulk-item" key={employee.user_id}>
-                        <strong>{employee.display_name}</strong>
-                        <span>{employee.employee_id ?? 'No employee ID'}</span>
-                        <code>{employee.revealed_pin}</code>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="branch-setup-pin-list">
-                  {branchEmployees.length === 0 ? (
-                    <p className="new-dash-panel-note">No employees are assigned to this branch yet.</p>
-                  ) : (
-                    branchEmployees.map((employee) => {
-                      const loginContact = employee.email || employee.phone || 'No login contact';
-                      const revealedPin = revealedPins[employee.id] ?? null;
-                      const customPin = customPins[employee.id] ?? '';
-
-                      return (
-                        <article className="branch-setup-pin-card" key={employee.id}>
-                          <div className="branch-setup-pin-card-head">
-                            <div>
-                              <h3>{employee.display_name}</h3>
-                              <p>{employee.employee_id ?? 'No employee ID'} · {loginContact}</p>
-                            </div>
-                            <span className={employee.has_pin ? 'branch-setup-pin-status is-set' : 'branch-setup-pin-status'}>
-                              {employee.has_pin ? 'Set' : 'Not set'}
-                            </span>
-                          </div>
-
-                          <div className="branch-setup-pin-actions">
-                            <label className="branch-setup-pin-input">
-                              <span>Custom PIN</span>
-                              <input
-                                inputMode="numeric"
-                                maxLength={8}
-                                onChange={(event) => {
-                                  setCustomPins((current) => ({
-                                    ...current,
-                                    [employee.id]: event.target.value.replace(/\D+/g, ''),
-                                  }));
-                                }}
-                                placeholder="4 to 8 digits"
-                                type="text"
-                                value={customPin}
-                              />
-                            </label>
-
-                            <div className="branch-setup-pin-button-row">
-                              <Button
-                                disabled={employeePinMutation.isPending}
-                                onClick={() => {
-                                  void employeePinMutation.mutateAsync({
-                                    user: employee,
-                                    pin: customPin.trim() !== '' ? customPin.trim() : undefined,
-                                  });
-                                }}
-                                type="button"
-                              >
-                                {customPin.trim() !== '' ? 'Assign custom PIN' : 'Generate PIN'}
-                              </Button>
-                              <Button
-                                disabled={!revealedPin}
-                                onClick={() => {
-                                  if (!revealedPin) {
-                                    return;
-                                  }
-                                  void navigator.clipboard.writeText(revealedPin);
-                                  setUrlFeedback(`PIN copied for ${employee.display_name}.`);
-                                }}
-                                type="button"
-                                variant="secondary"
-                              >
-                                Copy revealed PIN
-                              </Button>
-                            </div>
-                          </div>
-
-                          {revealedPin ? (
-                            <div className="branch-setup-pin-reveal">
-                              <span>Fresh PIN</span>
-                              <code>{revealedPin}</code>
-                            </div>
-                          ) : null}
-                        </article>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
-            ) : null}
-
-            {errorMessage ? <p className="branch-setup-error">{errorMessage}</p> : null}
           </div>
         </section>
+        {renderMissingEmployeesModal()}
       </NewPrimaryLayout>
     );
   }

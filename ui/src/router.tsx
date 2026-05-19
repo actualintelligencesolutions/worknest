@@ -57,6 +57,26 @@ export const router = createBrowserRouter([
     element: <NewDashBranchSetupPage />,
   },
   {
+    path: '/new-dash/branches/:officeId',
+    element: <NewDashBranchSetupPage />,
+  },
+  {
+    path: '/new-dash/branches/:officeId/payroll',
+    element: <NewDashBranchSetupPage />,
+  },
+  {
+    path: '/new-dash/branches/:officeId/employees',
+    element: <NewDashBranchSetupPage />,
+  },
+  {
+    path: '/new-dash/branches/:officeId/pins',
+    element: <NewDashBranchSetupPage />,
+  },
+  {
+    path: '/new-dash/branches/:officeId/access',
+    element: <NewDashBranchSetupPage />,
+  },
+  {
     path: '/new-dash/team',
     element: <NewDashTeamPage />,
   },

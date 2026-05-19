@@ -73,22 +73,37 @@ export function LoginPage() {
             </p>
 
             <form className="marketing-login-form" onSubmit={handleSubmit}>
-              {hasDirectWorkspace ? (
-                <div className="marketing-login-locked-workspace">
-                  <span>Workspace</span>
-                  <strong>{workspace}</strong>
-                </div>
-              ) : (
-                <label>
-                  <span>Workspace</span>
-                  <input
-                    onChange={(event) => setWorkspace(event.target.value)}
-                    placeholder="your-company"
-                    type="text"
-                    value={workspace}
-                  />
-                </label>
-              )}
+              <label>
+                <span>Workspace</span>
+                {
+                  hasDirectWorkspace ? (
+                    <input
+                      onChange={(event) => setWorkspace(event.target.value)}
+                      placeholder="your-company"
+                      readOnly={hasDirectWorkspace}
+                      type="text"
+                      value={workspace}
+                    />
+                  ) : (
+                    <input
+                      onChange={(event) => setWorkspace(event.target.value)}
+                      placeholder="your-company"                      
+                      type="text"
+                      value={workspace}
+                    />
+                  )
+                }
+
+                {hasDirectWorkspace ? (
+                  <small className="marketing-login-field-note">
+                    This workspace was resolved from the direct login URL.
+                  </small>
+                ) : (
+                  <small className="marketing-login-field-note">
+                    Enter your company workspace to continue.
+                  </small>
+                )}
+              </label>
 
               <label>
                 <span>Work email</span>
@@ -115,7 +130,10 @@ export function LoginPage() {
               </a>
 
               {hasDirectWorkspace ? (
-                <Link className="marketing-login-switch" to="/login">
+                <Link
+                  className="marketing-login-switch"
+                  to={`/login?workspace=${encodeURIComponent(workspace)}`}
+                >
                   Use a different workspace
                 </Link>
               ) : null}

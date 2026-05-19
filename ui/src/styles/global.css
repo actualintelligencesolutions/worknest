@@ -16,6 +16,23 @@
     sans-serif;
   --color-text: #172e61;
   --color-eyebrow: #2a57ba;
+  --color-heading-strong: #1a2f63;
+  --color-text-muted: #61759a;
+  --color-link-accent: #2f5fe8;
+  --color-accent: #4a7dff;
+  --color-accent-strong: #2f5fe8;
+  --color-accent-soft: #a9ccff;
+  --color-accent-wash: rgba(169, 204, 255, 0.24);
+  --color-accent-wash-strong: rgba(120, 170, 255, 0.2);
+  --color-surface-top: #f7faff;
+  --color-surface-bottom: #edf3ff;
+  --color-surface-card: rgba(255, 255, 255, 0.94);
+  --color-border-soft: rgba(124, 151, 214, 0.24);
+  --color-shadow-soft: rgba(93, 123, 191, 0.16);
+  --color-hero-dark: #223d7a;
+  --color-hero-dark-alt: #1a2f63;
+  --gradient-primary: linear-gradient(90deg, #4b7dff 0%, #6ea4ff 100%);
+  --gradient-primary-strong: linear-gradient(135deg, #3768f7 0%, #7aaeff 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -36,7 +53,7 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   color: var(--color-text);
-  line-height: 1.2;
+  line-height: 1.5;
 }
 
 h1,

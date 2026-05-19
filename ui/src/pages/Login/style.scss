@@ -18,19 +18,19 @@
   position: absolute;
   width: 120px;
   height: 120px;
-  border: 1px solid rgba(84, 180, 149, 0.22);
+  border: 1px solid rgba(106, 149, 233, 0.22);
   border-radius: 32px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(159, 241, 210, 0.18), transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(169, 204, 255, 0.18), transparent 60%),
     rgba(255, 255, 255, 0.34);
-  box-shadow: 0 18px 40px rgba(131, 176, 157, 0.12);
+  box-shadow: 0 18px 40px rgba(93, 123, 191, 0.12);
 }
 
 .marketing-login-line::before {
   content: '';
   position: absolute;
   inset: 18px;
-  border: 1px dashed rgba(84, 180, 149, 0.32);
+  border: 1px dashed rgba(106, 149, 233, 0.32);
   border-radius: 22px;
 }
 
@@ -47,7 +47,7 @@
 .marketing-login-label,
 .marketing-login-kicker {
   margin: 0 0 16px;
-  color: #58c4a4;
+  color: var(--color-eyebrow);
   font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -56,14 +56,14 @@
 
 .marketing-login-card h1 {
   margin: 0;
-  color: #0d4f56;
+  color: var(--color-heading-strong);
   letter-spacing: -0.05em;
   font-size: clamp(2.4rem, 4vw, 4rem);
   text-align: center;
 }
 
 .marketing-login-card-copy {
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 1.02rem;
 }
 
@@ -72,12 +72,12 @@
   z-index: 2;
   width: min(100%, 440px);
   padding: 34px 34px 28px;
-  border: 1px solid rgba(169, 201, 189, 0.34);
+  border: 1px solid rgba(169, 204, 255, 0.34);
   border-radius: 30px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 251, 248, 0.94) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 248, 255, 0.94) 100%);
   box-shadow:
-    0 28px 60px rgba(135, 168, 154, 0.18),
+    0 28px 60px rgba(93, 123, 191, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
@@ -98,45 +98,42 @@
   gap: 10px;
 }
 
-.marketing-login-locked-workspace {
-  display: grid;
-  gap: 10px;
-  padding: 16px 18px;
-  border: 1px solid rgba(120, 170, 149, 0.22);
-  border-radius: 16px;
-  background: rgba(245, 251, 248, 0.96);
-}
-
 .marketing-login-form span {
-  color: #234949;
+  color: var(--color-heading-strong);
   font-size: 0.88rem;
   font-weight: 700;
-}
-
-.marketing-login-locked-workspace strong {
-  color: #0d4f56;
-  font-size: 1rem;
 }
 
 .marketing-login-form input {
   width: 100%;
   height: 56px;
   padding: 0 18px;
-  border: 1px solid rgba(120, 170, 149, 0.22);
+  border: 1px solid rgba(126, 154, 214, 0.22);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.96);
-  color: #0d4f56;
+  color: var(--color-heading-strong);
+}
+
+.marketing-login-form input[readonly] {
+  background: rgba(245, 248, 255, 0.96);
+  cursor: default;
+}
+
+.marketing-login-field-note {
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .marketing-login-help {
-  color: #4d7b79;
+  color: #5f74a0;
   font-size: 0.92rem;
   font-weight: 600;
   text-decoration: none;
 }
 
 .marketing-login-switch {
-  color: #1a7e6d;
+  color: var(--color-link-accent);
   font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
@@ -153,12 +150,12 @@
   height: 58px;
   border: 0;
   border-radius: 18px;
-  background: linear-gradient(90deg, #4cc9a6 0%, #77d96f 100%);
+  background: var(--gradient-primary);
   color: #ffffff;
   font-size: 1rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 16px 36px rgba(118, 212, 174, 0.24);
+  box-shadow: 0 16px 36px rgba(93, 123, 191, 0.24);
 }
 
 .marketing-login-submit:disabled {
@@ -168,13 +165,13 @@
 
 .marketing-login-footer {
   margin: 24px 0 0;
-  color: #5f7b7a;
+  color: var(--color-text-muted);
   font-size: 0.94rem;
   text-align: center;
 }
 
 .marketing-login-footer a {
-  color: #1a7e6d;
+  color: var(--color-link-accent);
   font-weight: 700;
   text-decoration: none;
 }

@@ -10,7 +10,7 @@
 
 .new-dash-page-header-note {
   margin: 0;
-  color: #567672;
+  color: var(--color-text-muted);
   font-size: 0.95rem;
   font-weight: 600;
 }
@@ -34,12 +34,12 @@
   padding: 18px;
   border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(120, 221, 188, 0.14), transparent 22%),
-    linear-gradient(180deg, #145954 0%, #0d4f56 100%);
+    radial-gradient(circle at top right, rgba(141, 183, 255, 0.16), transparent 22%),
+    linear-gradient(180deg, #243f7e 0%, #1a2f63 100%);
   box-shadow:
-    inset 0 1px 0 rgba(232, 250, 242, 0.12),
-    0 24px 48px rgba(16, 73, 69, 0.18);
-  color: #eef9f4;
+    inset 0 1px 0 rgba(232, 240, 255, 0.12),
+    0 24px 48px rgba(20, 43, 92, 0.18);
+  color: #eff4ff;
 }
 
 .new-dash-panel,
@@ -72,7 +72,7 @@
 .new-dash-hero-copy h2,
 .new-dash-branch-card-head h3 {
   margin: 0;
-  color: #173f44;
+  color: var(--color-heading-strong);
 }
 
 .new-dash-panel-copy,
@@ -83,13 +83,13 @@
 .new-dash-metric-card p,
 .new-dash-sequence-step p {
   margin: 0;
-  color: #6d746d;
+  color: var(--color-text-muted);
   line-height: 1.55;
 }
 
 .new-dash-panel-note {
   margin: 0;
-  color: #22766f;
+  color: var(--color-link-accent);
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -132,8 +132,8 @@
   align-content: center;
   padding: 18px;
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(20, 89, 84, 0.96) 0%, rgba(14, 69, 67, 0.94) 100%);
-  color: #ecfbf6;
+  background: linear-gradient(180deg, rgba(34, 61, 122, 0.98) 0%, rgba(26, 47, 99, 0.96) 100%);
+  color: #eff4ff;
 }
 
 .new-dash-hero-progress span,
@@ -153,21 +153,21 @@
 
 .new-dash-hero-progress p {
   margin: 0;
-  color: rgba(236, 251, 246, 0.82);
+  color: rgba(239, 244, 255, 0.82);
 }
 
 .new-dash-progress-track {
   overflow: hidden;
   height: 10px;
   border-radius: 999px;
-  background: rgba(226, 247, 240, 0.16);
+  background: rgba(226, 236, 255, 0.16);
 }
 
 .new-dash-progress-track span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #f3d37d 0%, #8be6c0 100%);
+  background: linear-gradient(90deg, #8db6ff 0%, #5b86ff 100%);
 }
 
 .new-dash-metrics-grid,

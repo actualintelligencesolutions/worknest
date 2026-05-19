@@ -4,16 +4,16 @@
   left: 0;
   z-index: 50;
   width: 100%;
-  background: linear-gradient(180deg, rgba(9, 73, 74, 0.96) 0%, rgba(13, 92, 88, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(22, 45, 99, 0.98) 0%, rgba(33, 66, 136, 0.95) 100%);
   box-shadow:
-    inset 0 -1px 0 rgba(167, 226, 206, 0.12),
-    0 14px 32px rgba(11, 73, 68, 0.18);
+    inset 0 -1px 0 rgba(189, 214, 255, 0.14),
+    0 14px 32px rgba(20, 43, 92, 0.2);
 }
 
 .new-header-quiet {
-  background: rgba(246, 251, 248, 0.82);
+  background: rgba(247, 250, 255, 0.86);
   backdrop-filter: blur(16px);
-  box-shadow: 0 1px 0 rgba(104, 144, 129, 0.1);
+  box-shadow: 0 1px 0 rgba(109, 137, 198, 0.12);
 }
 
 .new-header-shell {
@@ -47,16 +47,16 @@
   width: 12px;
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #8ef0cd 0%, #dff9ef 100%);
+  background: linear-gradient(135deg, #7ea6ff 0%, #dce8ff 100%);
   transform: translateY(-50%) rotate(12deg);
 }
 
 .new-header-quiet .new-header-brand {
-  color: #0d4f56;
+  color: var(--color-heading-strong);
 }
 
 .new-header-quiet .new-header-brand::before {
-  background: linear-gradient(135deg, #4cc9a6 0%, #77d96f 100%);
+  background: var(--gradient-primary);
 }
 
 .new-header-nav {
@@ -74,7 +74,7 @@
 
 .new-header-link {
   position: relative;
-  color: rgba(237, 250, 245, 0.72);
+  color: rgba(232, 240, 255, 0.74);
   padding: 30px 0 28px;
   font-size: 0.92rem;
   font-weight: 700;
@@ -91,7 +91,7 @@
   left: 0;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8ef0cd 0%, #d7f7e7 100%);
+  background: linear-gradient(90deg, #7ea7ff 0%, #d5e4ff 100%);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 160ms ease;
@@ -126,8 +126,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(216, 244, 232, 0.12);
-  background: rgba(232, 250, 242, 0.05);
+  border: 1px solid rgba(216, 228, 255, 0.16);
+  background: rgba(232, 240, 255, 0.06);
   color: #ffffff;
   cursor: pointer;
   appearance: none;
@@ -140,16 +140,16 @@
 
 .new-header-quiet .new-header-menu-toggle,
 .new-header-quiet .new-header-profile-button {
-  border-color: rgba(104, 144, 129, 0.18);
+  border-color: rgba(109, 137, 198, 0.18);
   background: rgba(255, 255, 255, 0.74);
-  color: #0d4f56;
+  color: var(--color-heading-strong);
 }
 
 .new-header-icon-button:hover,
 .new-header-menu-toggle:hover,
 .new-header-profile-button:hover {
-  border-color: rgba(200, 243, 224, 0.22);
-  background: rgba(223, 249, 238, 0.12);
+  border-color: rgba(200, 216, 255, 0.24);
+  background: rgba(223, 233, 255, 0.14);
   color: #ffffff;
   transform: translateY(-1px);
 }
@@ -176,8 +176,8 @@
   width: 44px;
   height: 44px;
   border-radius: 0;
-  background: linear-gradient(135deg, #dcfaf0 0%, #a8e6cd 100%);
-  color: #0d4f56;
+  background: linear-gradient(135deg, #dce8ff 0%, #a9c6ff 100%);
+  color: var(--color-heading-strong);
   font-size: 0.95rem;
   font-weight: 800;
 }
@@ -190,30 +190,30 @@
   display: grid;
   gap: 6px;
   padding: 10px;
-  border: 1px solid rgba(104, 144, 129, 0.14);
+  border: 1px solid rgba(109, 137, 198, 0.14);
   border-radius: 0;
-  background: rgba(10, 67, 65, 0.98);
-  box-shadow: 0 22px 42px rgba(8, 52, 49, 0.26);
+  background: rgba(21, 42, 89, 0.98);
+  box-shadow: 0 22px 42px rgba(15, 32, 74, 0.28);
 }
 
 .new-header-quiet .new-header-profile-menu {
-  border-color: rgba(104, 144, 129, 0.12);
+  border-color: rgba(109, 137, 198, 0.12);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 22px 40px rgba(123, 170, 149, 0.16);
+  box-shadow: 0 22px 40px rgba(93, 123, 191, 0.16);
 }
 
 .new-header-quiet .new-header-profile-link,
 .new-header-quiet .new-header-profile-action,
 .new-header-quiet .new-header-mobile-action {
-  color: #245255;
+  color: var(--color-heading-strong);
 }
 
 .new-header-quiet .new-header-profile-link:hover,
 .new-header-quiet .new-header-profile-link.active,
 .new-header-quiet .new-header-profile-action:hover,
 .new-header-quiet .new-header-mobile-action:hover {
-  background: rgba(165, 240, 211, 0.18);
-  color: #0d4f56;
+  background: rgba(169, 204, 255, 0.2);
+  color: var(--color-heading-strong);
 }
 
 .new-header-profile-link {
@@ -240,7 +240,7 @@
 .new-header-profile-link.active,
 .new-header-profile-action:hover,
 .new-header-mobile-action:hover {
-  background: rgba(165, 240, 211, 0.14);
+  background: rgba(169, 204, 255, 0.14);
   color: #ffffff;
 }
 
