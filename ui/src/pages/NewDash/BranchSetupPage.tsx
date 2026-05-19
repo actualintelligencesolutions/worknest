@@ -68,6 +68,7 @@ function formatPayrollUploadError(error: unknown) {
       ? error.details.missing_fields.filter((value): value is string => typeof value === 'string')
       : [];
     const summary = error.details?.summary;
+    const inferredFooterMessage = inferPayrollFooterRowMessage(summary);
     const criticalErrors =
       summary && typeof summary === 'object' && Array.isArray((summary as { critical_errors?: unknown[] }).critical_errors)
         ? (summary as { critical_errors?: unknown[] }).critical_errors.filter(
@@ -79,12 +80,64 @@ function formatPayrollUploadError(error: unknown) {
       return `${error.message} Missing: ${missingFields.join(', ')}.`;
     }
 
+    if (inferredFooterMessage) {
+      return inferredFooterMessage;
+    }
+
     if (criticalErrors.length > 0) {
       return criticalErrors[0];
     }
   }
 
   return error instanceof Error ? error.message : 'We could not process this payroll upload.';
+}
+
+function inferPayrollFooterRowMessage(summary: unknown) {
+  if (!summary || typeof summary !== 'object') {
+    return null;
+  }
+
+  const normalizedRows = Array.isArray((summary as { normalized_rows?: unknown[] }).normalized_rows)
+    ? (summary as { normalized_rows?: unknown[] }).normalized_rows
+    : [];
+
+  for (const row of normalizedRows) {
+    if (!row || typeof row !== 'object') {
+      continue;
+    }
+
+    const errors = Array.isArray((row as { errors?: unknown[] }).errors)
+      ? (row as { errors?: unknown[] }).errors.filter((value): value is string => typeof value === 'string')
+      : [];
+    const data = (row as { data?: unknown }).data;
+
+    if (!data || typeof data !== 'object' || errors.length === 0) {
+      continue;
+    }
+
+    const employeeId = typeof (data as { employee_id?: unknown }).employee_id === 'string'
+      ? (data as { employee_id?: string }).employee_id ?? ''
+      : '';
+    const employeeName = typeof (data as { employee_name?: unknown }).employee_name === 'string'
+      ? (data as { employee_name?: string }).employee_name ?? ''
+      : '';
+    const normalizedEmployeeId = normalizePayrollSummaryLabel(employeeId);
+    const normalizedEmployeeName = normalizePayrollSummaryLabel(employeeName);
+    const hasNetPayMismatch = errors.includes('Net pay does not match gross pay minus deductions.');
+
+    if (
+      hasNetPayMismatch &&
+      ['total', 'grandtotal', 'subtotal', 'summary'].includes(normalizedEmployeeId || normalizedEmployeeName)
+    ) {
+      return `This upload looks blocked by a footer summary row like "${employeeId || employeeName}". The live API is still validating that totals row as payroll data.`;
+    }
+  }
+
+  return null;
+}
+
+function normalizePayrollSummaryLabel(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function missingEmployeeIds(summary?: PayrollBatch['validation_summary'] | null) {
@@ -324,6 +377,10 @@ export function BranchSetupPage() {
   const canAccessConfiguredShell = branchState?.status === 'initialized' || forceConfiguredShell;
   const isConfigured = canAccessConfiguredShell && !isSetupRoute;
   const latestValidationSummary = latestBatch?.validation_summary;
+  const latestFooterInferenceMessage = useMemo(
+    () => inferPayrollFooterRowMessage(latestValidationSummary),
+    [latestValidationSummary],
+  );
   const latestStoredCount = latestValidationSummary?.valid_rows ?? lastUploadStoredCount ?? 0;
   const latestErrorCount = latestValidationSummary?.error_rows ?? 0;
   const missingEmployees = useMemo(
@@ -1426,7 +1483,9 @@ export function BranchSetupPage() {
                     </div>
                   ) : (
                     <p className="branch-setup-inline-warning">
-                      {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
+                      {latestFooterInferenceMessage
+                        ?? latestValidationSummary?.critical_errors?.[0]
+                        ?? 'The latest upload needs attention.'}
                     </p>
                   )
                 ) : null}
