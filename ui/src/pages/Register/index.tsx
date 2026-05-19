@@ -160,25 +160,18 @@ export function RegisterPage() {
                   </div>
                 </div>
 
-                <h1>Check your email</h1>
+                <h1>Workspace created</h1>
                 <p className="marketing-register-copy marketing-register-copy-wide">
                   Your workspace <strong>{success.tenant.tenant_id}</strong> has been created.
-                  Verify the admin email sent to <strong>{success.verification.destination}</strong>{' '}
-                  to continue setup.
+                  The owner account is active now, so you can sign in immediately and continue setup.
                 </p>
-
-                {success.verification.dev_otp ? (
-                  <div className="marketing-register-success-note">
-                    Dev OTP: <strong>{success.verification.dev_otp}</strong>
-                  </div>
-                ) : null}
 
                 <div className="marketing-register-actions marketing-register-actions-single">
                   <a
                     className="marketing-register-submit marketing-register-submit-link"
                     href={`/login?workspace=${encodeURIComponent(success.tenant.tenant_id)}`}
                   >
-                    Go to login
+                    Sign in now
                   </a>
                 </div>
               </>

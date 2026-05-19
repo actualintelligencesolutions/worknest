@@ -90,21 +90,15 @@ final class AuthService
                 'phone' => $adminPhone,
                 'password_hash' => $this->passwordHasher->hash($password),
                 'user_type' => 'tenant_owner',
-                'status' => 'pending_verification',
+                'status' => 'active',
             ]);
 
             $this->tenantRepository->setPrimaryOwnerUserId($tenantId, $userId);
+            $this->tenantRepository->markActive($tenantId);
             $tenantOwnerRole = $this->roleRepository->findByKey('tenant_owner');
             if ($tenantOwnerRole !== null) {
                 $this->roleRepository->assignRole($tenantId, $userId, (int) $tenantOwnerRole['id'], null, $userId);
             }
-
-            $verification = $this->otpService->createAdminVerificationChallenge(
-                $tenantId,
-                $userId,
-                $adminEmail,
-                $companyName
-            );
 
             $this->auditLogger->log(
                 $tenantId,
@@ -126,10 +120,9 @@ final class AuthService
                     'name' => $adminName,
                     'email' => $adminEmail,
                     'role' => 'tenant_owner',
-                    'status' => 'pending_verification',
+                    'status' => 'active',
                 ],
-                'verification' => $verification,
-                'next_step' => 'verify_admin_email',
+                'next_step' => 'login_admin',
             ];
         });
     }

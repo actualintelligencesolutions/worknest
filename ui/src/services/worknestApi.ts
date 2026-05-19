@@ -223,13 +223,6 @@ export type RegistrationResult = {
     role: string;
     status: string;
   };
-  verification: {
-    challenge_id: number;
-    channel: 'email';
-    destination: string;
-    email_sent: boolean;
-    dev_otp?: string;
-  };
   next_step: string;
 };
 
