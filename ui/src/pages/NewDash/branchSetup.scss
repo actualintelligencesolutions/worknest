@@ -736,7 +736,21 @@
   gap: 14px;
 }
 
+.branch-setup-publish-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .branch-setup-import-summary-item {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(104, 144, 129, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.branch-setup-publish-status-item {
   display: grid;
   gap: 8px;
   padding: 18px;
@@ -750,7 +764,18 @@
   font-weight: 700;
 }
 
+.branch-setup-publish-status-item span {
+  color: #5f7b7a;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .branch-setup-import-summary-item strong {
+  color: #124e55;
+  font-size: 1rem;
+}
+
+.branch-setup-publish-status-item strong {
   color: #124e55;
   font-size: 1rem;
 }
@@ -814,6 +839,7 @@
   .branch-setup-pin-toolbar,
   .branch-setup-template-grid,
   .branch-setup-import-summary,
+  .branch-setup-publish-status,
   .branch-setup-template-wizard-option,
   .branch-shell-quick-links,
   .branch-shell-history-item,

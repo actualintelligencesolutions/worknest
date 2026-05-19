@@ -14,11 +14,13 @@ import {
   cancelSiteOwnerInvite,
   buildSitePortalUrl,
   buildTenantLoginUrl,
+  confirmPayrollBatch,
   getCurrentActor,
   getOffice,
   inviteSiteOwner,
   importMissingEmployeesForPayrollBatch,
   listPayrollBatches,
+  publishPayrollBatch,
   listUsers,
   resetEmployeePin,
   resetOfficeEmployeePins,
@@ -213,6 +215,7 @@ export function BranchSetupPage() {
   const [ownerInviteName, setOwnerInviteName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
+  const [payrollPublishMessage, setPayrollPublishMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
   const [missingEmployeePromptIds, setMissingEmployeePromptIds] = useState<string[]>([]);
   const [missingEmployeePromptOpen, setMissingEmployeePromptOpen] = useState(false);
@@ -340,6 +343,11 @@ export function BranchSetupPage() {
     [branchState, ownerDetailLabel],
   );
   const pendingCount = pendingItems.filter((item) => !item.complete).length;
+  const latestBatchIsProcessed = latestBatch?.upload_status === 'processed';
+  const latestBatchIsConfirmed = latestBatch?.upload_status === 'confirmed';
+  const latestBatchIsPublished = latestBatch?.upload_status === 'published';
+  const canConfirmLatestBatch = Boolean(latestBatch && latestBatchIsProcessed);
+  const canPublishLatestBatch = Boolean(latestBatch && latestBatchIsConfirmed);
 
   const wizardSteps = useMemo(
     () => (branchState ? visibleWizardSteps(branchState, isTenantOwner) : []),
@@ -430,6 +438,7 @@ export function BranchSetupPage() {
     onSuccess: async (result) => {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
+      setPayrollPublishMessage(null);
       setMissingEmployeePromptIds([]);
       setMissingEmployeePromptOpen(false);
       setLastUploadStoredCount(result.records_created);
@@ -453,6 +462,7 @@ export function BranchSetupPage() {
           : [];
       setLastUploadStoredCount(null);
       setImportEmployeesMessage(null);
+      setPayrollPublishMessage(null);
       setMissingEmployeePromptIds(promptIds);
       setMissingEmployeePromptOpen(promptIds.length > 0);
       setErrorMessage(formatPayrollUploadError(error) ?? t('pages.newDash.branchInitialization.errors.upload'));
@@ -476,6 +486,7 @@ export function BranchSetupPage() {
       setErrorMessage(null);
       setMissingEmployeePromptOpen(false);
       setMissingEmployeePromptIds([]);
+      setPayrollPublishMessage(null);
       setLastUploadStoredCount(result.records_created);
       setImportEmployeesMessage(
         result.batch.upload_status === 'processed'
@@ -494,6 +505,56 @@ export function BranchSetupPage() {
     onError: (error) => {
       setImportEmployeesMessage(null);
       setErrorMessage(formatPayrollUploadError(error) ?? 'We could not add the missing employees from this paysheet.');
+    },
+  });
+
+  const confirmPayrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!session || !latestBatch) {
+        throw new Error('No payroll batch is available to confirm.');
+      }
+
+      return confirmPayrollBatch(session, latestBatch.id);
+    },
+    onSuccess: async (result) => {
+      setErrorMessage(null);
+      setImportEmployeesMessage(null);
+      setPayrollPublishMessage(
+        `Payroll sheet confirmed. ${result.records_created} record${result.records_created === 1 ? '' : 's'} are locked in and ready to publish.`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
+      ]);
+    },
+    onError: (error) => {
+      setPayrollPublishMessage(null);
+      setErrorMessage(error instanceof Error ? error.message : 'We could not confirm this payroll sheet.');
+    },
+  });
+
+  const publishPayrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!session || !latestBatch) {
+        throw new Error('No payroll batch is available to publish.');
+      }
+
+      return publishPayrollBatch(session, latestBatch.id);
+    },
+    onSuccess: async (result) => {
+      setErrorMessage(null);
+      setImportEmployeesMessage(null);
+      setPayrollPublishMessage(
+        `Payroll published. ${result.summary.payslips_generated} payslip PDF${result.summary.payslips_generated === 1 ? '' : 's'} generated for ${result.summary.employee_count} employee${result.summary.employee_count === 1 ? '' : 's'}.`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
+      ]);
+    },
+    onError: (error) => {
+      setPayrollPublishMessage(null);
+      setErrorMessage(error instanceof Error ? error.message : 'We could not publish this payroll sheet.');
     },
   });
 
@@ -1372,6 +1433,9 @@ export function BranchSetupPage() {
                 {importEmployeesMessage ? (
                   <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
                 ) : null}
+                {payrollPublishMessage ? (
+                  <p className="branch-setup-inline-success">{payrollPublishMessage}</p>
+                ) : null}
               </>
             ) : (
               <p className="new-dash-panel-note">No payroll upload has been stored for this branch yet.</p>
@@ -1420,6 +1484,77 @@ export function BranchSetupPage() {
             {showUploadErrorInline ? (
               <p className="branch-setup-error">{errorMessage}</p>
             ) : null}
+          </section>
+
+          <section className="new-dash-panel">
+            <div className="new-dash-panel-head">
+              <h2>Publish current payroll</h2>
+            </div>
+            <p className="new-dash-panel-copy">Move the latest accepted sheet through a deliberate confirm-and-publish flow so payslips only go live when this branch is ready.</p>
+            {!latestBatch ? (
+              <p className="new-dash-panel-note">Upload a payroll sheet first to unlock publishing.</p>
+            ) : (
+              <>
+                <div className="branch-setup-publish-status">
+                  <div className="branch-setup-publish-status-item">
+                    <span>Current batch</span>
+                    <strong>{latestBatch.source_file_name}</strong>
+                  </div>
+                  <div className="branch-setup-publish-status-item">
+                    <span>Status</span>
+                    <strong>{latestBatch.upload_status}</strong>
+                  </div>
+                  <div className="branch-setup-publish-status-item">
+                    <span>Published on</span>
+                    <strong>{formatShortDate(latestBatch.published_at ?? null)}</strong>
+                  </div>
+                </div>
+                {latestBatchIsProcessed ? (
+                  <p className="branch-setup-inline-success">
+                    Validation passed. Confirm this sheet to freeze the payroll records before publishing payslips.
+                  </p>
+                ) : null}
+                {latestBatchIsConfirmed ? (
+                  <p className="branch-setup-inline-success">
+                    This sheet is confirmed and ready to publish to employees.
+                  </p>
+                ) : null}
+                {latestBatchIsPublished ? (
+                  <p className="branch-setup-inline-success">
+                    This payroll sheet has already been published. Upload a new sheet for the next payroll update.
+                  </p>
+                ) : null}
+                {!latestBatchIsProcessed && !latestBatchIsConfirmed && !latestBatchIsPublished ? (
+                  <p className="branch-setup-inline-warning">
+                    Resolve validation issues on the latest sheet before trying to publish it.
+                  </p>
+                ) : null}
+                <div className="new-dash-panel-actions">
+                  <Button
+                    disabled={!canConfirmLatestBatch || confirmPayrollMutation.isPending || publishPayrollMutation.isPending}
+                    onClick={() => {
+                      void confirmPayrollMutation.mutateAsync();
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {confirmPayrollMutation.isPending ? 'Confirming sheet...' : 'Confirm payroll sheet'}
+                  </Button>
+                  <Button
+                    disabled={!canPublishLatestBatch || publishPayrollMutation.isPending || confirmPayrollMutation.isPending}
+                    onClick={() => {
+                      void publishPayrollMutation.mutateAsync();
+                    }}
+                    type="button"
+                  >
+                    {publishPayrollMutation.isPending ? 'Publishing payslips...' : 'Publish payslips'}
+                  </Button>
+                </div>
+                {errorMessage && (confirmPayrollMutation.isError || publishPayrollMutation.isError) ? (
+                  <p className="branch-setup-error">{errorMessage}</p>
+                ) : null}
+              </>
+            )}
           </section>
 
           <section className="new-dash-panel">

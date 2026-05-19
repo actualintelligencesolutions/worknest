@@ -393,6 +393,9 @@ final class PayrollService
         if (($batch['upload_status'] ?? '') === 'published') {
             throw new ApiException('BATCH_IMMUTABLE', 'Published payroll batches cannot be republished in place.', 409);
         }
+        if (($batch['upload_status'] ?? '') !== 'confirmed') {
+            throw new ValidationException('Batch must be confirmed before publishing.');
+        }
         $records = $this->payrollRecordRepository->listByBatch($batchId, $tenantId);
         if ($records === []) {
             throw new ValidationException('Batch must be confirmed before publishing.');

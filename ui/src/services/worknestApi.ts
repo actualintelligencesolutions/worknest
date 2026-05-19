@@ -45,6 +45,8 @@ export type PayrollBatch = {
   validation_summary_json?: string | null;
   mapping_json?: string | null;
   mapping?: Record<string, string>;
+  confirmed_by_user_id?: number | null;
+  published_by_user_id?: number | null;
   validation_summary?: {
     total_rows?: number;
     valid_rows?: number;
@@ -55,6 +57,8 @@ export type PayrollBatch = {
       errors: string[];
     }>;
   };
+  confirmed_at?: string | null;
+  published_at?: string | null;
 };
 
 export type PayrollBatchUploadResult = {
@@ -84,6 +88,26 @@ export type PayrollMissingEmployeeImportResult = {
     valid_rows?: number;
     error_rows?: number;
     critical_errors?: string[];
+  };
+};
+
+export type PayrollBatchConfirmResult = {
+  batch: {
+    id: number;
+    upload_status: string;
+  };
+  records_created: number;
+};
+
+export type PayrollBatchPublishResult = {
+  batch: {
+    id: number;
+    upload_status: string;
+  };
+  summary: {
+    employee_count: number;
+    payslips_generated: number;
+    employee_notifications: string;
   };
 };
 
@@ -817,6 +841,28 @@ export function validatePayrollBatch(session: AuthSession, batchId: number) {
 export function importMissingEmployeesForPayrollBatch(session: AuthSession, batchId: number) {
   return apiRequest<PayrollMissingEmployeeImportResult>(
     `/payroll-batches/${batchId}/import-missing-employees?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function confirmPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<PayrollBatchConfirmResult>(
+    `/v2/payroll/batches/${batchId}/confirm?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function publishPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<PayrollBatchPublishResult>(
+    `/v2/payroll/batches/${batchId}/publish?tenant=${encodeURIComponent(session.tenantId)}`,
     {
       method: 'POST',
       headers: authHeaders(session),
