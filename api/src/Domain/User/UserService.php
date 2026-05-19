@@ -70,8 +70,13 @@ final class UserService
             throw new ValidationException('An employee with this employee ID already exists for the tenant.');
         }
 
-        if ($userType === 'employee' && ($email === null || $email === '') && ($phone === null || $phone === '')) {
-            throw new ValidationException('Employee creation requires at least one login identifier: email or phone.');
+        if (
+            $userType === 'employee'
+            && ($email === null || $email === '')
+            && ($phone === null || $phone === '')
+            && ($employeeId === null || $employeeId === '')
+        ) {
+            throw new ValidationException('Employee creation requires an employee ID, email, or phone.');
         }
 
         $role = $this->roleRepository->findByKey($userType);

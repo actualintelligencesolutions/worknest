@@ -80,6 +80,15 @@ final class PayrollController extends BaseController
         return Response::success($this->payrollService->confirmBatch((int) $request->attribute('id'), $tenantId, $actor));
     }
 
+    public function importMissingEmployees(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        return Response::success(
+            $this->payrollService->importMissingEmployees((int) $request->attribute('id'), $tenantId, $actor)
+        );
+    }
+
     public function publish(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);

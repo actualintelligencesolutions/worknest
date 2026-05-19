@@ -65,6 +65,28 @@ export type PayrollBatchUploadResult = {
   records_created: number;
 };
 
+export type PayrollMissingEmployeeImportResult = {
+  batch: {
+    id: number;
+    upload_status: string;
+  };
+  employees_created: number;
+  records_created: number;
+  created_employees: Array<{
+    id: number;
+    employee_id: string;
+    display_name: string;
+    phone?: string | null;
+    pin_seeded: boolean;
+  }>;
+  summary: {
+    total_rows?: number;
+    valid_rows?: number;
+    error_rows?: number;
+    critical_errors?: string[];
+  };
+};
+
 export type PayrollBatchDetail = {
   batch: PayrollBatch;
   office: {
@@ -670,6 +692,17 @@ export function validatePayrollBatch(session: AuthSession, batchId: number) {
     };
   }>(
     `/payroll-batches/${batchId}/validate?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function importMissingEmployeesForPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<PayrollMissingEmployeeImportResult>(
+    `/payroll-batches/${batchId}/import-missing-employees?tenant=${encodeURIComponent(session.tenantId)}`,
     {
       method: 'POST',
       headers: authHeaders(session),

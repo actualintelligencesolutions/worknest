@@ -14,6 +14,7 @@ import {
   buildTenantLoginUrl,
   getCurrentActor,
   getOffice,
+  importMissingEmployeesForPayrollBatch,
   listPayrollBatches,
   listUsers,
   resetEmployeePin,
@@ -140,6 +141,7 @@ export function BranchSetupPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState<BranchWizardStep | null>(null);
   const [showConfiguredSettings, setShowConfiguredSettings] = useState(false);
@@ -309,6 +311,7 @@ export function BranchSetupPage() {
     },
     onSuccess: async (result) => {
       setErrorMessage(null);
+      setImportEmployeesMessage(null);
       setLastUploadStoredCount(result.records_created);
       setSelectedFile(null);
       setCurrentStep('review');
@@ -319,12 +322,44 @@ export function BranchSetupPage() {
     },
     onError: async (error) => {
       setLastUploadStoredCount(null);
+      setImportEmployeesMessage(null);
       setErrorMessage(formatPayrollUploadError(error) ?? t('pages.newDash.branchInitialization.errors.upload'));
       setCurrentStep('review');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
         queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
       ]);
+    },
+  });
+
+  const importMissingEmployeesMutation = useMutation({
+    mutationFn: async () => {
+      if (!session || !latestBatch) {
+        throw new Error('No payroll batch is available for employee import.');
+      }
+
+      return importMissingEmployeesForPayrollBatch(session, latestBatch.id);
+    },
+    onSuccess: async (result) => {
+      setErrorMessage(null);
+      setLastUploadStoredCount(result.records_created);
+      setImportEmployeesMessage(
+        result.batch.upload_status === 'processed'
+          ? `Added ${result.employees_created} employee${result.employees_created === 1 ? '' : 's'} from this paysheet and stored ${result.records_created} payroll record${result.records_created === 1 ? '' : 's'}.`
+          : `Added ${result.employees_created} employee${result.employees_created === 1 ? '' : 's'} from this paysheet. ${result.summary.error_rows ?? 0} payroll issue${result.summary.error_rows === 1 ? '' : 's'} still need attention.`
+      );
+      if (result.batch.upload_status === 'processed') {
+        setCurrentStep('template');
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-employees', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
+      ]);
+    },
+    onError: (error) => {
+      setImportEmployeesMessage(null);
+      setErrorMessage(error instanceof Error ? error.message : 'We could not add the missing employees from this paysheet.');
     },
   });
 
@@ -347,6 +382,7 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
+      setImportEmployeesMessage(null);
       if (!isConfigured) {
         setCurrentStep('ready');
       }
@@ -401,6 +437,7 @@ export function BranchSetupPage() {
     },
     onSuccess: async () => {
       setErrorMessage(null);
+      setImportEmployeesMessage(null);
       setCurrentStep('upload');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['branch-setup-users', session?.tenantId] }),
@@ -528,6 +565,7 @@ export function BranchSetupPage() {
     const previousStep = stepIndex > 0 ? wizardSteps[stepIndex - 1] : null;
     if (previousStep) {
       setErrorMessage(null);
+      setImportEmployeesMessage(null);
       setCurrentStep(previousStep);
     }
   }
@@ -538,6 +576,7 @@ export function BranchSetupPage() {
     }
 
     setErrorMessage(null);
+    setImportEmployeesMessage(null);
 
     if (currentStep === 'owner') {
       void assignOwnerMutation.mutateAsync();
@@ -654,15 +693,18 @@ export function BranchSetupPage() {
               Worknest accepted this paysheet and stored {latestStoredCount} payroll record{latestStoredCount === 1 ? '' : 's'} for this branch.
             </p>
           ) : null}
+          {importEmployeesMessage ? (
+            <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
+          ) : null}
           {branchState.isBlocked ? (
             <>
               {missingEmployees.length > 0 ? (
                 <div className="branch-setup-guidance-card">
                   <p className="branch-setup-guidance-kicker">Employee setup required</p>
-                  <h3>Add employees before re-uploading this sheet</h3>
+                  <h3>Add employees from this paysheet</h3>
                   <p>
                     This payroll file references {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} that do not exist in Worknest yet.
-                    Add them to this branch first, then upload the same payroll file again.
+                    We can create them in this branch from the uploaded sheet, then retry payroll validation automatically.
                   </p>
                   <div className="branch-setup-guidance-chip-row">
                     {missingEmployees.slice(0, 8).map((employeeId) => (
@@ -671,6 +713,14 @@ export function BranchSetupPage() {
                     {missingEmployees.length > 8 ? (
                       <span className="branch-setup-guidance-chip">+{missingEmployees.length - 8} more</span>
                     ) : null}
+                  </div>
+                  <div className="branch-setup-guidance-actions">
+                    <Button
+                      disabled={importMissingEmployeesMutation.isPending}
+                      onClick={() => void importMissingEmployeesMutation.mutateAsync()}
+                    >
+                      {importMissingEmployeesMutation.isPending ? 'Adding employees…' : 'Add missing employees now'}
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -1052,12 +1102,21 @@ export function BranchSetupPage() {
                           <h3>Missing employees in this upload</h3>
                           <p>
                             {missingEmployees.length} employee{missingEmployees.length === 1 ? '' : 's'} from the payroll sheet are not in this branch yet.
-                            Add them first, then upload the sheet again.
+                            Add them from this same paysheet and Worknest will retry validation automatically.
                           </p>
                           <div className="branch-setup-guidance-chip-row">
                             {missingEmployees.slice(0, 6).map((employeeId) => (
                               <span className="branch-setup-guidance-chip" key={employeeId}>{employeeId}</span>
                             ))}
+                          </div>
+                          <div className="branch-setup-guidance-actions">
+                            <Button
+                              disabled={importMissingEmployeesMutation.isPending}
+                              onClick={() => void importMissingEmployeesMutation.mutateAsync()}
+                              type="button"
+                            >
+                              {importMissingEmployeesMutation.isPending ? 'Adding employees…' : 'Add missing employees now'}
+                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -1065,6 +1124,9 @@ export function BranchSetupPage() {
                           {latestValidationSummary?.critical_errors?.[0] ?? 'The latest upload needs attention.'}
                         </p>
                       )
+                    ) : null}
+                    {importEmployeesMessage ? (
+                      <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
                     ) : null}
                   </>
                 ) : (

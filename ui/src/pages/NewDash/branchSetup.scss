@@ -463,6 +463,12 @@
   font-weight: 700;
 }
 
+.branch-setup-guidance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .branch-setup-inline-warning {
   color: #b54708;
 }

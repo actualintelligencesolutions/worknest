@@ -14,7 +14,9 @@ use Worknest\Api\Infrastructure\Repositories\OfficeRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PayrollBatchRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PayrollRecordRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PayslipRepositoryInterface;
+use Worknest\Api\Infrastructure\Repositories\RoleRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\UserRepositoryInterface;
+use Worknest\Api\Infrastructure\Security\PinHasher;
 use Worknest\Api\Infrastructure\Storage\CsvParser;
 use Worknest\Api\Infrastructure\Storage\ExcelImportAdapter;
 use Worknest\Api\Infrastructure\Storage\FileStorageService;
@@ -27,6 +29,8 @@ final class PayrollService
         private readonly PayslipRepositoryInterface $payslipRepository,
         private readonly UserRepositoryInterface $userRepository,
         private readonly OfficeRepositoryInterface $officeRepository,
+        private readonly RoleRepositoryInterface $roleRepository,
+        private readonly PinHasher $pinHasher,
         private readonly FileStorageService $fileStorage,
         private readonly CsvParser $csvParser,
         private readonly ExcelImportAdapter $excelImportAdapter,
@@ -123,6 +127,115 @@ final class PayrollService
                 'upload_status' => 'processed',
             ],
             'records_created' => count($records),
+        ];
+    }
+
+    public function importMissingEmployees(int $batchId, string $tenantId, array $actor): array
+    {
+        $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        $this->assertBatchMutable($batch);
+
+        $parsed = $this->parseFile(
+            $this->fileStorage->absolutePath((string) $batch['source_file_path']),
+            (string) $batch['source_file_name']
+        );
+        $mapping = $this->existingOrDetectedMapping($batch, $parsed['headers']);
+        $employeeRole = $this->roleRepository->findByKey('employee');
+        if ($employeeRole === null) {
+            throw new ValidationException('Employee role is not configured.');
+        }
+
+        $createdEmployees = [];
+
+        $this->transactions->run(function () use ($parsed, $mapping, $tenantId, $batch, $actor, $employeeRole, &$createdEmployees): void {
+            foreach ($parsed['rows'] as $row) {
+                $normalized = $this->normalizeRow($row, $mapping);
+                $employeeId = $normalized['employee_id'];
+                if ($employeeId === '') {
+                    continue;
+                }
+
+                $existing = $this->userRepository->findActiveEmployeeByEmployeeId($tenantId, $employeeId);
+                if ($existing !== null) {
+                    continue;
+                }
+
+                $employeePayload = $this->employeePayloadFromRow($row, $mapping, $batch);
+                $userId = $this->userRepository->create($employeePayload);
+                $this->roleRepository->assignRole(
+                    $tenantId,
+                    $userId,
+                    (int) $employeeRole['id'],
+                    (int) $batch['office_id'],
+                    (int) $actor['id']
+                );
+
+                $createdEmployees[] = [
+                    'id' => $userId,
+                    'employee_id' => $employeePayload['employee_id'],
+                    'display_name' => $employeePayload['display_name'],
+                    'phone' => $employeePayload['phone'],
+                    'pin_seeded' => $employeePayload['pin_hash'] !== null,
+                ];
+            }
+        });
+
+        $summary = $this->buildValidationSummary($parsed['rows'], $mapping, $tenantId, (int) $batch['office_id']);
+
+        if (($summary['error_rows'] ?? 0) === 0) {
+            $records = $this->recordsFromSummary($summary, $tenantId, (int) $batch['office_id']);
+            $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary, $records): void {
+                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                $this->payrollRecordRepository->replaceForBatch($batchId, $tenantId, $records);
+                $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'processed', $summary);
+            });
+
+            $this->auditLogger->log(
+                $tenantId,
+                (int) $batch['office_id'],
+                (int) $actor['id'],
+                'payroll.missing_employees_imported',
+                'payroll_batch',
+                (string) $batchId,
+                ['employees_created' => count($createdEmployees), 'records_created' => count($records)]
+            );
+
+            return [
+                'batch' => [
+                    'id' => $batchId,
+                    'upload_status' => 'processed',
+                ],
+                'employees_created' => count($createdEmployees),
+                'created_employees' => $createdEmployees,
+                'records_created' => count($records),
+                'summary' => $summary,
+            ];
+        }
+
+        $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary): void {
+            $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+            $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+        });
+
+        $this->auditLogger->log(
+            $tenantId,
+            (int) $batch['office_id'],
+            (int) $actor['id'],
+            'payroll.missing_employees_import_attempted',
+            'payroll_batch',
+            (string) $batchId,
+            ['employees_created' => count($createdEmployees), 'remaining_errors' => (int) ($summary['error_rows'] ?? 0)]
+        );
+
+        return [
+            'batch' => [
+                'id' => $batchId,
+                'upload_status' => 'failed',
+            ],
+            'employees_created' => count($createdEmployees),
+            'created_employees' => $createdEmployees,
+            'records_created' => 0,
+            'summary' => $summary,
         ];
     }
 
@@ -429,6 +542,8 @@ final class PayrollService
         $targets = [
             'employee_id' => ['id', 'emp id', 'emp code', 'employee code', 'employee id', 'employee number', 'staff id'],
             'employee_name' => ['full name', 'emp name', 'employee name', 'name'],
+            'phone' => ['phone', 'phone number', 'mobile', 'mobile number', 'contact number'],
+            'pin' => ['pin', 'login pin'],
             'gross_pay' => ['gross', 'gross pay', 'gross salary'],
             'total_deductions' => ['deduction', 'deductions', 'total deduction'],
             'net_pay' => ['net', 'net pay', 'net salary', 'net amt', 'net pay credited to bank a/c'],
@@ -632,6 +747,81 @@ final class PayrollService
         }
 
         return $errors;
+    }
+
+    private function employeePayloadFromRow(array $row, array $mapping, array $batch): array
+    {
+        $employeeId = $this->cellValue($row, $mapping, 'employee_id');
+        $displayName = $this->cellValue($row, $mapping, 'employee_name');
+        if ($displayName === '') {
+            $displayName = 'Employee ' . $employeeId;
+        }
+
+        [$firstName, $lastName] = $this->splitDisplayName($displayName);
+        $phone = $this->normalizePhone($this->cellValue($row, $mapping, 'phone'));
+        if ($phone !== '' && $this->userRepository->phoneExists((string) $batch['tenant_id'], $phone)) {
+            $phone = '';
+        }
+
+        $pin = $this->cellValue($row, $mapping, 'pin');
+        $pinHash = $this->validPin($pin) ? $this->pinHasher->hash($pin) : null;
+
+        return [
+            'tenant_id' => (string) $batch['tenant_id'],
+            'office_id' => (int) $batch['office_id'],
+            'employee_id' => $employeeId,
+            'first_name' => $firstName,
+            'last_name' => $lastName !== '' ? $lastName : null,
+            'display_name' => $displayName,
+            'email' => null,
+            'phone' => $phone !== '' ? $phone : null,
+            'password_hash' => null,
+            'pin_hash' => $pinHash,
+            'user_type' => 'employee',
+            'status' => 'active',
+        ];
+    }
+
+    private function cellValue(array $row, array $mapping, string $field): string
+    {
+        if (!isset($mapping[$field])) {
+            return '';
+        }
+
+        return $this->sanitizeCellValue($row[$mapping[$field]] ?? '');
+    }
+
+    private function splitDisplayName(string $displayName): array
+    {
+        $parts = preg_split('/\s+/', trim($displayName)) ?: [];
+        $firstName = $parts[0] ?? $displayName;
+        $lastName = count($parts) > 1 ? trim(implode(' ', array_slice($parts, 1))) : '';
+
+        return [$firstName, $lastName];
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+        if (strlen($digits) === 10) {
+            return '+91' . $digits;
+        }
+        if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+            return '+' . $digits;
+        }
+        if (str_starts_with(trim($phone), '+')) {
+            return '+' . $digits;
+        }
+
+        return '+' . $digits;
+    }
+
+    private function validPin(string $pin): bool
+    {
+        return preg_match('/^[0-9]{4,8}$/', trim($pin)) === 1;
     }
 
     private function assertBatchMutable(array $batch): void

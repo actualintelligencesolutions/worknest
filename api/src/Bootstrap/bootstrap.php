@@ -134,6 +134,8 @@ function build_app(array $config): App
         $c->get(PayslipRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class),
         $c->get(OfficeRepositoryInterface::class),
+        $c->get(RoleRepositoryInterface::class),
+        $c->get(PinHasher::class),
         $c->get(FileStorageService::class),
         $c->get(CsvParser::class),
         $c->get(ExcelImportAdapter::class),
@@ -237,6 +239,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('GET', '/payroll-batches/{id}', fn ($request) => $payroll->detail($request));
     $router->add('POST', '/payroll-batches/{id}/mapping', fn ($request) => $payroll->mapping($request));
     $router->add('POST', '/payroll-batches/{id}/validate', fn ($request) => $payroll->validate($request));
+    $router->add('POST', '/payroll-batches/{id}/import-missing-employees', fn ($request) => $payroll->importMissingEmployees($request));
     $router->add('POST', '/payroll-batches/{id}/confirm', fn ($request) => $payroll->confirm($request));
     $router->add('POST', '/payroll-batches/{id}/publish', fn ($request) => $payroll->publish($request));
 
@@ -278,6 +281,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('GET', '/v2/payroll/batches/{id}', fn ($request) => $payroll->detail($request));
     $router->add('POST', '/v2/payroll/batches/{id}/mapping', fn ($request) => $payroll->mapping($request));
     $router->add('POST', '/v2/payroll/batches/{id}/validate', fn ($request) => $payroll->validate($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/import-missing-employees', fn ($request) => $payroll->importMissingEmployees($request));
     $router->add('POST', '/v2/payroll/batches/{id}/confirm', fn ($request) => $payroll->confirm($request));
     $router->add('POST', '/v2/payroll/batches/{id}/publish', fn ($request) => $payroll->publish($request));
 
