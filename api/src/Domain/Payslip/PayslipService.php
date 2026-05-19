@@ -6,15 +6,16 @@ namespace Worknest\Api\Domain\Payslip;
 
 use Worknest\Api\Application\Exceptions\NotFoundException;
 use Worknest\Api\Domain\Audit\AuditLogger;
+use Worknest\Api\Infrastructure\Repositories\OfficeRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PayslipRepositoryInterface;
-use Worknest\Api\Infrastructure\Storage\FileStorageService;
 
 final class PayslipService
 {
     public function __construct(
         private readonly PayslipRepositoryInterface $payslipRepository,
-        private readonly FileStorageService $fileStorage,
-        private readonly AuditLogger $auditLogger
+        private readonly OfficeRepositoryInterface $officeRepository,
+        private readonly PayslipPdfGenerator $pdfGenerator,
+        private readonly AuditLogger $auditLogger,
     ) {
     }
 
@@ -39,13 +40,22 @@ final class PayslipService
         if ($payslip === null) {
             throw new NotFoundException('No accessible payslip was found.');
         }
+        $office = isset($payslip['office_id']) ? $this->officeRepository->findById((int) $payslip['office_id'], $tenantId) : null;
+        $employeeSlug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', trim((string) ($payslip['employee_id'] ?? ('employee-' . $payslipId)))) ?: ('employee-' . $payslipId);
+        $filename = sprintf(
+            'worknest-payslip-%s-%04d-%02d.pdf',
+            $employeeSlug,
+            (int) ($payslip['period_year'] ?? date('Y')),
+            (int) ($payslip['period_month'] ?? date('n'))
+        );
+        $content = $this->pdfGenerator->generateFromPayslip($payslip, $office);
 
         $this->payslipRepository->markDownloaded($payslipId);
         $this->auditLogger->log($tenantId, $payslip['office_id'] !== null ? (int) $payslip['office_id'] : null, (int) $actor['id'], 'payslip.downloaded', 'payslip', (string) $payslipId);
 
         return [
-            'path' => $this->fileStorage->absolutePath((string) $payslip['file_path']),
-            'filename' => 'worknest-payslip-' . $payslipId . '.pdf',
+            'content' => $content,
+            'filename' => $filename,
         ];
     }
 }

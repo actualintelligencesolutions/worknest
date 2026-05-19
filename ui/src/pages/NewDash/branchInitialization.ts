@@ -19,11 +19,23 @@ export type BranchTemplateChoice = {
   description: string;
 };
 
+export function normalizeBranchTemplateKey(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  if (value === 'clean_classic') {
+    return 'simple';
+  }
+
+  return value;
+}
+
 export const branchPayslipTemplates: BranchTemplateChoice[] = [
   {
-    key: 'clean_classic',
-    name: 'Clean Classic',
-    description: 'Traditional salary slip layout with clear totals and compact sections.',
+    key: 'simple',
+    name: 'Simple',
+    description: 'Legacy payslip table layout carried forward as the default format.',
   },
   {
     key: 'mint_modern',
@@ -83,15 +95,21 @@ export function parseBranchSettings(
 function parsedBranchSettings(
   value: Record<string, unknown>,
 ): BranchInitializationSettings {
+  const templateKey =
+    typeof value.payslip_template_key === 'string'
+      ? normalizeBranchTemplateKey(value.payslip_template_key)
+      : null;
+  const templateName =
+    typeof value.payslip_template_name === 'string'
+      ? value.payslip_template_name
+      : null;
+
   return {
-    payslip_template_key:
-      typeof value.payslip_template_key === 'string'
-        ? value.payslip_template_key
-        : null,
+    payslip_template_key: templateKey,
     payslip_template_name:
-      typeof value.payslip_template_name === 'string'
-        ? value.payslip_template_name
-        : null,
+      templateKey === 'simple'
+        ? 'Simple'
+        : templateName,
     branch_initialization_completed_at:
       typeof value.branch_initialization_completed_at === 'string'
         ? value.branch_initialization_completed_at

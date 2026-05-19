@@ -47,10 +47,19 @@ final class Response
 
     public static function file(string $path, string $contentType, string $filename): self
     {
+        return self::binary(
+            (string) file_get_contents($path),
+            $contentType,
+            $filename
+        );
+    }
+
+    public static function binary(string $content, string $contentType, string $filename): self
+    {
         return new self(200, [
             'Content-Type' => $contentType,
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ], (string) file_get_contents($path));
+        ], $content);
     }
 
     public function send(): void

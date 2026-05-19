@@ -288,7 +288,7 @@ export type PayslipSummary = {
   user_id: number;
   period_year: number;
   period_month: number;
-  file_path: string;
+  file_path: string | null;
   file_format: string;
   generated_at: string | null;
   published_at: string | null;

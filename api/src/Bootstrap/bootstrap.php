@@ -13,6 +13,7 @@ use Worknest\Api\Domain\Auth\AuthService;
 use Worknest\Api\Domain\Auth\OtpService;
 use Worknest\Api\Domain\Auth\SessionService;
 use Worknest\Api\Domain\Office\OfficeService;
+use Worknest\Api\Domain\Payslip\PayslipPdfGenerator;
 use Worknest\Api\Domain\Payslip\PayslipService;
 use Worknest\Api\Domain\Payroll\PayrollService;
 use Worknest\Api\Domain\Tenant\TenantResolver;
@@ -87,6 +88,7 @@ function build_app(array $config): App
     $container->singleton(ExcelImportAdapter::class, fn ($c) => new NullExcelImportAdapter());
     $container->singleton(FileStorageService::class, fn ($c) => new FileStorageService(dirname(__DIR__, 2) . '/storage'));
     $container->singleton(AuditLogger::class, fn ($c) => new AuditLogger($c->get(AuditLogRepositoryInterface::class)));
+    $container->singleton(PayslipPdfGenerator::class, fn ($c) => new PayslipPdfGenerator());
     $container->singleton(SessionService::class, fn ($c) => new SessionService(
         $c->get(SessionRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class)
@@ -147,12 +149,14 @@ function build_app(array $config): App
         $c->get(CsvParser::class),
         $c->get(ExcelImportAdapter::class),
         $c->get(TransactionManager::class),
-        $c->get(AuditLogger::class)
+        $c->get(AuditLogger::class),
+        $c->get(PayslipPdfGenerator::class)
     ));
     $container->singleton(PayslipService::class, fn ($c) => new PayslipService(
         $c->get(PayslipRepositoryInterface::class),
-        $c->get(FileStorageService::class),
-        $c->get(AuditLogger::class)
+        $c->get(OfficeRepositoryInterface::class),
+        $c->get(PayslipPdfGenerator::class),
+        $c->get(AuditLogger::class),
     ));
     $container->singleton(ApiExceptionHandler::class, fn ($c) => new ApiExceptionHandler());
     $container->singleton(SystemController::class, fn ($c) => new SystemController(

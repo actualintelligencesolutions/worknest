@@ -9,6 +9,7 @@ use Worknest\Api\Application\Exceptions\ForbiddenException;
 use Worknest\Api\Application\Exceptions\NotFoundException;
 use Worknest\Api\Application\Exceptions\ValidationException;
 use Worknest\Api\Domain\Audit\AuditLogger;
+use Worknest\Api\Domain\Payslip\PayslipPdfGenerator;
 use Worknest\Api\Infrastructure\Database\TransactionManager;
 use Worknest\Api\Infrastructure\Repositories\OfficeRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\PayrollBatchRepositoryInterface;
@@ -35,7 +36,8 @@ final class PayrollService
         private readonly CsvParser $csvParser,
         private readonly ExcelImportAdapter $excelImportAdapter,
         private readonly TransactionManager $transactions,
-        private readonly AuditLogger $auditLogger
+        private readonly AuditLogger $auditLogger,
+        private readonly PayslipPdfGenerator $pdfGenerator,
     ) {
     }
 
@@ -395,9 +397,10 @@ final class PayrollService
         if ($records === []) {
             throw new ValidationException('Batch must be confirmed before publishing.');
         }
+        $office = $this->officeRepository->findById((int) $batch['office_id'], $tenantId);
 
         $generated = 0;
-        $this->transactions->run(function () use ($records, $batch, $tenantId, $actor, &$generated, $batchId): void {
+        $this->transactions->run(function () use ($records, $batch, $tenantId, $actor, &$generated, $batchId, $office): void {
             $this->payslipRepository->supersedePublishedForPeriod(
                 $tenantId,
                 (int) $batch['office_id'],
@@ -413,7 +416,7 @@ final class PayrollService
                     $batch['period_month']
                 );
                 $relativePath = 'payslips/' . $tenantId . '/' . $filename;
-                $this->fileStorage->write($relativePath, $this->pdfPayload($record, $batch));
+                $this->fileStorage->write($relativePath, $this->pdfGenerator->generateFromRecord($record, $batch, $office));
                 $this->payslipRepository->createOrReplace([
                     'tenant_id' => $tenantId,
                     'office_id' => (int) $batch['office_id'],
@@ -898,40 +901,5 @@ final class PayrollService
     {
         $slug = strtolower(trim((string) preg_replace('/[^a-zA-Z0-9]+/', '-', $value), '-'));
         return $slug !== '' ? $slug : 'payroll';
-    }
-
-    private function pdfPayload(array $record, array $batch): string
-    {
-        $lines = [
-            'Worknest Payslip',
-            'Period: ' . $batch['period_month'] . '/' . $batch['period_year'],
-            'Employee: ' . $record['employee_name_snapshot'] . ' (' . $record['employee_id'] . ')',
-            'Gross Pay: INR ' . number_format((float) $record['gross_pay'], 2),
-            'Deductions: INR ' . number_format((float) $record['total_deductions'], 2),
-            'Net Pay: INR ' . number_format((float) $record['net_pay'], 2),
-        ];
-        $text = implode("\\n", array_map(static fn (string $line): string => str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $line), $lines));
-        $stream = "BT /F1 14 Tf 72 760 Td ({$text}) Tj ET";
-        $objects = [
-            '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
-            '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
-            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
-            '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
-            '5 0 obj << /Length ' . strlen($stream) . " >> stream\n{$stream}\nendstream endobj",
-        ];
-        $pdf = "%PDF-1.4\n";
-        $offsets = [0];
-        foreach ($objects as $object) {
-            $offsets[] = strlen($pdf);
-            $pdf .= $object . "\n";
-        }
-        $xref = strlen($pdf);
-        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n0000000000 65535 f \n";
-        foreach (array_slice($offsets, 1) as $offset) {
-            $pdf .= sprintf("%010d 00000 n \n", $offset);
-        }
-        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF";
-
-        return $pdf;
     }
 }

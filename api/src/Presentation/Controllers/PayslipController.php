@@ -39,6 +39,6 @@ final class PayslipController extends BaseController
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner', 'employee']);
         $payload = $this->payslipService->downloadPayslip((int) $request->attribute('id'), $tenantId, $actor);
 
-        return Response::file($payload['path'], 'application/pdf', $payload['filename']);
+        return Response::binary($payload['content'], 'application/pdf', $payload['filename']);
     }
 }

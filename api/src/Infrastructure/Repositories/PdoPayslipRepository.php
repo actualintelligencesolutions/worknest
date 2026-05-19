@@ -46,14 +46,15 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
     {
         $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
-                       pr.employee_id, pr.employee_name_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay
+                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.earnings_json, pr.deductions_json, pr.currency
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 WHERE p.tenant_id = :tenant_id';
         $bindings = ['tenant_id' => $tenantId];
 
         if (($actor['user_type'] ?? '') === 'employee') {
-            $sql .= ' AND p.user_id = :user_id AND p.status = "published"';
+            $sql .= ' AND p.user_id = :user_id AND p.status IN ("published", "superseded")';
             $bindings['user_id'] = (int) $actor['id'];
         } elseif (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
@@ -63,23 +64,25 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
             $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
-                       pr.employee_id, pr.employee_name_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay
+                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.earnings_json, pr.deductions_json, pr.currency
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 WHERE p.tenant_id = ? AND p.office_id IN (' . $placeholders . ')';
-            $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY p.period_year DESC, p.period_month DESC');
+            $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY p.period_year DESC, p.period_month DESC, p.published_at DESC, p.id DESC');
             $stmt->execute(array_merge([$tenantId], $officeIds));
             return $stmt->fetchAll();
         }
 
-        $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY p.period_year DESC, p.period_month DESC');
+        $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY p.period_year DESC, p.period_month DESC, p.published_at DESC, p.id DESC');
         $stmt->execute($bindings);
         return $stmt->fetchAll();
     }
 
     public function findAccessibleById(int $payslipId, string $tenantId, array $actor): ?array
     {
-        $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay
+        $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.earnings_json, pr.deductions_json, pr.currency
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 WHERE p.id = :id AND p.tenant_id = :tenant_id';
@@ -97,7 +100,8 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
                 return null;
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
-            $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay
+            $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.earnings_json, pr.deductions_json, pr.currency
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 WHERE p.id = ? AND p.tenant_id = ? AND p.office_id IN (' . $placeholders . ')';

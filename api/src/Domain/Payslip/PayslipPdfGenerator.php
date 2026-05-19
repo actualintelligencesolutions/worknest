@@ -1,0 +1,705 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Worknest\Api\Domain\Payslip;
+
+final class PayslipPdfGenerator
+{
+    private const PAGE_WIDTH = 595.28;
+    private const PAGE_HEIGHT = 841.89;
+    private const MARGIN_X = 24.0;
+    private const MARGIN_Y = 28.0;
+    private const CONTENT_WIDTH = 547.28;
+
+    private const LAYOUT_SIMPLE = 'simple';
+    private const LAYOUT_MINT_MODERN = 'mint_modern';
+    private const LAYOUT_STATEMENT_GRID = 'statement_grid';
+
+    public function generateFromPayslip(array $payslip, ?array $office = null): string
+    {
+        return $this->render($this->buildModel(
+            $payslip,
+            $office,
+            (int) ($payslip['period_year'] ?? date('Y')),
+            (int) ($payslip['period_month'] ?? date('n'))
+        ));
+    }
+
+    public function generateFromRecord(array $record, array $batch, ?array $office = null): string
+    {
+        $payload = array_merge($record, [
+            'period_year' => (int) ($batch['period_year'] ?? date('Y')),
+            'period_month' => (int) ($batch['period_month'] ?? date('n')),
+            'status' => 'published',
+        ]);
+
+        return $this->render($this->buildModel(
+            $payload,
+            $office,
+            (int) ($batch['period_year'] ?? date('Y')),
+            (int) ($batch['period_month'] ?? date('n'))
+        ));
+    }
+
+    public function resolveLayoutKey(?string $layoutKey): string
+    {
+        $normalized = strtolower(trim((string) $layoutKey));
+
+        return match ($normalized) {
+            '', 'simple', 'clean_classic' => self::LAYOUT_SIMPLE,
+            self::LAYOUT_MINT_MODERN => self::LAYOUT_MINT_MODERN,
+            self::LAYOUT_STATEMENT_GRID => self::LAYOUT_STATEMENT_GRID,
+            default => self::LAYOUT_SIMPLE,
+        };
+    }
+
+    private function buildModel(array $payload, ?array $office, int $periodYear, int $periodMonth): array
+    {
+        $settings = $this->decodeJson($office['settings_json'] ?? null);
+        $layout = $this->resolveLayoutKey(is_string($settings['payslip_template_key'] ?? null) ? $settings['payslip_template_key'] : null);
+        $earnings = $this->decodeJson($payload['earnings_json'] ?? ($payload['earnings'] ?? []));
+        $deductions = $this->decodeJson($payload['deductions_json'] ?? ($payload['deductions'] ?? []));
+        $basicAmount = $this->firstAmount($earnings, ['basic', 'basic_rate', 'basic_salary', 'wages_earned']);
+        $otHours = $this->firstString($payload, ['ot_hours', 'overtime_hours']);
+        $otAmount = $this->firstAmount($earnings, ['ot_amount', 'overtime_amount']);
+
+        $earningRows = $this->buildEarningRows($earnings, (float) ($payload['gross_pay'] ?? 0), $otAmount);
+        $deductionRows = $this->buildDeductionRows($deductions);
+
+        return [
+            'layout' => $layout,
+            'month_label' => $this->formatPeriod($periodYear, $periodMonth),
+            'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
+            'designation' => trim((string) ($payload['designation_snapshot'] ?? '')),
+            'employee_id' => trim((string) ($payload['employee_id'] ?? '')),
+            'office_name' => trim((string) ($office['name'] ?? 'Worknest')),
+            'office_code' => trim((string) ($office['office_code'] ?? '')),
+            'basic_rate' => $basicAmount,
+            'days_paid' => $this->firstString($payload, ['days_paid']),
+            'ot_hours' => $otHours,
+            'doj' => $this->firstString($payload, ['date_of_joining', 'doj']),
+            'uan' => $this->firstString($payload, ['uan']),
+            'bank' => $this->firstString($payload, ['bank']),
+            'account_number' => $this->firstString($payload, ['account_number', 'bank_account_number']),
+            'ifsc' => $this->firstString($payload, ['ifsc']),
+            'gross_pay' => (float) ($payload['gross_pay'] ?? 0),
+            'total_deductions' => (float) ($payload['total_deductions'] ?? 0),
+            'net_pay' => (float) ($payload['net_pay'] ?? 0),
+            'currency' => trim((string) ($payload['currency'] ?? 'INR')) ?: 'INR',
+            'status' => trim((string) ($payload['status'] ?? 'published')),
+            'earning_rows' => $earningRows,
+            'deduction_rows' => $deductionRows,
+            'note' => 'Note: This is system generated payslip and does not require signature',
+        ];
+    }
+
+    private function buildEarningRows(array $earnings, float $grossPay, ?float $otAmount): array
+    {
+        $rows = [];
+        $seen = [];
+        $legacyMap = [
+            'basic' => 'Wages Earned',
+            'wages_earned' => 'Wages Earned',
+            'hra' => 'HRA',
+            'allowances' => 'Allowances',
+            'ot_amount' => 'OT Amount',
+            'overtime_amount' => 'OT Amount',
+            'proj_allowance' => 'Proj Allowance',
+            'project_allowance' => 'Proj Allowance',
+            'h_allowance' => 'H Allowance',
+            'housing_allowance' => 'H Allowance',
+            's_allowance' => 'S Allowance',
+            'v_allowance' => 'V Allowance',
+            'sca_da' => 'SCA / DA',
+            'bonus_8_33' => 'Bonus @ 8.33%',
+            'bonus' => 'Bonus @ 8.33%',
+            'area_allowance' => 'Area Allowance',
+            'washing_allowance' => 'Washing Allowance',
+            'performance_allowance' => 'Performance Allowance',
+            'mess_allow' => 'Mess Allow',
+        ];
+
+        foreach ([
+            'basic',
+            'wages_earned',
+            'hra',
+            'allowances',
+            'ot_amount',
+            'overtime_amount',
+            'proj_allowance',
+            'project_allowance',
+            'h_allowance',
+            'housing_allowance',
+            's_allowance',
+            'v_allowance',
+            'sca_da',
+            'bonus_8_33',
+            'bonus',
+            'area_allowance',
+            'washing_allowance',
+            'performance_allowance',
+            'mess_allow',
+        ] as $key) {
+            $amount = $this->amountForKey($earnings, $key);
+            if ($amount === null) {
+                continue;
+            }
+
+            $label = $legacyMap[$key] ?? $this->humanizeKey($key);
+            if (isset($seen[$label])) {
+                continue;
+            }
+
+            $rows[] = ['label' => $label, 'amount' => $amount];
+            $seen[$label] = true;
+        }
+
+        if ($rows === []) {
+            $rows[] = ['label' => 'Wages Earned', 'amount' => $grossPay];
+            if ($otAmount !== null) {
+                $rows[] = ['label' => 'OT Amount', 'amount' => $otAmount];
+            }
+        }
+
+        foreach ($earnings as $key => $amount) {
+            if (!is_string($key) || isset($legacyMap[$key])) {
+                continue;
+            }
+            if (!is_numeric($amount)) {
+                continue;
+            }
+
+            $label = $this->humanizeKey($key);
+            if (isset($seen[$label])) {
+                continue;
+            }
+
+            $rows[] = [
+                'label' => $label,
+                'amount' => round((float) $amount, 2),
+            ];
+            $seen[$label] = true;
+        }
+
+        return $rows;
+    }
+
+    private function buildDeductionRows(array $deductions): array
+    {
+        $rows = [];
+        $seen = [];
+        $legacyMap = [
+            'pf' => 'EPF',
+            'epf' => 'EPF',
+            'esi' => 'ESI',
+            'mess' => 'Mess',
+            'advance' => 'Advance',
+            'professional_tax' => 'Professional Tax',
+            'pt' => 'Professional Tax',
+            'tds' => 'TDS',
+        ];
+
+        foreach (['pf', 'epf', 'esi', 'mess', 'advance', 'professional_tax', 'pt', 'tds'] as $key) {
+            $amount = $this->amountForKey($deductions, $key);
+            if ($amount === null) {
+                continue;
+            }
+
+            $label = $legacyMap[$key] ?? $this->humanizeKey($key);
+            if (isset($seen[$label])) {
+                continue;
+            }
+
+            $rows[] = ['label' => $label, 'amount' => $amount];
+            $seen[$label] = true;
+        }
+
+        foreach ($deductions as $key => $amount) {
+            if (!is_string($key) || isset($legacyMap[$key])) {
+                continue;
+            }
+            if (!is_numeric($amount)) {
+                continue;
+            }
+
+            $label = $this->humanizeKey($key);
+            if (isset($seen[$label])) {
+                continue;
+            }
+
+            $rows[] = [
+                'label' => $label,
+                'amount' => round((float) $amount, 2),
+            ];
+            $seen[$label] = true;
+        }
+
+        return $rows;
+    }
+
+    private function render(array $model): string
+    {
+        $layoutStyles = $this->layoutStyles($model['layout']);
+        $commands = [];
+        $y = self::MARGIN_Y;
+        $x = self::MARGIN_X;
+        $colWidths = [130.0, 143.0, 130.0, 144.28];
+
+        $this->drawFilledRect($commands, $x, $y, self::CONTENT_WIDTH, 44, $layoutStyles['banner_fill']);
+        $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, 44, 1.2, $layoutStyles['border']);
+        $this->drawText($commands, $x + 16, $y + 16, 'WORKNEST', 20, true, $layoutStyles['banner_text']);
+        $this->drawText(
+            $commands,
+            $x + self::CONTENT_WIDTH - 16,
+            $y + 14,
+            trim(($model['office_name'] !== '' ? $model['office_name'] : 'Employee Payslip') . ($model['office_code'] !== '' ? ' | ' . $model['office_code'] : '')),
+            10,
+            false,
+            $layoutStyles['banner_text'],
+            'right'
+        );
+        $y += 44;
+
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+            ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XI Rules 26(2)' : strtoupper(str_replace('_', ' ', $model['layout'])) . ' PAYSLIP'],
+        ], 22, $layoutStyles, true);
+        $y += 22;
+
+        $identityRows = [
+            [
+                ['text' => 'Pay Slip For The Month', 'colspan' => 3],
+                ['text' => $model['month_label'], 'bold' => true],
+            ],
+            [
+                ['text' => 'NAME'],
+                ['text' => $model['employee_name'], 'bold' => true, 'colspan' => 2],
+                ['text' => $model['designation'], 'bold' => true],
+            ],
+            [
+                ['text' => 'ID'],
+                ['text' => $model['employee_id'], 'bold' => true],
+                ['text' => 'Basic Rate'],
+                ['text' => $this->formatMoney($model['basic_rate'], $model['currency']), 'bold' => true, 'align' => 'right'],
+            ],
+            [
+                ['text' => 'Days Paid'],
+                ['text' => $model['days_paid'], 'bold' => true],
+                ['text' => 'OT Hours'],
+                ['text' => $model['ot_hours'], 'bold' => true],
+            ],
+            [
+                ['text' => 'D.O.J'],
+                ['text' => $model['doj'], 'bold' => true, 'colspan' => 3],
+            ],
+            [
+                ['text' => 'UAN'],
+                ['text' => $model['uan'], 'bold' => true, 'colspan' => 3],
+            ],
+            [
+                ['text' => 'Bank'],
+                ['text' => $model['bank'], 'bold' => true, 'colspan' => 3],
+            ],
+            [
+                ['text' => 'A/c No'],
+                ['text' => $model['account_number'], 'bold' => true, 'colspan' => 3],
+            ],
+            [
+                ['text' => 'IFSC'],
+                ['text' => $model['ifsc'], 'bold' => true, 'colspan' => 3],
+            ],
+        ];
+
+        foreach ($identityRows as $row) {
+            $this->drawSimpleRow($commands, $x, $y, $colWidths, $row, 22, $layoutStyles);
+            $y += 22;
+        }
+
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+            ['text' => 'EARNING', 'colspan' => 2, 'bold' => true, 'align' => 'center'],
+            ['text' => 'DEDUCTION', 'colspan' => 2, 'bold' => true, 'align' => 'center'],
+        ], 24, $layoutStyles, true);
+        $y += 24;
+
+        $pairedRows = max(count($model['earning_rows']), count($model['deduction_rows']), 4);
+        for ($index = 0; $index < $pairedRows; $index++) {
+            $earning = $model['earning_rows'][$index] ?? ['label' => '', 'amount' => null];
+            $deduction = $model['deduction_rows'][$index] ?? ['label' => '', 'amount' => null];
+
+            $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+                ['text' => $earning['label']],
+                ['text' => $this->formatMoney($earning['amount'], $model['currency'], false), 'align' => 'right'],
+                ['text' => $deduction['label']],
+                ['text' => $this->formatMoney($deduction['amount'], $model['currency'], false), 'align' => 'right'],
+            ], 22, $layoutStyles);
+            $y += 22;
+        }
+
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+            ['text' => 'GROSS AMT', 'bold' => true],
+            ['text' => $this->formatMoney($model['gross_pay'], $model['currency'], false), 'bold' => true, 'align' => 'right'],
+            ['text' => 'Total Deduction', 'bold' => true],
+            ['text' => $this->formatMoney($model['total_deductions'], $model['currency'], false), 'bold' => true, 'align' => 'right'],
+        ], 24, $layoutStyles, true);
+        $y += 24;
+
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+            ['text' => 'Net Pay Credited to Bank A/c', 'bold' => true, 'colspan' => 2],
+            ['text' => $this->formatMoney($model['net_pay'], $model['currency']), 'bold' => true, 'colspan' => 2, 'align' => 'center'],
+        ], 28, $layoutStyles, true);
+        $y += 40;
+
+        $noteTop = min($y, self::PAGE_HEIGHT - 64);
+        $this->drawText($commands, $x, $noteTop, $model['note'], 10, false, [0.2, 0.2, 0.2]);
+
+        return $this->buildPdf(implode("\n", $commands));
+    }
+
+    private function drawSimpleRow(
+        array &$commands,
+        float $x,
+        float $top,
+        array $colWidths,
+        array $cells,
+        float $height,
+        array $styles,
+        bool $fill = false
+    ): void {
+        $cursorX = $x;
+        if ($fill) {
+            $this->drawFilledRect($commands, $x, $top, array_sum($colWidths), $height, $styles['header_fill']);
+        }
+        $this->drawBorder($commands, $x, $top, array_sum($colWidths), $height, 0.8, $styles['border']);
+
+        $colIndex = 0;
+        foreach ($cells as $cell) {
+            $colspan = max(1, (int) ($cell['colspan'] ?? 1));
+            $width = array_sum(array_slice($colWidths, $colIndex, $colspan));
+            if ($colIndex > 0) {
+                $this->drawLine($commands, $cursorX, $top, $cursorX, $top + $height, 0.8, $styles['border']);
+            }
+
+            $text = trim((string) ($cell['text'] ?? ''));
+            $align = (string) ($cell['align'] ?? 'left');
+            $isBold = (bool) ($cell['bold'] ?? false);
+            $this->drawCellText($commands, $cursorX, $top, $width, $height, $text, $align, $isBold, $styles['text']);
+
+            $cursorX += $width;
+            $colIndex += $colspan;
+        }
+    }
+
+    private function drawCellText(
+        array &$commands,
+        float $x,
+        float $top,
+        float $width,
+        float $height,
+        string $text,
+        string $align,
+        bool $bold,
+        array $color
+    ): void {
+        $fontSize = 10.0;
+        $lines = $this->wrapText($text, $width - 10, $fontSize);
+        if ($lines === []) {
+            $lines = [''];
+        }
+
+        $lineHeight = 11.0;
+        $startTop = $top + max(6.0, ($height - (count($lines) * $lineHeight)) / 2 + 2);
+
+        foreach ($lines as $lineIndex => $line) {
+            $lineX = match ($align) {
+                'right' => $x + $width - 6,
+                'center' => $x + ($width / 2),
+                default => $x + 6,
+            };
+
+            $this->drawText(
+                $commands,
+                $lineX,
+                $startTop + ($lineIndex * $lineHeight),
+                $line,
+                $fontSize,
+                $bold,
+                $color,
+                $align
+            );
+        }
+    }
+
+    private function drawText(
+        array &$commands,
+        float $x,
+        float $top,
+        string $text,
+        float $fontSize,
+        bool $bold,
+        array $color,
+        string $align = 'left'
+    ): void {
+        $escaped = $this->escapeText($text);
+        $adjustedX = $x;
+        if ($align === 'center') {
+            $adjustedX = $x - ($this->estimateTextWidth($text, $fontSize) / 2);
+        } elseif ($align === 'right') {
+            $adjustedX = $x - $this->estimateTextWidth($text, $fontSize);
+        }
+
+        $commands[] = sprintf(
+            'BT /%s %.2F Tf %.3F %.3F %.3F rg 1 0 0 1 %.2F %.2F Tm (%s) Tj ET',
+            $bold ? 'F2' : 'F1',
+            $fontSize,
+            $color[0],
+            $color[1],
+            $color[2],
+            $adjustedX,
+            $this->pdfY($top),
+            $escaped
+        );
+    }
+
+    private function drawFilledRect(array &$commands, float $x, float $top, float $width, float $height, array $fillColor): void
+    {
+        $commands[] = sprintf(
+            'q %.3F %.3F %.3F rg %.2F %.2F %.2F %.2F re f Q',
+            $fillColor[0],
+            $fillColor[1],
+            $fillColor[2],
+            $x,
+            $this->pdfY($top + $height),
+            $width,
+            $height
+        );
+    }
+
+    private function drawBorder(array &$commands, float $x, float $top, float $width, float $height, float $lineWidth, array $strokeColor): void
+    {
+        $commands[] = sprintf(
+            'q %.2F w %.3F %.3F %.3F RG %.2F %.2F %.2F %.2F re S Q',
+            $lineWidth,
+            $strokeColor[0],
+            $strokeColor[1],
+            $strokeColor[2],
+            $x,
+            $this->pdfY($top + $height),
+            $width,
+            $height
+        );
+    }
+
+    private function drawLine(array &$commands, float $x1, float $top1, float $x2, float $top2, float $lineWidth, array $strokeColor): void
+    {
+        $commands[] = sprintf(
+            'q %.2F w %.3F %.3F %.3F RG %.2F %.2F m %.2F %.2F l S Q',
+            $lineWidth,
+            $strokeColor[0],
+            $strokeColor[1],
+            $strokeColor[2],
+            $x1,
+            $this->pdfY($top1),
+            $x2,
+            $this->pdfY($top2)
+        );
+    }
+
+    private function buildPdf(string $stream): string
+    {
+        $objects = [
+            '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+            '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . self::PAGE_WIDTH . ' ' . self::PAGE_HEIGHT . '] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >> endobj',
+            '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+            '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj',
+            '6 0 obj << /Length ' . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object . "\n";
+        }
+
+        $xref = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n0000000000 65535 f \n";
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF";
+
+        return $pdf;
+    }
+
+    private function layoutStyles(string $layout): array
+    {
+        return match ($layout) {
+            self::LAYOUT_MINT_MODERN => [
+                'banner_fill' => [0.79, 0.92, 0.88],
+                'header_fill' => [0.90, 0.97, 0.95],
+                'banner_text' => [0.07, 0.28, 0.24],
+                'border' => [0.19, 0.46, 0.41],
+                'text' => [0.08, 0.18, 0.16],
+            ],
+            self::LAYOUT_STATEMENT_GRID => [
+                'banner_fill' => [0.88, 0.89, 0.92],
+                'header_fill' => [0.94, 0.95, 0.96],
+                'banner_text' => [0.15, 0.18, 0.24],
+                'border' => [0.28, 0.31, 0.36],
+                'text' => [0.15, 0.16, 0.18],
+            ],
+            default => [
+                'banner_fill' => [0.95, 0.95, 0.95],
+                'header_fill' => [0.94, 0.94, 0.94],
+                'banner_text' => [0.0, 0.0, 0.0],
+                'border' => [0.0, 0.0, 0.0],
+                'text' => [0.0, 0.0, 0.0],
+            ],
+        };
+    }
+
+    private function wrapText(string $text, float $maxWidth, float $fontSize): array
+    {
+        $trimmed = trim($text);
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $words = preg_split('/\s+/', $trimmed) ?: [];
+        $lines = [];
+        $line = '';
+
+        foreach ($words as $word) {
+            $candidate = $line === '' ? $word : $line . ' ' . $word;
+            if ($this->estimateTextWidth($candidate, $fontSize) <= $maxWidth) {
+                $line = $candidate;
+                continue;
+            }
+
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+            $line = $word;
+        }
+
+        if ($line !== '') {
+            $lines[] = $line;
+        }
+
+        return $lines;
+    }
+
+    private function estimateTextWidth(string $text, float $fontSize): float
+    {
+        return strlen($text) * ($fontSize * 0.52);
+    }
+
+    private function pdfY(float $top): float
+    {
+        return self::PAGE_HEIGHT - $top;
+    }
+
+    private function escapeText(string $text): string
+    {
+        return str_replace(
+            ['\\', '(', ')'],
+            ['\\\\', '\\(', '\\)'],
+            preg_replace('/[[:^print:]]/', ' ', $text) ?? ''
+        );
+    }
+
+    private function decodeJson(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function amountForKey(array $values, string $key): ?float
+    {
+        foreach ($values as $candidateKey => $candidateValue) {
+            if (!is_string($candidateKey) || $this->normalizeKey($candidateKey) !== $this->normalizeKey($key)) {
+                continue;
+            }
+
+            if (!is_numeric($candidateValue)) {
+                return null;
+            }
+
+            return round((float) $candidateValue, 2);
+        }
+
+        return null;
+    }
+
+    private function firstAmount(array $values, array $keys): ?float
+    {
+        foreach ($keys as $key) {
+            $amount = $this->amountForKey($values, $key);
+            if ($amount !== null) {
+                return $amount;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstString(array $values, array $keys): string
+    {
+        foreach ($keys as $key) {
+            if (!isset($values[$key])) {
+                continue;
+            }
+
+            $string = trim((string) $values[$key]);
+            if ($string !== '') {
+                return $string;
+            }
+        }
+
+        return '';
+    }
+
+    private function formatPeriod(int $year, int $month): string
+    {
+        $month = max(1, min(12, $month));
+        $date = \DateTimeImmutable::createFromFormat('!Y-n', $year . '-' . $month);
+
+        return $date instanceof \DateTimeImmutable
+            ? $date->format('F Y')
+            : sprintf('%02d/%04d', $month, $year);
+    }
+
+    private function formatMoney(?float $amount, string $currency, bool $withSymbol = true): string
+    {
+        if ($amount === null) {
+            return '';
+        }
+
+        $prefix = $withSymbol ? strtoupper($currency) . ' ' : '';
+
+        return $prefix . number_format($amount, 2, '.', ',');
+    }
+
+    private function humanizeKey(string $value): string
+    {
+        $normalized = str_replace(['/', '_', '-'], ' ', strtolower(trim($value)));
+        $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
+
+        return ucwords($normalized);
+    }
+
+    private function normalizeKey(string $value): string
+    {
+        return preg_replace('/[^a-z0-9]+/', '', strtolower($value)) ?? '';
+    }
+}
