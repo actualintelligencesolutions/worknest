@@ -17,6 +17,8 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
     {
         $params = ['tenant_id' => $tenantId];
         $select = 'SELECT o.*,
+                          t.name AS company_name,
+                          t.legal_name AS company_legal_name,
                           p.id AS plan_id,
                           p.plan_code,
                           p.name AS plan_name,
@@ -25,6 +27,9 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
                           p.employee_limit,
                           p.monthly_payroll_limit
                    FROM offices o
+                   JOIN tenants t
+                      ON t.tenant_id = o.tenant_id
+                     AND t.deleted_at IS NULL
                    LEFT JOIN tenant_plans tp
                       ON tp.office_id = o.id
                      AND tp.tenant_id = o.tenant_id
@@ -56,6 +61,8 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
     {
         $stmt = $this->connection->pdo()->prepare(
             'SELECT o.*,
+                    t.name AS company_name,
+                    t.legal_name AS company_legal_name,
                     tp.id AS tenant_plan_id,
                     tp.status AS tenant_plan_status,
                     tp.starts_on,
@@ -66,6 +73,9 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
                     p.price_cents,
                     p.currency
              FROM offices o
+             JOIN tenants t
+                ON t.tenant_id = o.tenant_id
+               AND t.deleted_at IS NULL
              LEFT JOIN tenant_plans tp
                 ON tp.office_id = o.id
                AND tp.tenant_id = o.tenant_id
@@ -88,6 +98,8 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
     {
         $stmt = $this->connection->pdo()->prepare(
             'SELECT o.*,
+                    t.name AS company_name,
+                    t.legal_name AS company_legal_name,
                     tp.id AS tenant_plan_id,
                     tp.status AS tenant_plan_status,
                     tp.starts_on,
@@ -98,6 +110,9 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
                     p.price_cents,
                     p.currency
              FROM offices o
+             JOIN tenants t
+                ON t.tenant_id = o.tenant_id
+               AND t.deleted_at IS NULL
              LEFT JOIN tenant_plans tp
                 ON tp.office_id = o.id
                AND tp.tenant_id = o.tenant_id
@@ -121,10 +136,14 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
     public function findMainOffice(string $tenantId): ?array
     {
         $stmt = $this->connection->pdo()->prepare(
-            'SELECT * FROM offices
-             WHERE tenant_id = :tenant_id
-               AND office_type = "main_office"
-               AND deleted_at IS NULL
+            'SELECT o.*, t.name AS company_name, t.legal_name AS company_legal_name
+             FROM offices o
+             JOIN tenants t
+               ON t.tenant_id = o.tenant_id
+              AND t.deleted_at IS NULL
+             WHERE o.tenant_id = :tenant_id
+               AND o.office_type = "main_office"
+               AND o.deleted_at IS NULL
              LIMIT 1'
         );
         $stmt->execute(['tenant_id' => $tenantId]);

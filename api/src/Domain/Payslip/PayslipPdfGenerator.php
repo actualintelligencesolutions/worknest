@@ -69,6 +69,7 @@ final class PayslipPdfGenerator
 
         return [
             'layout' => $layout,
+            'company_name' => trim((string) ($office['company_name'] ?? $office['tenant_name'] ?? 'Worknest')),
             'month_label' => $this->formatPeriod($periodYear, $periodMonth),
             'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
             'designation' => trim((string) ($payload['designation_snapshot'] ?? '')),
@@ -248,7 +249,15 @@ final class PayslipPdfGenerator
 
         $this->drawFilledRect($commands, $x, $y, self::CONTENT_WIDTH, 44, $layoutStyles['banner_fill']);
         $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, 44, 1.2, $layoutStyles['border']);
-        $this->drawText($commands, $x + 16, $y + 16, 'WORKNEST', 20, true, $layoutStyles['banner_text']);
+        $this->drawText(
+            $commands,
+            $x + 16,
+            $y + 10,
+            strtoupper(trim((string) ($model['company_name'] !== '' ? $model['company_name'] : 'Worknest'))),
+            20,
+            true,
+            $layoutStyles['banner_text']
+        );
         $this->drawText(
             $commands,
             $x + self::CONTENT_WIDTH - 16,
@@ -455,7 +464,7 @@ final class PayslipPdfGenerator
             $color[1],
             $color[2],
             $adjustedX,
-            $this->pdfY($top),
+            $this->pdfY($top + ($fontSize * 0.82)),
             $escaped
         );
     }
