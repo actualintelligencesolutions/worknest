@@ -36,11 +36,13 @@ use Worknest\Api\Infrastructure\Repositories\PdoPayslipRepository;
 use Worknest\Api\Infrastructure\Repositories\PdoPlanRepository;
 use Worknest\Api\Infrastructure\Repositories\PdoRoleRepository;
 use Worknest\Api\Infrastructure\Repositories\PdoSessionRepository;
+use Worknest\Api\Infrastructure\Repositories\PdoSiteOwnerInviteRepository;
 use Worknest\Api\Infrastructure\Repositories\PdoTenantRepository;
 use Worknest\Api\Infrastructure\Repositories\PdoUserRepository;
 use Worknest\Api\Infrastructure\Repositories\PlanRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\RoleRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\SessionRepositoryInterface;
+use Worknest\Api\Infrastructure\Repositories\SiteOwnerInviteRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\TenantRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\UserRepositoryInterface;
 use Worknest\Api\Infrastructure\Security\PasswordHasher;
@@ -75,6 +77,7 @@ function build_app(array $config): App
     $container->singleton(PayrollBatchRepositoryInterface::class, fn ($c) => new PdoPayrollBatchRepository($c->get(DatabaseConnection::class)));
     $container->singleton(PayrollRecordRepositoryInterface::class, fn ($c) => new PdoPayrollRecordRepository($c->get(DatabaseConnection::class)));
     $container->singleton(PayslipRepositoryInterface::class, fn ($c) => new PdoPayslipRepository($c->get(DatabaseConnection::class)));
+    $container->singleton(SiteOwnerInviteRepositoryInterface::class, fn ($c) => new PdoSiteOwnerInviteRepository($c->get(DatabaseConnection::class)));
     $container->singleton(AuditLogRepositoryInterface::class, fn ($c) => new PdoAuditLogRepository($c->get(DatabaseConnection::class)));
     $container->singleton(PasswordHasher::class, fn ($c) => new PasswordHasher());
     $container->singleton(PinHasher::class, fn ($c) => new PinHasher());
@@ -109,11 +112,15 @@ function build_app(array $config): App
         $c->get(PlanRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class),
         $c->get(PayrollBatchRepositoryInterface::class),
+        $c->get(SiteOwnerInviteRepositoryInterface::class),
         $c->get(TenantRepositoryInterface::class),
         $c->get(RoleRepositoryInterface::class),
         $c->get(PasswordHasher::class),
+        $c->get(Mailer::class),
+        $c->get(SessionService::class),
         $c->get(TransactionManager::class),
-        $c->get(AuditLogger::class)
+        $c->get(AuditLogger::class),
+        $c->get('config')
     ));
     $container->singleton(TenantService::class, fn ($c) => new TenantService(
         $c->get(TenantRepositoryInterface::class),
@@ -225,6 +232,9 @@ function register_routes(Router $router, Container $container): void
     $router->add('PATCH', '/offices/{id}', fn ($request) => $offices->update($request));
     $router->add('POST', '/offices/{id}/plans', fn ($request) => $offices->assignPlan($request));
     $router->add('POST', '/offices/{id}/admins', fn ($request) => $offices->assignAdmins($request));
+    $router->add('POST', '/offices/{id}/site-owner-invites', fn ($request) => $offices->inviteSiteOwner($request));
+    $router->add('POST', '/offices/{id}/site-owner-invites/{inviteId}/resend', fn ($request) => $offices->resendSiteOwnerInvite($request));
+    $router->add('POST', '/offices/{id}/site-owner-invites/{inviteId}/cancel', fn ($request) => $offices->cancelSiteOwnerInvite($request));
 
     $router->add('POST', '/users', fn ($request) => $users->create($request));
     $router->add('GET', '/users', fn ($request) => $users->list($request));
@@ -268,6 +278,11 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/v2/offices/{id}/plan-assignments', fn ($request) => $offices->assignPlan($request));
     $router->add('GET', '/v2/offices/{id}/plan-assignments', fn ($request) => $offices->listPlans($request));
     $router->add('POST', '/v2/offices/{id}/admins', fn ($request) => $offices->assignAdmins($request));
+    $router->add('POST', '/v2/offices/{id}/site-owner-invites', fn ($request) => $offices->inviteSiteOwner($request));
+    $router->add('POST', '/v2/offices/{id}/site-owner-invites/{inviteId}/resend', fn ($request) => $offices->resendSiteOwnerInvite($request));
+    $router->add('POST', '/v2/offices/{id}/site-owner-invites/{inviteId}/cancel', fn ($request) => $offices->cancelSiteOwnerInvite($request));
+    $router->add('GET', '/v2/site-owner-invites/accept', fn ($request) => $offices->inviteAcceptanceDetail($request));
+    $router->add('POST', '/v2/site-owner-invites/accept', fn ($request) => $offices->acceptSiteOwnerInvite($request));
 
     $router->add('GET', '/v2/users', fn ($request) => $users->list($request));
     $router->add('POST', '/v2/users', fn ($request) => $users->create($request));

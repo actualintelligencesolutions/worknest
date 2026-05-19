@@ -12,6 +12,19 @@ import {
 } from '../../services/worknestApi';
 import './style.scss';
 
+const employeeDocumentSections = [
+  {
+    key: 'payslips',
+    label: 'Payslips',
+    state: 'active' as const,
+  },
+  {
+    key: 'letters',
+    label: 'Letters',
+    state: 'soon' as const,
+  },
+];
+
 function formatMonth(periodYear: number, periodMonth: number) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
@@ -78,20 +91,23 @@ export function EmployeeLoginPage() {
     <MarketingLayout>
       <section className="employee-portal-auth">
         <div className="employee-portal-auth-card">
-          <p className="employee-portal-kicker">Site Payslip Portal</p>
+          <p className="employee-portal-kicker">Employee documents</p>
           <h1>{siteQuery.data?.site.name ?? 'Employee site access'}</h1>
           <p className="employee-portal-copy">
             {siteQuery.isError
               ? 'This site URL is not valid. Check the link shared by your payroll team.'
-              : 'Sign in with your employee ID and PIN to access published payslips for this site.'}
+              : 'Sign in with your employee ID and PIN to access your documents on this site.'}
           </p>
 
           {siteQuery.data?.site ? (
-            <div className="employee-portal-site-meta">
-              <span>{siteQuery.data.site.office_code}</span>
-              <strong>
-                {[siteQuery.data.site.city, siteQuery.data.site.state].filter(Boolean).join(', ') || 'Worknest site portal'}
-              </strong>
+            <div className="employee-portal-site-meta employee-portal-site-meta-auth">
+              <div>
+                <span>{siteQuery.data.site.office_code}</span>
+                <strong>{siteQuery.data.site.name}</strong>
+              </div>
+              <p>
+                {[siteQuery.data.site.city, siteQuery.data.site.state].filter(Boolean).join(', ') || 'Employee document portal'}
+              </p>
             </div>
           ) : null}
 
@@ -118,8 +134,8 @@ export function EmployeeLoginPage() {
 
             {error ? <p className="employee-portal-error">{error}</p> : null}
 
-            <button className="marketing-login-submit" disabled={isSubmitting || siteQuery.isError} type="submit">
-              {isSubmitting ? 'Signing in...' : 'Access payslips'}
+            <button className="marketing-login-submit employee-portal-primary-action" disabled={isSubmitting || siteQuery.isError} type="submit">
+              {isSubmitting ? 'Signing in...' : 'Open documents'}
             </button>
           </form>
 
@@ -192,11 +208,11 @@ export function EmployeePortalPage() {
     <MarketingLayout>
       <section className="employee-portal-page">
         <div className="employee-portal-page-head">
-          <div>
-            <p className="employee-portal-kicker">Employee portal</p>
-            <h1>{siteQuery.data?.site.name ?? 'Your payslips'}</h1>
+          <div className="employee-portal-page-copy">
+            <p className="employee-portal-kicker">Employee documents</p>
+            <h1>{session.userName ?? 'Your documents'}</h1>
             <p className="employee-portal-copy">
-              View and download published payslips for this site.
+              View and download any published payslips available for you on this site.
             </p>
           </div>
           <Button
@@ -211,50 +227,85 @@ export function EmployeePortalPage() {
           </Button>
         </div>
 
-        {siteQuery.data?.site ? (
-          <div className="employee-portal-site-meta employee-portal-site-meta-inline">
-            <span>{siteQuery.data.site.office_code}</span>
-            <strong>
-              {[siteQuery.data.site.city, siteQuery.data.site.state].filter(Boolean).join(', ') || 'Worknest site portal'}
-            </strong>
+        <div className="employee-portal-wallet">
+          <div className="employee-portal-wallet-card employee-portal-wallet-card-site">
+            <span className="employee-portal-wallet-label">Site</span>
+            <strong>{siteQuery.data?.site.name ?? 'Employee portal'}</strong>
+            <p>{siteQuery.data?.site.office_code ?? officeCode.toUpperCase()}</p>
           </div>
-        ) : null}
-
-        {downloadError ? <p className="employee-portal-error">{downloadError}</p> : null}
-
-        <div className="employee-portal-list">
-          {(payslipsQuery.data?.payslips ?? []).length === 0 ? (
-            <div className="employee-portal-empty">
-              <h2>No published payslips yet</h2>
-              <p>Your payroll team has not published any payslips for this account yet.</p>
-            </div>
-          ) : (
-            (payslipsQuery.data?.payslips ?? []).map((payslip) => {
-              const label = `${payslip.period_year}-${String(payslip.period_month).padStart(2, '0')}-${payslip.employee_id ?? 'payslip'}`;
-
-              return (
-                <article className="employee-portal-card" key={payslip.id}>
-                  <div>
-                    <p className="employee-portal-card-kicker">{formatMonth(payslip.period_year, payslip.period_month)}</p>
-                    <h2>{payslip.employee_name_snapshot ?? session.userName ?? 'Payslip'}</h2>
-                    <p className="employee-portal-card-meta">
-                      Net pay {formatMoney(payslip.net_pay)}
-                    </p>
-                  </div>
-                  <Button
-                    disabled={downloadingId === payslip.id}
-                    onClick={() => {
-                      void handleDownload(payslip.id, label);
-                    }}
-                    type="button"
-                  >
-                    {downloadingId === payslip.id ? 'Preparing...' : 'Download PDF'}
-                  </Button>
-                </article>
-              );
-            })
-          )}
+          <div className="employee-portal-wallet-card">
+            <span className="employee-portal-wallet-label">Portal access</span>
+            <strong>Secure mobile access</strong>
+            <p>{[siteQuery.data?.site.city, siteQuery.data?.site.state].filter(Boolean).join(', ') || 'Published documents only'}</p>
+          </div>
         </div>
+
+        <section className="employee-portal-documents">
+          <div className="employee-portal-documents-head">
+            <div>
+              <p className="employee-portal-kicker">Documents</p>
+              <h2>Available sections</h2>
+            </div>
+            <div className="employee-portal-section-tabs" aria-label="Employee document sections">
+              {employeeDocumentSections.map((section) => (
+                <span
+                  className={
+                    section.state === 'active'
+                      ? 'employee-portal-section-tab is-active'
+                      : 'employee-portal-section-tab'
+                  }
+                  key={section.key}
+                >
+                  {section.label}
+                  {section.state === 'soon' ? ' Soon' : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {downloadError ? <p className="employee-portal-error">{downloadError}</p> : null}
+
+          <div className="employee-portal-list">
+            {(payslipsQuery.data?.payslips ?? []).length === 0 ? (
+              <div className="employee-portal-empty">
+                <h3>No published payslips yet</h3>
+                <p>Your payroll team has not published any payslips for this account yet.</p>
+              </div>
+            ) : (
+              (payslipsQuery.data?.payslips ?? []).map((payslip) => {
+                const label = `${payslip.period_year}-${String(payslip.period_month).padStart(2, '0')}-${payslip.employee_id ?? 'payslip'}`;
+
+                return (
+                  <article className="employee-portal-card" key={payslip.id}>
+                    <div className="employee-portal-card-copy">
+                      <p className="employee-portal-card-kicker">{formatMonth(payslip.period_year, payslip.period_month)}</p>
+                      <h3>{payslip.employee_name_snapshot ?? session.userName ?? 'Payslip'}</h3>
+                      <div className="employee-portal-card-metrics">
+                        <div>
+                          <span>Net pay</span>
+                          <strong>{formatMoney(payslip.net_pay)}</strong>
+                        </div>
+                        <div>
+                          <span>Status</span>
+                          <strong>{payslip.status}</strong>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      disabled={downloadingId === payslip.id}
+                      onClick={() => {
+                        void handleDownload(payslip.id, label);
+                      }}
+                      type="button"
+                    >
+                      {downloadingId === payslip.id ? 'Preparing...' : 'Download PDF'}
+                    </Button>
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </section>
       </section>
     </MarketingLayout>
   );

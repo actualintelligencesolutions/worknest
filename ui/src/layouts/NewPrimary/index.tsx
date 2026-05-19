@@ -9,6 +9,7 @@ type NewPrimaryLayoutProps = {
   headerNavItems?: NewHeaderNavItem[];
   headerVariant?: 'default' | 'quiet';
   onLogout?: () => void | Promise<void>;
+  headerBrandPath?: string;
 };
 
 export function NewPrimaryLayout({
@@ -17,10 +18,11 @@ export function NewPrimaryLayout({
   headerNavItems,
   headerVariant = 'default',
   onLogout,
+  headerBrandPath,
 }: NewPrimaryLayoutProps) {
   return (
     <div className="new-primary-layout">
-      <NewHeader navItems={headerNavItems} onLogout={onLogout} variant={headerVariant} />
+      <NewHeader brandPath={headerBrandPath} navItems={headerNavItems} onLogout={onLogout} variant={headerVariant} />
       <main className="new-primary-layout-main">
         {pageHeader ? <div className="new-primary-layout-page-header">{pageHeader}</div> : null}
         <div className="new-primary-layout-content">{children}</div>

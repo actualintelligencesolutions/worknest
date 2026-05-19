@@ -41,6 +41,8 @@ function formatActorRole(userType: string | undefined) {
   switch (userType) {
     case 'branch_admin':
       return 'Branch Admin';
+    case 'site_owner':
+      return 'Site Owner';
     case 'tenant_owner':
       return 'Super Admin';
     case 'employee':
@@ -173,7 +175,37 @@ export function NewDashPage() {
           })[0] ?? null;
 
       const owner =
-        branchAdmins.find((user) => user.office_id === branch.id) ?? null;
+        (() => {
+          let settings: Record<string, unknown> | null = null;
+          if (branch.settings_json && typeof branch.settings_json === 'object') {
+            settings = branch.settings_json as Record<string, unknown>;
+          } else if (typeof branch.settings_json === 'string') {
+            try {
+              const parsed = JSON.parse(branch.settings_json) as Record<string, unknown>;
+              settings = typeof parsed === 'object' && parsed !== null ? parsed : null;
+            } catch {
+              settings = null;
+            }
+          }
+
+          if (settings && typeof settings.active_site_owner_user_id === 'number') {
+            return {
+              id: settings.active_site_owner_user_id,
+              tenant_id: branch.tenant_id,
+              office_id: branch.id,
+              employee_id: null,
+              first_name: typeof settings.active_site_owner_name === 'string' ? settings.active_site_owner_name.split(' ')[0] ?? settings.active_site_owner_name : 'Site',
+              last_name: null,
+              display_name: typeof settings.active_site_owner_name === 'string' ? settings.active_site_owner_name : 'Site owner',
+              email: typeof settings.active_site_owner_email === 'string' ? settings.active_site_owner_email : null,
+              phone: null,
+              user_type: 'site_owner' as const,
+              status: 'active',
+            };
+          }
+
+          return branchAdmins.find((user) => user.office_id === branch.id) ?? null;
+        })();
 
       return computeBranchInitializationState({
         branch,
@@ -229,6 +261,17 @@ export function NewDashPage() {
       navigate('/new-dash/setup', { replace: true });
     }
   }, [session, isDemoMode, locationsQuery.isLoading, hasError, primaryWorkspaceLocation, navigate]);
+
+  useEffect(() => {
+    if (!session || actor?.user_type !== 'site_owner' || isLoading || hasError) {
+      return;
+    }
+
+    const firstOfficeId = actor.office_ids[0];
+    if (firstOfficeId) {
+      navigate(`/new-dash/branches/${firstOfficeId}`, { replace: true });
+    }
+  }, [actor?.office_ids, actor?.user_type, hasError, isLoading, navigate, session]);
 
   useEffect(() => {
     if (!session || actor?.user_type !== 'branch_admin' || isBrandNew || isLoading || hasError) {

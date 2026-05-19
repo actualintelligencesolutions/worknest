@@ -34,7 +34,7 @@ final class PdoOfficeRepository implements OfficeRepositoryInterface
         $sql = $select . '
             WHERE o.tenant_id = :tenant_id AND o.deleted_at IS NULL';
 
-        if (($actor['user_type'] ?? '') === 'branch_admin') {
+        if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
             if ($officeIds === []) {
                 return [];

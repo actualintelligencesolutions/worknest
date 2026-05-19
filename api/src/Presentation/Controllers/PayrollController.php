@@ -22,7 +22,7 @@ final class PayrollController extends BaseController
     public function upload(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->uploadBatch(
             $tenantId,
             $actor,
@@ -38,7 +38,7 @@ final class PayrollController extends BaseController
     public function list(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->listBatches($tenantId, $actor, [
             'office_id' => $request->query('office_id'),
         ]));
@@ -47,7 +47,7 @@ final class PayrollController extends BaseController
     public function detail(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
 
         return Response::success(
             $this->payrollService->getBatchDetail((int) $request->attribute('id'), $tenantId, $actor)
@@ -57,7 +57,7 @@ final class PayrollController extends BaseController
     public function mapping(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->saveMapping(
             (int) $request->attribute('id'),
             $tenantId,
@@ -69,21 +69,21 @@ final class PayrollController extends BaseController
     public function validate(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->validateBatch((int) $request->attribute('id'), $tenantId, $actor));
     }
 
     public function confirm(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->confirmBatch((int) $request->attribute('id'), $tenantId, $actor));
     }
 
     public function importMissingEmployees(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success(
             $this->payrollService->importMissingEmployees((int) $request->attribute('id'), $tenantId, $actor)
         );
@@ -92,7 +92,7 @@ final class PayrollController extends BaseController
     public function publish(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->publishBatch((int) $request->attribute('id'), $tenantId, $actor));
     }
 }

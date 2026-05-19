@@ -22,7 +22,7 @@ final class OfficeController extends BaseController
     public function list(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         $payload = $this->officeService->listOffices($tenantId, $actor);
 
         if ($this->isV2($request)) {
@@ -45,7 +45,7 @@ final class OfficeController extends BaseController
     public function detail(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         $payload = $this->officeService->getOffice((int) $request->attribute('id'), $tenantId, $actor);
         return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload);
     }
@@ -85,7 +85,7 @@ final class OfficeController extends BaseController
     public function update(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->officeService->updateOffice((int) $request->attribute('id'), $tenantId, $actor, $request->body()));
     }
 
@@ -106,7 +106,7 @@ final class OfficeController extends BaseController
     public function listPlans(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->officeService->listPlanAssignments(
             (int) $request->attribute('id'),
             $tenantId,
@@ -124,6 +124,57 @@ final class OfficeController extends BaseController
             $tenantId,
             $actor,
             array_map('intval', (array) ($body['user_ids'] ?? []))
+        ));
+    }
+
+    public function inviteSiteOwner(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner']);
+        return Response::success($this->officeService->inviteSiteOwner(
+            (int) $request->attribute('id'),
+            $tenantId,
+            $actor,
+            $request->body()
+        ), 201);
+    }
+
+    public function resendSiteOwnerInvite(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner']);
+        return Response::success($this->officeService->resendSiteOwnerInvite(
+            (int) $request->attribute('id'),
+            (int) $request->attribute('inviteId'),
+            $tenantId,
+            $actor
+        ));
+    }
+
+    public function cancelSiteOwnerInvite(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner']);
+        return Response::success($this->officeService->cancelSiteOwnerInvite(
+            (int) $request->attribute('id'),
+            (int) $request->attribute('inviteId'),
+            $tenantId,
+            $actor
+        ));
+    }
+
+    public function inviteAcceptanceDetail(Request $request): Response
+    {
+        $token = trim((string) $request->query('token', ''));
+        return Response::success($this->officeService->getSiteOwnerInviteByToken($token));
+    }
+
+    public function acceptSiteOwnerInvite(Request $request): Response
+    {
+        $body = $request->body();
+        return Response::success($this->officeService->acceptSiteOwnerInvite(
+            trim((string) ($body['token'] ?? '')),
+            $body
         ));
     }
 

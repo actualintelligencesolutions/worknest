@@ -1,5 +1,5 @@
 export type NewHeaderNavItem = {
-  id: 'dashboard' | 'offices' | 'team' | 'reports' | 'setup';
+  id: 'dashboard' | 'offices' | 'team' | 'reports' | 'setup' | 'branch';
   path: string;
   labelKey: string;
 };
@@ -40,6 +40,14 @@ export const newHeaderSetupNavItems: NewHeaderNavItem[] = [
     id: 'setup',
     path: '/new-dash/setup',
     labelKey: 'newHeader.navigation.setup',
+  },
+];
+
+export const newHeaderSiteOwnerNavItems: NewHeaderNavItem[] = [
+  {
+    id: 'branch',
+    path: '/new-dash',
+    labelKey: 'newHeader.navigation.dashboard',
   },
 ];
 

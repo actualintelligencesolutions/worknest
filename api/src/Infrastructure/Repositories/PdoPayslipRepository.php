@@ -55,7 +55,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
         if (($actor['user_type'] ?? '') === 'employee') {
             $sql .= ' AND p.user_id = :user_id AND p.status = "published"';
             $bindings['user_id'] = (int) $actor['id'];
-        } elseif (($actor['user_type'] ?? '') === 'branch_admin') {
+        } elseif (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
             if ($officeIds === []) {
                 return [];
@@ -91,7 +91,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
         if (($actor['user_type'] ?? '') === 'employee') {
             $sql .= ' AND p.user_id = :user_id';
             $bindings['user_id'] = (int) $actor['id'];
-        } elseif (($actor['user_type'] ?? '') === 'branch_admin') {
+        } elseif (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
             if ($officeIds === []) {
                 return null;

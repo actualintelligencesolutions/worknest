@@ -53,6 +53,22 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $user === false ? null : $user;
     }
 
+    public function findByEmail(string $tenantId, string $email): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM users
+             WHERE tenant_id = :tenant_id AND email = :email AND deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'email' => $email,
+        ]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user === false ? null : $user;
+    }
+
     public function findActiveByEmail(string $tenantId, string $email, ?string $userType = null): ?array
     {
         $sql = 'SELECT * FROM users WHERE tenant_id = :tenant_id AND email = :email AND status = "active" AND deleted_at IS NULL';
@@ -143,7 +159,7 @@ final class PdoUserRepository implements UserRepositoryInterface
                 FROM users
                 WHERE tenant_id = :tenant_id AND deleted_at IS NULL';
 
-        if (($actor['user_type'] ?? '') === 'branch_admin') {
+        if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
             if ($officeIds === []) {
                 return [];

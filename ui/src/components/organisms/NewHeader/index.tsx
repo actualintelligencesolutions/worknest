@@ -38,12 +38,14 @@ type NewHeaderProps = {
   navItems?: NewHeaderNavItem[];
   onLogout?: () => void | Promise<void>;
   variant?: 'default' | 'quiet';
+  brandPath?: string;
 };
 
 export function NewHeader({
   navItems = newHeaderNavItems,
   onLogout,
   variant = 'default',
+  brandPath = '/new-dash',
 }: NewHeaderProps) {
   const { t } = useTranslation();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -97,7 +99,7 @@ export function NewHeader({
   return (
     <header className={variant === 'quiet' ? 'new-header new-header-quiet' : 'new-header'}>
       <div className="new-header-shell">
-        <NavLink className="new-header-brand" onClick={closeMenus} to="/new-dash">
+        <NavLink className="new-header-brand" onClick={closeMenus} to={brandPath}>
           {t(newHeaderBrandKey)}
         </NavLink>
 

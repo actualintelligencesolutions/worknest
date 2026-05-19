@@ -10,6 +10,8 @@ interface UserRepositoryInterface
 
     public function findById(int $userId, string $tenantId): ?array;
 
+    public function findByEmail(string $tenantId, string $email): ?array;
+
     public function findActiveByEmail(string $tenantId, string $email, ?string $userType = null): ?array;
 
     public function findActiveEmployeeByEmployeeId(string $tenantId, string $employeeId): ?array;

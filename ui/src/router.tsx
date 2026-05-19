@@ -4,6 +4,7 @@ import { HomePage } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { NewDashPage } from './pages/NewDash';
+import { SiteOwnerInvitePage } from './pages/SiteOwnerInvite';
 import {
   NewDashBranchSetupPage,
   NewDashHelpPage,
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     element: <RegisterPage />,
+  },
+  {
+    path: '/invite/site-owner',
+    element: <SiteOwnerInvitePage />,
   },
   {
     path: '/site/:tenantId/:officeCode/login',

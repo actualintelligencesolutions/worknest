@@ -44,7 +44,12 @@ export function LoginPage() {
         token: response.session.token,
         tenantId: response.tenant.tenant_id,
         userName: response.actor.name,
-        userType: response.actor.role === 'branch_admin' ? 'branch_admin' : 'tenant_owner',
+        userType:
+          response.actor.role === 'site_owner'
+            ? 'site_owner'
+            : response.actor.role === 'branch_admin'
+              ? 'branch_admin'
+              : 'tenant_owner',
       });
       navigate('/new-dash');
     } catch (submitError) {

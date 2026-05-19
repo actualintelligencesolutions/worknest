@@ -1,6 +1,11 @@
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { NewPrimaryLayout } from '../../layouts/NewPrimary';
+import { loadHrSession } from '../../services/hrSession';
+import { getCurrentActor } from '../../services/worknestApi';
 import './style.scss';
 
 type NewDashSectionPageProps = {
@@ -13,8 +18,29 @@ export function NewDashSectionPage({
   descriptionKey,
 }: NewDashSectionPageProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const session = loadHrSession();
 
   usePageTitle(t(titleKey));
+
+  const actorQuery = useQuery({
+    queryKey: ['section-page-actor', session?.tenantId],
+    queryFn: () => getCurrentActor(session!),
+    enabled: Boolean(session),
+  });
+
+  useEffect(() => {
+    if (!session || actorQuery.isLoading || actorQuery.error) {
+      return;
+    }
+
+    if (actorQuery.data?.actor.user_type === 'site_owner') {
+      const firstOfficeId = actorQuery.data.actor.office_ids[0];
+      if (firstOfficeId) {
+        navigate(`/new-dash/branches/${firstOfficeId}`, { replace: true });
+      }
+    }
+  }, [actorQuery.data?.actor.office_ids, actorQuery.data?.actor.user_type, actorQuery.error, actorQuery.isLoading, navigate, session]);
 
   return (
     <NewPrimaryLayout>

@@ -4,23 +4,26 @@ import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
 import { PageHeader } from '../../components/organisms/PageHeader';
+import { newHeaderSiteOwnerNavItems } from '../../config/newHeader';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { NewPrimaryLayout } from '../../layouts/NewPrimary';
 import setupIllustration from '../../assets/images/Setup.png';
 import { ApiRequestError } from '../../services/apiClient';
 import { loadHrSession } from '../../services/hrSession';
 import {
+  cancelSiteOwnerInvite,
   buildSitePortalUrl,
   buildTenantLoginUrl,
   getCurrentActor,
   getOffice,
+  inviteSiteOwner,
   importMissingEmployeesForPayrollBatch,
   listPayrollBatches,
   listUsers,
   resetEmployeePin,
   resetOfficeEmployeePins,
+  resendSiteOwnerInvite,
   updateOffice,
-  updateUser,
   uploadPayrollBatch,
   type PayrollBatch,
   type UserSummary,
@@ -206,7 +209,8 @@ export function BranchSetupPage() {
   const [periodMonth, setPeriodMonth] = useState(() => new Date().getMonth() + 1);
   const [periodYear, setPeriodYear] = useState(() => new Date().getFullYear());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedOwnerId, setSelectedOwnerId] = useState<number | null>(null);
+  const [ownerInviteEmail, setOwnerInviteEmail] = useState('');
+  const [ownerInviteName, setOwnerInviteName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
@@ -244,12 +248,6 @@ export function BranchSetupPage() {
     enabled: Boolean(session && Number.isFinite(officeId) && officeId > 0),
   });
 
-  const usersQuery = useQuery({
-    queryKey: ['branch-setup-users', session?.tenantId],
-    queryFn: () => listUsers(session!, { user_type: 'branch_admin' }),
-    enabled: Boolean(session),
-  });
-
   const employeeUsersQuery = useQuery({
     queryKey: ['branch-setup-employees', session?.tenantId, officeId],
     queryFn: () => listUsers(session!, { office_id: officeId, user_type: 'employee' }),
@@ -259,18 +257,43 @@ export function BranchSetupPage() {
   const actor = actorQuery.data?.actor ?? null;
   const office = officeQuery.data?.office ?? null;
   const adminFromOffice = officeQuery.data?.admin ?? null;
-  const branchAdmins = usersQuery.data?.users ?? [];
+  const siteOwnerFromOffice = officeQuery.data?.site_owner ?? null;
+  const pendingSiteOwnerInvite = officeQuery.data?.pending_site_owner_invite ?? null;
   const branchEmployees = employeeUsersQuery.data?.users ?? [];
-  const branchAdminOptions = branchAdmins.filter((user) => user.user_type === 'branch_admin');
   const latestBatch = useMemo(
     () => sortBatches(payrollBatchesQuery.data?.batches ?? [])[0] ?? null,
     [payrollBatchesQuery.data?.batches],
   );
 
-  const currentOwner =
-    adminFromOffice && adminFromOffice.id
-      ? branchAdminOptions.find((user) => user.id === adminFromOffice.id) ?? null
-      : branchAdminOptions.find((user) => user.office_id === officeId) ?? null;
+  const currentOwner: UserSummary | null = siteOwnerFromOffice?.id
+    ? {
+        id: siteOwnerFromOffice.id,
+        tenant_id: office?.tenant_id ?? session?.tenantId ?? '',
+        office_id: officeId,
+        employee_id: null,
+        first_name: siteOwnerFromOffice.name?.split(' ')[0] ?? siteOwnerFromOffice.name ?? '',
+        last_name: null,
+        display_name: siteOwnerFromOffice.name ?? 'Site owner',
+        email: siteOwnerFromOffice.email ?? null,
+        phone: null,
+        user_type: 'site_owner',
+        status: siteOwnerFromOffice.status ?? 'active',
+      }
+    : adminFromOffice?.id
+      ? {
+          id: adminFromOffice.id,
+          tenant_id: office?.tenant_id ?? session?.tenantId ?? '',
+          office_id: officeId,
+          employee_id: null,
+          first_name: adminFromOffice.name?.split(' ')[0] ?? adminFromOffice.name ?? '',
+          last_name: null,
+          display_name: adminFromOffice.name ?? 'Branch admin',
+          email: adminFromOffice.email ?? null,
+          phone: null,
+          user_type: 'branch_admin',
+          status: adminFromOffice.status ?? 'active',
+        }
+      : null;
 
   const branchState = useMemo(() => {
     if (!office) {
@@ -309,9 +332,12 @@ export function BranchSetupPage() {
   const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
   const sitePortalUrl = office?.office_code ? buildSitePortalUrl(office.tenant_id, office.office_code) : '';
   const showEmployeePinSettings = office?.office_type === 'branch';
+  const ownerDetailLabel = currentOwner?.display_name
+    ?? pendingSiteOwnerInvite?.invited_email
+    ?? t('pages.newDash.branchInitialization.labels.unassigned');
   const pendingItems = useMemo(
-    () => (branchState ? branchPendingItems(branchState, t('pages.newDash.branchInitialization.labels.unassigned')) : []),
-    [branchState, t],
+    () => (branchState ? branchPendingItems(branchState, ownerDetailLabel) : []),
+    [branchState, ownerDetailLabel],
   );
   const pendingCount = pendingItems.filter((item) => !item.complete).length;
 
@@ -324,12 +350,6 @@ export function BranchSetupPage() {
     () => (branchState ? deriveWizardStep(branchState, isTenantOwner) : null),
     [branchState, isTenantOwner],
   );
-
-  useEffect(() => {
-    if (currentOwner?.id) {
-      setSelectedOwnerId(currentOwner.id);
-    }
-  }, [currentOwner?.id]);
 
   useEffect(() => {
     setForceConfiguredShell(false);
@@ -542,27 +562,64 @@ export function BranchSetupPage() {
     },
   });
 
-  const assignOwnerMutation = useMutation({
+  const inviteSiteOwnerMutation = useMutation({
     mutationFn: async () => {
-      if (!session || !selectedOwnerId) {
+      if (!session || ownerInviteEmail.trim() === '') {
         throw new Error(t('pages.newDash.branchInitialization.errors.owner'));
       }
 
-      return updateUser(session, selectedOwnerId, {
-        office_id: officeId,
+      return inviteSiteOwner(session, officeId, {
+        email: ownerInviteEmail.trim(),
+        name: ownerInviteName.trim() !== '' ? ownerInviteName.trim() : undefined,
       });
     },
     onSuccess: async () => {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
+      setOwnerInviteEmail('');
+      setOwnerInviteName('');
       setCurrentStep('upload');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['branch-setup-users', session?.tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['new-dash-users', session?.tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-locations', session?.tenantId] }),
       ]);
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.owner'));
+    },
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (inviteId: number) => {
+      if (!session) {
+        throw new Error('You must be signed in to resend this invitation.');
+      }
+
+      return resendSiteOwnerInvite(session, officeId, inviteId);
+    },
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'We could not resend the invitation.');
+    },
+  });
+
+  const cancelInviteMutation = useMutation({
+    mutationFn: async (inviteId: number) => {
+      if (!session) {
+        throw new Error('You must be signed in to cancel this invitation.');
+      }
+
+      return cancelSiteOwnerInvite(session, officeId, inviteId);
+    },
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] });
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : 'We could not cancel the invitation.');
     },
   });
 
@@ -614,8 +671,8 @@ export function BranchSetupPage() {
 
   const isLoading =
     Boolean(session) &&
-    (actorQuery.isLoading || officeQuery.isLoading || payrollBatchesQuery.isLoading || usersQuery.isLoading);
-  const hasError = actorQuery.error || officeQuery.error || payrollBatchesQuery.error || usersQuery.error;
+    (actorQuery.isLoading || officeQuery.isLoading || payrollBatchesQuery.isLoading);
+  const hasError = actorQuery.error || officeQuery.error || payrollBatchesQuery.error;
   const statusClassName = branchState?.status ?? 'assigned_not_started';
 
   function wizardTitle(step: BranchWizardStep) {
@@ -659,7 +716,7 @@ export function BranchSetupPage() {
 
     switch (step) {
       case 'owner':
-        return Boolean(selectedOwnerId) && !assignOwnerMutation.isPending;
+        return Boolean(ownerInviteEmail.trim()) && !inviteSiteOwnerMutation.isPending;
       case 'upload':
         return Boolean(selectedFile) && !uploadMutation.isPending;
       case 'review':
@@ -696,7 +753,7 @@ export function BranchSetupPage() {
     setImportEmployeesMessage(null);
 
     if (currentStep === 'owner') {
-      void assignOwnerMutation.mutateAsync();
+      void inviteSiteOwnerMutation.mutateAsync();
       return;
     }
 
@@ -729,20 +786,23 @@ export function BranchSetupPage() {
     if (step === 'owner') {
       return (
         <div className="new-dash-setup-form-grid">
-          <label className="new-dash-setup-form-full">
-            <span>{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</span>
-            <select
-              className="branch-setup-wizard-select"
-              onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
-              value={selectedOwnerId ?? ''}
-            >
-              <option value="">{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</option>
-              {branchAdminOptions.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.display_name}
-                </option>
-              ))}
-            </select>
+          <label>
+            <span>Site owner name</span>
+            <input
+              onChange={(event) => setOwnerInviteName(event.target.value)}
+              placeholder="Branch owner name"
+              type="text"
+              value={ownerInviteName}
+            />
+          </label>
+          <label>
+            <span>Site owner email</span>
+            <input
+              onChange={(event) => setOwnerInviteEmail(event.target.value)}
+              placeholder="owner@branch.com"
+              type="email"
+              value={ownerInviteEmail}
+            />
           </label>
         </div>
       );
@@ -918,7 +978,7 @@ export function BranchSetupPage() {
         <div className="new-dash-setup-summary">
           <div>
             <span>Site owner</span>
-            <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+            <strong>{ownerDetailLabel}</strong>
           </div>
           <div>
             <span>Payslip template</span>
@@ -1028,7 +1088,7 @@ export function BranchSetupPage() {
               <div className="branch-setup-wizard-context">
                 <div>
                   <span>Owner</span>
-                  <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+                  <strong>{ownerDetailLabel}</strong>
                 </div>
                 <div>
                   <span>Latest activity</span>
@@ -1140,6 +1200,12 @@ export function BranchSetupPage() {
       { section: 'pins', label: 'PIN Access', path: `/new-dash/branches/${officeId}/pins` },
       { section: 'access', label: 'Access & Ownership', path: `/new-dash/branches/${officeId}/access` },
     ];
+    const headerNavItems = actor?.user_type === 'site_owner'
+      ? newHeaderSiteOwnerNavItems.map((item) => ({
+          ...item,
+          path: `/new-dash/branches/${officeId}`,
+        }))
+      : undefined;
 
     function renderOverviewSection() {
       return (
@@ -1164,7 +1230,7 @@ export function BranchSetupPage() {
             <div className="branch-setup-overview-grid">
               <div className="branch-setup-overview-item">
                 <span>Site owner</span>
-                <strong>{currentOwner?.display_name ?? t('pages.newDash.branchInitialization.labels.unassigned')}</strong>
+                <strong>{ownerDetailLabel}</strong>
               </div>
               <div className="branch-setup-overview-item">
                 <span>Latest upload</span>
@@ -1602,29 +1668,64 @@ export function BranchSetupPage() {
               <div className="new-dash-panel-head">
                 <h2>{t('pages.newDash.branchInitialization.ownerAssignment.title')}</h2>
               </div>
-              <p className="new-dash-panel-copy">Change who owns this branch configuration and payroll coordination.</p>
+              <p className="new-dash-panel-copy">Invite a branch site owner by email. Existing workspace users will be granted branch access immediately. New users will receive a registration link.</p>
+              <div className="branch-setup-overview-grid">
+                <div className="branch-setup-overview-item">
+                  <span>Active site owner</span>
+                  <strong>{ownerDetailLabel}</strong>
+                </div>
+                <div className="branch-setup-overview-item">
+                  <span>Pending invite</span>
+                  <strong>{pendingSiteOwnerInvite?.invited_email ?? 'No pending invite'}</strong>
+                </div>
+              </div>
               <div className="branch-setup-owner-actions">
-                <select
-                  onChange={(event) => setSelectedOwnerId(Number(event.target.value))}
-                  value={selectedOwnerId ?? ''}
-                >
-                  <option value="">{t('pages.newDash.branchInitialization.ownerAssignment.placeholder')}</option>
-                  {branchAdminOptions.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.display_name}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  onChange={(event) => setOwnerInviteName(event.target.value)}
+                  placeholder="Site owner name"
+                  type="text"
+                  value={ownerInviteName}
+                />
+                <input
+                  onChange={(event) => setOwnerInviteEmail(event.target.value)}
+                  placeholder="siteowner@company.com"
+                  type="email"
+                  value={ownerInviteEmail}
+                />
                 <Button
-                  disabled={!selectedOwnerId || assignOwnerMutation.isPending}
+                  disabled={!ownerInviteEmail.trim() || inviteSiteOwnerMutation.isPending}
                   onClick={() => {
-                    void assignOwnerMutation.mutateAsync();
+                    void inviteSiteOwnerMutation.mutateAsync();
                   }}
                   type="button"
                 >
-                  {t('pages.newDash.branchInitialization.actions.assignOwner')}
+                  {inviteSiteOwnerMutation.isPending ? 'Sending invite...' : 'Send site owner invite'}
                 </Button>
               </div>
+              {pendingSiteOwnerInvite ? (
+                <div className="new-dash-panel-actions">
+                  <Button
+                    disabled={resendInviteMutation.isPending}
+                    onClick={() => {
+                      void resendInviteMutation.mutateAsync(pendingSiteOwnerInvite.id);
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {resendInviteMutation.isPending ? 'Resending...' : 'Resend invite'}
+                  </Button>
+                  <Button
+                    disabled={cancelInviteMutation.isPending}
+                    onClick={() => {
+                      void cancelInviteMutation.mutateAsync(pendingSiteOwnerInvite.id);
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {cancelInviteMutation.isPending ? 'Cancelling...' : 'Cancel invite'}
+                  </Button>
+                </div>
+              ) : null}
             </section>
           ) : null}
         </div>
@@ -1649,6 +1750,8 @@ export function BranchSetupPage() {
 
     return (
       <NewPrimaryLayout
+        headerBrandPath={actor?.user_type === 'site_owner' ? `/new-dash/branches/${officeId}` : undefined}
+        headerNavItems={headerNavItems}
         onLogout={undefined}
         pageHeader={
           <PageHeader

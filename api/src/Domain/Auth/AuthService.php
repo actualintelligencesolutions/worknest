@@ -173,7 +173,11 @@ final class AuthService
         try {
             return $this->loginAdmin($tenantId, $email, $password, 'tenant_owner');
         } catch (UnauthorizedException) {
-            return $this->loginAdmin($tenantId, $email, $password, 'branch_admin');
+            try {
+                return $this->loginAdmin($tenantId, $email, $password, 'branch_admin');
+            } catch (UnauthorizedException) {
+                return $this->loginAdmin($tenantId, $email, $password, 'site_owner');
+            }
         }
     }
 

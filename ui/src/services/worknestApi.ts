@@ -113,7 +113,7 @@ export type AuthSession = {
   token: string;
   tenantId: string;
   userName?: string;
-  userType?: 'tenant_owner' | 'branch_admin' | 'employee';
+  userType?: 'tenant_owner' | 'branch_admin' | 'site_owner' | 'employee';
 };
 
 export type ActorProfile = {
@@ -124,7 +124,7 @@ export type ActorProfile = {
   name: string;
   email: string | null;
   phone: string | null;
-  user_type: 'tenant_owner' | 'branch_admin' | 'employee';
+  user_type: 'tenant_owner' | 'branch_admin' | 'site_owner' | 'employee';
   status: string;
   office_ids: number[];
 };
@@ -139,7 +139,7 @@ export type UserSummary = {
   display_name: string;
   email?: string | null;
   phone?: string | null;
-  user_type: 'tenant_owner' | 'branch_admin' | 'employee';
+  user_type: 'tenant_owner' | 'branch_admin' | 'site_owner' | 'employee';
   status: string;
   has_pin?: boolean;
   created_at?: string;
@@ -149,6 +149,21 @@ export type EmployeePinResetResult = {
   user: UserSummary | null;
   pin_reset: boolean;
   revealed_pin: string;
+};
+
+export type SiteOwnerInviteSummary = {
+  id: number;
+  tenant_id: string;
+  office_id: number;
+  office_name?: string | null;
+  office_code?: string | null;
+  tenant_name?: string | null;
+  invited_email: string;
+  invited_name?: string | null;
+  status: 'pending' | 'accepted' | 'cancelled' | 'expired';
+  expires_at?: string | null;
+  created_at?: string | null;
+  accepted_at?: string | null;
 };
 
 export type OfficeEmployeePinBulkResetResult = {
@@ -194,7 +209,7 @@ export type AdminAuthResult = {
     id: number;
     name: string;
     email: string | null;
-    role?: string;
+    role?: 'tenant_owner' | 'branch_admin' | 'site_owner';
   };
   tenant: {
     tenant_id: string;
@@ -219,6 +234,38 @@ export type EmployeeAuthResult = {
   session: {
     token: string;
     session_type: 'employee_portal';
+  };
+};
+
+export type SiteOwnerInviteMutationResult = {
+  office: CompanyLocation;
+  site_owner?: {
+    id: number | null;
+    name: string | null;
+    email: string | null;
+    status: string | null;
+  } | null;
+  pending_site_owner_invite?: SiteOwnerInviteSummary | null;
+  status?: 'invite_pending' | 'access_granted';
+};
+
+export type SiteOwnerInviteAcceptanceDetail = {
+  invite: SiteOwnerInviteSummary;
+};
+
+export type SiteOwnerInviteAcceptanceResult = {
+  user: {
+    id: number;
+    name: string;
+    email: string | null;
+    role: 'tenant_owner' | 'branch_admin' | 'site_owner';
+  };
+  tenant: {
+    tenant_id: string;
+  };
+  session: {
+    token: string;
+    session_type: 'web';
   };
 };
 
@@ -262,6 +309,13 @@ type OfficeDetail = {
     email: string | null;
     status: string | null;
   } | null;
+  site_owner?: {
+    id: number | null;
+    name: string | null;
+    email: string | null;
+    status: string | null;
+  } | null;
+  pending_site_owner_invite?: SiteOwnerInviteSummary | null;
   plan: Pick<
     Plan,
     'id' | 'plan_code' | 'name' | 'price_cents' | 'currency'
@@ -529,7 +583,7 @@ export function listUsers(
   session: AuthSession,
   filters?: {
     office_id?: number;
-    user_type?: 'branch_admin' | 'employee';
+    user_type?: 'branch_admin' | 'site_owner' | 'employee';
   },
 ) {
   const search = new URLSearchParams({
@@ -546,6 +600,63 @@ export function listUsers(
 
   return apiRequest<{ users: UserSummary[] }>(`/users?${search.toString()}`, {
     headers: authHeaders(session),
+  });
+}
+
+export function inviteSiteOwner(
+  session: AuthSession,
+  officeId: number,
+  payload: {
+    email: string;
+    name?: string;
+  },
+) {
+  return apiRequest<SiteOwnerInviteMutationResult>(
+    `/v2/offices/${officeId}/site-owner-invites?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function resendSiteOwnerInvite(session: AuthSession, officeId: number, inviteId: number) {
+  return apiRequest<{ pending_site_owner_invite: SiteOwnerInviteSummary | null }>(
+    `/v2/offices/${officeId}/site-owner-invites/${inviteId}/resend?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function cancelSiteOwnerInvite(session: AuthSession, officeId: number, inviteId: number) {
+  return apiRequest<{ cancelled: boolean }>(
+    `/v2/offices/${officeId}/site-owner-invites/${inviteId}/cancel?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function getSiteOwnerInviteAcceptance(token: string) {
+  return apiRequest<SiteOwnerInviteAcceptanceDetail>(
+    `/v2/site-owner-invites/accept?token=${encodeURIComponent(token)}`,
+  );
+}
+
+export function acceptSiteOwnerInvite(payload: {
+  token: string;
+  name: string;
+  password: string;
+}) {
+  return apiRequest<SiteOwnerInviteAcceptanceResult>('/v2/site-owner-invites/accept', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

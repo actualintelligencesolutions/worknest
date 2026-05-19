@@ -38,6 +38,20 @@ VALUES
     'active'
   ),
   (
+    'site_owner',
+    'Site Owner',
+    'office',
+    JSON_ARRAY(
+      'office.read',
+      'user.read',
+      'user.write',
+      'payroll.read',
+      'payroll.write',
+      'payslip.read'
+    ),
+    'active'
+  ),
+  (
     'employee',
     'Employee',
     'self',

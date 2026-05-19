@@ -31,8 +31,8 @@ final class UserService
     public function createUser(string $tenantId, array $actor, array $payload): array
     {
         $userType = (string) ($payload['user_type'] ?? '');
-        if (!in_array($userType, ['branch_admin', 'employee'], true)) {
-            throw new ValidationException('User type must be branch_admin or employee.');
+        if (!in_array($userType, ['branch_admin', 'site_owner', 'employee'], true)) {
+            throw new ValidationException('User type must be branch_admin, site_owner, or employee.');
         }
 
         $officeId = isset($payload['office_id']) ? (int) $payload['office_id'] : null;
@@ -45,7 +45,7 @@ final class UserService
             if ($office === null) {
                 throw new ValidationException('Office was not found.');
             }
-            if (($actor['user_type'] ?? '') === 'branch_admin' && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
+            if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true) && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
                 throw new ForbiddenException();
             }
         }
@@ -84,7 +84,7 @@ final class UserService
             throw new ValidationException('Role is not configured.');
         }
 
-        $userId = $this->transactions->run(function () use ($tenantId, $actor, $payload, $userType, $officeId, $displayName, $firstName, $email, $employeeId, $role) {
+        $userId = $this->transactions->run(function () use ($tenantId, $actor, $payload, $userType, $officeId, $displayName, $firstName, $email, $phone, $employeeId, $role) {
             $userId = $this->userRepository->create([
                 'tenant_id' => $tenantId,
                 'office_id' => $officeId,
@@ -94,14 +94,14 @@ final class UserService
                 'display_name' => $displayName,
                 'email' => $email ?: null,
                 'phone' => $phone ?: null,
-                'password_hash' => $userType === 'branch_admin' && !empty($payload['password'])
+                'password_hash' => in_array($userType, ['branch_admin', 'site_owner'], true) && !empty($payload['password'])
                     ? $this->passwordHasher->hash((string) $payload['password'])
                     : null,
                 'pin_hash' => $userType === 'employee' && !empty($payload['initial_pin'])
                     ? $this->pinHasher->hash((string) $payload['initial_pin'])
                     : null,
                 'user_type' => $userType,
-                'status' => $userType === 'employee' ? 'active' : 'pending_verification',
+            'status' => $userType === 'employee' ? 'active' : 'pending_verification',
             ]);
 
             $this->roleRepository->assignRole($tenantId, $userId, (int) $role['id'], $officeId, (int) $actor['id']);
@@ -203,7 +203,7 @@ final class UserService
             throw new ValidationException('Employee PIN management is available only for branch offices.');
         }
 
-        if (($actor['user_type'] ?? '') === 'branch_admin' && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
+        if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true) && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
             throw new ForbiddenException();
         }
 
@@ -248,7 +248,7 @@ final class UserService
 
     private function assertUserAccess(array $user, array $actor): void
     {
-        if (($actor['user_type'] ?? '') !== 'branch_admin') {
+        if (!in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             return;
         }
 

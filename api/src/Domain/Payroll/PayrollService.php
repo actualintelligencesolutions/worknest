@@ -518,7 +518,7 @@ final class PayrollService
         if ($office === null) {
             throw new ValidationException('Office was not found.');
         }
-        if (($actor['user_type'] ?? '') === 'branch_admin' && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
+        if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true) && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
             throw new ForbiddenException();
         }
     }

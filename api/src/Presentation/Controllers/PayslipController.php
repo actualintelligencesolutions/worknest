@@ -22,21 +22,21 @@ final class PayslipController extends BaseController
     public function list(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'employee']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner', 'employee']);
         return Response::success($this->payslipService->listPayslips($tenantId, $actor));
     }
 
     public function detail(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'employee']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner', 'employee']);
         return Response::success($this->payslipService->getPayslip((int) $request->attribute('id'), $tenantId, $actor));
     }
 
     public function download(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'employee']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner', 'employee']);
         $payload = $this->payslipService->downloadPayslip((int) $request->attribute('id'), $tenantId, $actor);
 
         return Response::file($payload['path'], 'application/pdf', $payload['filename']);

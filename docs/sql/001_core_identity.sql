@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(32) NULL DEFAULT NULL,
   password_hash VARCHAR(255) NULL DEFAULT NULL,
   pin_hash VARCHAR(255) NULL DEFAULT NULL,
-  user_type ENUM('tenant_owner', 'branch_admin', 'employee') NOT NULL,
+  user_type ENUM('tenant_owner', 'branch_admin', 'site_owner', 'employee') NOT NULL,
   status ENUM('pending_verification', 'active', 'suspended', 'disabled') NOT NULL DEFAULT 'pending_verification',
   email_verified_at TIMESTAMP NULL DEFAULT NULL,
   phone_verified_at TIMESTAMP NULL DEFAULT NULL,

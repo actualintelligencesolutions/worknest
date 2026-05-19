@@ -22,14 +22,14 @@ final class UserController extends BaseController
     public function create(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->userService->createUser($tenantId, $actor, $request->body()), 201);
     }
 
     public function list(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         $payload = $this->userService->listUsers($tenantId, $actor, [
             'office_id' => $request->query('office_id'),
             'user_type' => $request->query('user_type'),
@@ -49,21 +49,21 @@ final class UserController extends BaseController
     public function detail(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->userService->getUser((int) $request->attribute('id'), $tenantId, $actor));
     }
 
     public function update(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->userService->updateUser((int) $request->attribute('id'), $tenantId, $actor, $request->body()));
     }
 
     public function resetPin(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         $body = $request->body();
         return Response::success($this->userService->resetPin(
             (int) $request->attribute('id'),
@@ -76,7 +76,7 @@ final class UserController extends BaseController
     public function resetPinsForOffice(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
-        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->userService->resetPinsForOffice(
             (int) $request->attribute('id'),
             $tenantId,

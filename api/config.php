@@ -12,6 +12,9 @@ function api_env(string $key, ?string $default = null): ?string
 }
 
 return [
+    'app' => [
+        'frontend_url' => api_env('APP_FRONTEND_URL', 'https://preview.worknestapp.com'),
+    ],
     'project' => [
         'environment' => project_environment_config(),
         'tenants' => project_tenant_configs(),

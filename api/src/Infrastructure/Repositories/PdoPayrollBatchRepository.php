@@ -107,7 +107,7 @@ final class PdoPayrollBatchRepository implements PayrollBatchRepositoryInterface
         $bindings = ['tenant_id' => $tenantId];
         $sql = 'SELECT pb.* FROM payroll_batches pb WHERE pb.tenant_id = :tenant_id AND pb.deleted_at IS NULL';
 
-        if (($actor['user_type'] ?? '') === 'branch_admin') {
+        if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true)) {
             $officeIds = array_map('intval', $actor['office_ids'] ?? []);
             if ($officeIds === []) {
                 return [];
