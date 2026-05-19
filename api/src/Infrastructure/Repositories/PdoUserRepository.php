@@ -18,10 +18,14 @@ final class PdoUserRepository implements UserRepositoryInterface
         $stmt = $this->connection->pdo()->prepare(
             'INSERT INTO users (
                 tenant_id, office_id, employee_id, first_name, last_name, display_name,
-                email, phone, password_hash, pin_hash, user_type, status
+                email, phone, password_hash, employee_pin, employment_type, date_of_joining,
+                uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                user_type, status
              ) VALUES (
                 :tenant_id, :office_id, :employee_id, :first_name, :last_name, :display_name,
-                :email, :phone, :password_hash, :pin_hash, :user_type, :status
+                :email, :phone, :password_hash, :employee_pin, :employment_type, :date_of_joining,
+                :uan, :bank_name, :bank_account_number, :ifsc, :designation, :basic_rate,
+                :user_type, :status
              )'
         );
         $stmt->execute([
@@ -34,7 +38,15 @@ final class PdoUserRepository implements UserRepositoryInterface
             'email' => $payload['email'] ?? null,
             'phone' => $payload['phone'] ?? null,
             'password_hash' => $payload['password_hash'] ?? null,
-            'pin_hash' => $payload['pin_hash'] ?? null,
+            'employee_pin' => $payload['employee_pin'] ?? null,
+            'employment_type' => $payload['employment_type'] ?? null,
+            'date_of_joining' => $payload['date_of_joining'] ?? null,
+            'uan' => $payload['uan'] ?? null,
+            'bank_name' => $payload['bank_name'] ?? null,
+            'bank_account_number' => $payload['bank_account_number'] ?? null,
+            'ifsc' => $payload['ifsc'] ?? null,
+            'designation' => $payload['designation'] ?? null,
+            'basic_rate' => $payload['basic_rate'] ?? null,
             'user_type' => $payload['user_type'],
             'status' => $payload['status'] ?? 'pending_verification',
         ]);
@@ -109,7 +121,7 @@ final class PdoUserRepository implements UserRepositoryInterface
         return $user === false ? null : $user;
     }
 
-    public function findActiveEmployeeByIdentifier(string $tenantId, string $identifier): ?array
+    public function findActiveEmployeeByPhone(string $tenantId, string $phone): ?array
     {
         $stmt = $this->connection->pdo()->prepare(
             'SELECT * FROM users
@@ -117,12 +129,49 @@ final class PdoUserRepository implements UserRepositoryInterface
                AND user_type = "employee"
                AND status = "active"
                AND deleted_at IS NULL
-               AND (email = :identifier OR phone = :identifier OR employee_id = :identifier)
+               AND phone = :phone
              LIMIT 1'
         );
         $stmt->execute([
             'tenant_id' => $tenantId,
-            'identifier' => $identifier,
+            'phone' => $phone,
+        ]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user === false ? null : $user;
+    }
+
+    public function findEmployeeByEmployeeId(string $tenantId, string $employeeId): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM users
+             WHERE tenant_id = :tenant_id
+               AND employee_id = :employee_id
+               AND user_type = "employee"
+               AND deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'employee_id' => $employeeId,
+        ]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user === false ? null : $user;
+    }
+
+    public function findByPhone(string $tenantId, string $phone): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM users
+             WHERE tenant_id = :tenant_id
+               AND phone = :phone
+               AND deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'phone' => $phone,
         ]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -154,8 +203,15 @@ final class PdoUserRepository implements UserRepositoryInterface
     public function listAccessible(string $tenantId, array $actor, array $filters = []): array
     {
         $bindings = ['tenant_id' => $tenantId];
-        $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at,
-                       CASE WHEN pin_hash IS NULL OR pin_hash = "" THEN 0 ELSE 1 END AS has_pin
+        $canViewPins = in_array(($actor['user_type'] ?? ''), ['tenant_owner', 'branch_admin'], true);
+        $pinSelect = $canViewPins
+            ? 'employee_pin'
+            : 'NULL AS employee_pin';
+        $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone,
+                       employment_type, date_of_joining, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                       user_type, status, created_at,
+                       CASE WHEN employee_pin IS NULL OR employee_pin = "" THEN 0 ELSE 1 END AS has_pin,
+                       ' . $pinSelect . '
                 FROM users
                 WHERE tenant_id = :tenant_id AND deleted_at IS NULL';
 
@@ -165,8 +221,11 @@ final class PdoUserRepository implements UserRepositoryInterface
                 return [];
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
-            $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone, user_type, status, created_at,
-                       CASE WHEN pin_hash IS NULL OR pin_hash = "" THEN 0 ELSE 1 END AS has_pin
+            $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone,
+                       employment_type, date_of_joining, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                       user_type, status, created_at,
+                       CASE WHEN employee_pin IS NULL OR employee_pin = "" THEN 0 ELSE 1 END AS has_pin,
+                       ' . $pinSelect . '
                 FROM users
                 WHERE tenant_id = ? AND deleted_at IS NULL AND office_id IN (' . $placeholders . ')';
             $params = array_merge([$tenantId], $officeIds);
@@ -207,8 +266,16 @@ final class PdoUserRepository implements UserRepositoryInterface
             'display_name',
             'email',
             'phone',
-            'pin_hash',
+            'employee_pin',
             'password_hash',
+            'employment_type',
+            'date_of_joining',
+            'uan',
+            'bank_name',
+            'bank_account_number',
+            'ifsc',
+            'designation',
+            'basic_rate',
             'status',
         ];
 

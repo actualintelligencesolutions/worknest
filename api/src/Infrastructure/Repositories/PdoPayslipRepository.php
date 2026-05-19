@@ -47,9 +47,11 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
         $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
                        pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
-                       pr.earnings_json, pr.deductions_json, pr.currency
+                       pr.earnings_json, pr.deductions_json, pr.currency,
+                       u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
+                LEFT JOIN users u ON u.id = p.user_id
                 WHERE p.tenant_id = :tenant_id';
         $bindings = ['tenant_id' => $tenantId];
 
@@ -65,9 +67,11 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
                        pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
-                       pr.earnings_json, pr.deductions_json, pr.currency
+                       pr.earnings_json, pr.deductions_json, pr.currency,
+                       u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
+                LEFT JOIN users u ON u.id = p.user_id
                 WHERE p.tenant_id = ? AND p.office_id IN (' . $placeholders . ')';
             $stmt = $this->connection->pdo()->prepare($sql . ' ORDER BY p.period_year DESC, p.period_month DESC, p.published_at DESC, p.id DESC');
             $stmt->execute(array_merge([$tenantId], $officeIds));
@@ -82,9 +86,11 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
     public function findAccessibleById(int $payslipId, string $tenantId, array $actor): ?array
     {
         $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
-                       pr.earnings_json, pr.deductions_json, pr.currency
+                       pr.earnings_json, pr.deductions_json, pr.currency,
+                       u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
+                LEFT JOIN users u ON u.id = p.user_id
                 WHERE p.id = :id AND p.tenant_id = :tenant_id';
         $bindings = [
             'id' => $payslipId,
@@ -101,9 +107,11 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
             $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
-                       pr.earnings_json, pr.deductions_json, pr.currency
+                       pr.earnings_json, pr.deductions_json, pr.currency,
+                       u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
+                LEFT JOIN users u ON u.id = p.user_id
                 WHERE p.id = ? AND p.tenant_id = ? AND p.office_id IN (' . $placeholders . ')';
             $stmt = $this->connection->pdo()->prepare($sql . ' LIMIT 1');
             $stmt->execute(array_merge([$payslipId, $tenantId], $officeIds));

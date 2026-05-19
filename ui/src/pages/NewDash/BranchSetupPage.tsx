@@ -1663,7 +1663,7 @@ export function BranchSetupPage() {
                     <span>{employee.employee_id ?? 'No employee ID'}</span>
                   </div>
                   <div>
-                    <strong>{employee.email || employee.phone || 'No login contact'}</strong>
+                    <strong>{employee.phone || 'No phone login set'}</strong>
                     <span>{employee.status}</span>
                   </div>
                 </article>
@@ -1684,7 +1684,7 @@ export function BranchSetupPage() {
           <div className="new-dash-panel-head">
             <h2>Employee PIN access</h2>
           </div>
-          <p className="new-dash-panel-copy">Assign, reset, reveal, and share employee login PINs for this branch. Revealed PINs are shown only right after you set or regenerate them.</p>
+          <p className="new-dash-panel-copy">Assign, reset, and view employee login PINs for this branch. Tenant owners and branch admins can always see the current PIN stored for each employee.</p>
 
           <div className="branch-setup-pin-toolbar">
             <Button
@@ -1732,9 +1732,10 @@ export function BranchSetupPage() {
               <p className="new-dash-panel-note">No employees are assigned to this branch yet.</p>
             ) : (
               branchEmployees.map((employee) => {
-                const loginContact = employee.email || employee.phone || 'No login contact';
+                const loginContact = employee.phone || 'No phone login set';
                 const revealedPin = revealedPins[employee.id] ?? null;
                 const customPin = customPins[employee.id] ?? '';
+                const visiblePin = employee.employee_pin ?? revealedPin;
 
                 return (
                   <article className="branch-setup-pin-card" key={employee.id}>
@@ -1749,6 +1750,11 @@ export function BranchSetupPage() {
                     </div>
 
                     <div className="branch-setup-pin-actions">
+                      <label className="branch-setup-pin-input">
+                        <span>Current PIN</span>
+                        <input disabled readOnly type="text" value={visiblePin ?? 'No PIN set'} />
+                      </label>
+
                       <label className="branch-setup-pin-input">
                         <span>Custom PIN</span>
                         <input
@@ -1780,18 +1786,18 @@ export function BranchSetupPage() {
                           {customPin.trim() !== '' ? 'Assign custom PIN' : 'Generate PIN'}
                         </Button>
                         <Button
-                          disabled={!revealedPin}
+                          disabled={!visiblePin}
                           onClick={() => {
-                            if (!revealedPin) {
+                            if (!visiblePin) {
                               return;
                             }
-                            void navigator.clipboard.writeText(revealedPin);
+                            void navigator.clipboard.writeText(visiblePin);
                             setUrlFeedback(`PIN copied for ${employee.display_name}.`);
                           }}
                           type="button"
                           variant="secondary"
                         >
-                          Copy revealed PIN
+                          Copy current PIN
                         </Button>
                       </div>
                     </div>

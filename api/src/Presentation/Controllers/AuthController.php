@@ -92,12 +92,12 @@ final class AuthController extends BaseController
             ? $this->authService->loginEmployeeForOffice(
                 (string) $tenantId,
                 $officeCode,
-                (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
+                (string) ($body['phone'] ?? ''),
                 (string) ($body['pin'] ?? '')
             )
             : $this->authService->loginEmployee(
                 (string) $tenantId,
-                (string) ($body['identifier'] ?? $body['employee_id'] ?? ''),
+                (string) ($body['phone'] ?? ''),
                 (string) ($body['pin'] ?? '')
             );
 

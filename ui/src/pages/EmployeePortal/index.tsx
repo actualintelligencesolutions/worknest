@@ -43,7 +43,7 @@ function formatMoney(value: number) {
 export function EmployeeLoginPage() {
   const navigate = useNavigate();
   const { tenantId = '', officeCode = '' } = useParams();
-  const [identifier, setIdentifier] = useState('');
+  const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,15 +58,15 @@ export function EmployeeLoginPage() {
     event.preventDefault();
     setError(null);
 
-    if (!identifier.trim() || !pin.trim()) {
-      setError('Employee ID and PIN are required.');
+    if (!phone.trim() || !pin.trim()) {
+      setError('Phone number and PIN are required.');
       return;
     }
 
     try {
       setIsSubmitting(true);
       const response = await loginEmployeeForSite(tenantId, officeCode, {
-        identifier: identifier.trim(),
+        phone: phone.trim(),
         pin: pin.trim(),
       });
 
@@ -96,7 +96,7 @@ export function EmployeeLoginPage() {
           <p className="employee-portal-copy">
             {siteQuery.isError
               ? 'This site URL is not valid. Check the link shared by your payroll team.'
-              : 'Sign in with your employee ID and PIN to access your documents on this site.'}
+              : 'Sign in with your phone number and PIN to access your documents on this site.'}
           </p>
 
           {siteQuery.data?.site ? (
@@ -113,12 +113,12 @@ export function EmployeeLoginPage() {
 
           <form className="employee-portal-form" onSubmit={handleSubmit}>
             <label>
-              <span>Employee ID</span>
+              <span>Phone number</span>
               <input
-                onChange={(event) => setIdentifier(event.target.value)}
-                placeholder="Enter employee ID"
-                type="text"
-                value={identifier}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Enter phone number"
+                type="tel"
+                value={phone}
               />
             </label>
 

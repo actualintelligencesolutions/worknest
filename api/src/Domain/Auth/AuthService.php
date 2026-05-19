@@ -186,11 +186,11 @@ final class AuthService
         return $this->loginAdmin($tenantId, $email, $password, 'branch_admin');
     }
 
-    public function loginEmployee(string $tenantId, string $employeeId, string $pin): array
+    public function loginEmployee(string $tenantId, string $phone, string $pin): array
     {
-        $identifier = $this->normalizeEmployeeIdentifier($employeeId);
-        $user = $this->userRepository->findActiveEmployeeByIdentifier($tenantId, $identifier);
-        if ($user === null || empty($user['pin_hash']) || !$this->pinHasher->verify($pin, (string) $user['pin_hash'])) {
+        $normalizedPhone = $this->normalizePhone($phone);
+        $user = $this->userRepository->findActiveEmployeeByPhone($tenantId, $normalizedPhone);
+        if ($user === null || empty($user['employee_pin']) || !$this->pinHasher->verify($pin, (string) $user['employee_pin'])) {
             throw new UnauthorizedException('Invalid employee login or PIN.');
         }
 
@@ -216,14 +216,14 @@ final class AuthService
         ];
     }
 
-    public function loginEmployeeForOffice(string $tenantId, string $officeCode, string $employeeId, string $pin): array
+    public function loginEmployeeForOffice(string $tenantId, string $officeCode, string $phone, string $pin): array
     {
         $office = $this->officeRepository->findByCode($tenantId, $officeCode);
         if ($office === null) {
             throw new ValidationException('The requested site portal could not be found.');
         }
 
-        $payload = $this->loginEmployee($tenantId, $employeeId, $pin);
+        $payload = $this->loginEmployee($tenantId, $phone, $pin);
         if ((int) ($payload['user']['office_id'] ?? 0) !== (int) $office['id']) {
             throw new ForbiddenException('This employee does not belong to the requested site.');
         }

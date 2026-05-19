@@ -103,7 +103,7 @@ INSERT INTO users (
   email,
   phone,
   password_hash,
-  pin_hash,
+  employee_pin,
   user_type,
   status,
   email_verified_at
@@ -152,7 +152,7 @@ INSERT INTO users (
   email,
   phone,
   password_hash,
-  pin_hash,
+  employee_pin,
   user_type,
   status,
   email_verified_at
@@ -198,7 +198,7 @@ INSERT INTO users (
   email,
   phone,
   password_hash,
-  pin_hash,
+  employee_pin,
   user_type,
   status,
   email_verified_at
@@ -213,7 +213,7 @@ SELECT
   'demo@example.com',
   '+919900000011',
   NULL,
-  '$2y$10$LpzslBFvILBpvsIaVg2T0OXmTq.BaK96Gf88Uc2GItgMKgi/blole',
+  '1234',
   'employee',
   'active',
   CURRENT_TIMESTAMP
@@ -229,7 +229,7 @@ ON DUPLICATE KEY UPDATE
   last_name = VALUES(last_name),
   display_name = VALUES(display_name),
   phone = VALUES(phone),
-  pin_hash = VALUES(pin_hash),
+  employee_pin = VALUES(employee_pin),
   user_type = VALUES(user_type),
   status = VALUES(status),
   email_verified_at = VALUES(email_verified_at),
@@ -245,7 +245,7 @@ INSERT INTO users (
   email,
   phone,
   password_hash,
-  pin_hash,
+  employee_pin,
   user_type,
   status,
   email_verified_at
@@ -260,7 +260,7 @@ SELECT
   'employee2@demo.com',
   '+919900000012',
   NULL,
-  '$2y$10$LpzslBFvILBpvsIaVg2T0OXmTq.BaK96Gf88Uc2GItgMKgi/blole',
+  '5678',
   'employee',
   'active',
   CURRENT_TIMESTAMP
@@ -276,7 +276,7 @@ ON DUPLICATE KEY UPDATE
   last_name = VALUES(last_name),
   display_name = VALUES(display_name),
   phone = VALUES(phone),
-  pin_hash = VALUES(pin_hash),
+  employee_pin = VALUES(employee_pin),
   user_type = VALUES(user_type),
   status = VALUES(status),
   email_verified_at = VALUES(email_verified_at),

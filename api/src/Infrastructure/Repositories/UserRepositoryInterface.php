@@ -16,7 +16,11 @@ interface UserRepositoryInterface
 
     public function findActiveEmployeeByEmployeeId(string $tenantId, string $employeeId): ?array;
 
-    public function findActiveEmployeeByIdentifier(string $tenantId, string $identifier): ?array;
+    public function findActiveEmployeeByPhone(string $tenantId, string $phone): ?array;
+
+    public function findEmployeeByEmployeeId(string $tenantId, string $employeeId): ?array;
+
+    public function findByPhone(string $tenantId, string $phone): ?array;
 
     public function listAccessible(string $tenantId, array $actor, array $filters = []): array;
 

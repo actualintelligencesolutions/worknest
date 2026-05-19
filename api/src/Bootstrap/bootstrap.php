@@ -51,7 +51,7 @@ use Worknest\Api\Infrastructure\Security\PinHasher;
 use Worknest\Api\Infrastructure\Storage\CsvParser;
 use Worknest\Api\Infrastructure\Storage\ExcelImportAdapter;
 use Worknest\Api\Infrastructure\Storage\FileStorageService;
-use Worknest\Api\Infrastructure\Storage\NullExcelImportAdapter;
+use Worknest\Api\Infrastructure\Storage\NativeXlsxImportAdapter;
 use Worknest\Api\Presentation\Controllers\AuthController;
 use Worknest\Api\Presentation\Controllers\OfficeController;
 use Worknest\Api\Presentation\Controllers\PayslipController;
@@ -85,7 +85,7 @@ function build_app(array $config): App
     $container->singleton(Mailer::class, fn ($c) => new Mailer());
     $container->singleton(TenantResolver::class, fn ($c) => new TenantResolver());
     $container->singleton(CsvParser::class, fn ($c) => new CsvParser());
-    $container->singleton(ExcelImportAdapter::class, fn ($c) => new NullExcelImportAdapter());
+    $container->singleton(ExcelImportAdapter::class, fn ($c) => new NativeXlsxImportAdapter());
     $container->singleton(FileStorageService::class, fn ($c) => new FileStorageService(dirname(__DIR__, 2) . '/storage'));
     $container->singleton(AuditLogger::class, fn ($c) => new AuditLogger($c->get(AuditLogRepositoryInterface::class)));
     $container->singleton(PayslipPdfGenerator::class, fn ($c) => new PayslipPdfGenerator());

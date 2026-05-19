@@ -70,13 +70,8 @@ final class UserService
             throw new ValidationException('An employee with this employee ID already exists for the tenant.');
         }
 
-        if (
-            $userType === 'employee'
-            && ($email === null || $email === '')
-            && ($phone === null || $phone === '')
-            && ($employeeId === null || $employeeId === '')
-        ) {
-            throw new ValidationException('Employee creation requires an employee ID, email, or phone.');
+        if ($userType === 'employee' && ($phone === null || $phone === '' || $employeeId === null || $employeeId === '')) {
+            throw new ValidationException('Employee creation requires both phone number and employee ID.');
         }
 
         $role = $this->roleRepository->findByKey($userType);
@@ -84,7 +79,12 @@ final class UserService
             throw new ValidationException('Role is not configured.');
         }
 
-        $userId = $this->transactions->run(function () use ($tenantId, $actor, $payload, $userType, $officeId, $displayName, $firstName, $email, $phone, $employeeId, $role) {
+        $employeePin = null;
+        if ($userType === 'employee') {
+            $employeePin = $this->resolvedPin((string) ($payload['initial_pin'] ?? ''));
+        }
+
+        $userId = $this->transactions->run(function () use ($tenantId, $actor, $payload, $userType, $officeId, $displayName, $firstName, $email, $phone, $employeeId, $role, $employeePin) {
             $userId = $this->userRepository->create([
                 'tenant_id' => $tenantId,
                 'office_id' => $officeId,
@@ -97,11 +97,17 @@ final class UserService
                 'password_hash' => in_array($userType, ['branch_admin', 'site_owner'], true) && !empty($payload['password'])
                     ? $this->passwordHasher->hash((string) $payload['password'])
                     : null,
-                'pin_hash' => $userType === 'employee' && !empty($payload['initial_pin'])
-                    ? $this->pinHasher->hash((string) $payload['initial_pin'])
-                    : null,
+                'employee_pin' => $userType === 'employee' ? $this->pinHasher->hash($employeePin ?? '') : null,
+                'employment_type' => $this->nullableString($payload['employment_type'] ?? null),
+                'date_of_joining' => $this->normalizeDate($payload['date_of_joining'] ?? null),
+                'uan' => $this->nullableString($payload['uan'] ?? null),
+                'bank_name' => $this->nullableString($payload['bank_name'] ?? null),
+                'bank_account_number' => $this->nullableString($payload['bank_account_number'] ?? null),
+                'ifsc' => $this->nullableString($payload['ifsc'] ?? null),
+                'designation' => $this->nullableString($payload['designation'] ?? null),
+                'basic_rate' => $this->nullableMoney($payload['basic_rate'] ?? null),
                 'user_type' => $userType,
-            'status' => $userType === 'employee' ? 'active' : 'pending_verification',
+                'status' => $userType === 'employee' ? 'active' : 'pending_verification',
             ]);
 
             $this->roleRepository->assignRole($tenantId, $userId, (int) $role['id'], $officeId, (int) $actor['id']);
@@ -110,12 +116,19 @@ final class UserService
 
         $this->auditLogger->log($tenantId, $officeId, (int) $actor['id'], 'user.created', 'user', (string) $userId, ['user_type' => $userType]);
 
-        return ['user' => $this->userRepository->findById($userId, $tenantId)];
+        $user = $this->userRepository->findById($userId, $tenantId);
+        if ($user !== null) {
+            $user = $this->maskPinForActor($user, $actor);
+        }
+
+        return ['user' => $user];
     }
 
     public function listUsers(string $tenantId, array $actor, array $filters): array
     {
-        return ['users' => $this->userRepository->listAccessible($tenantId, $actor, $filters)];
+        $users = $this->userRepository->listAccessible($tenantId, $actor, $filters);
+
+        return ['users' => array_map(fn (array $user): array => $this->maskPinForActor($user, $actor), $users)];
     }
 
     public function getUser(int $userId, string $tenantId, array $actor): array
@@ -126,7 +139,7 @@ final class UserService
         }
         $this->assertUserAccess($user, $actor);
 
-        return ['user' => $user];
+        return ['user' => $this->maskPinForActor($user, $actor)];
     }
 
     public function updateUser(int $userId, string $tenantId, array $actor, array $payload): array
@@ -138,7 +151,7 @@ final class UserService
         $this->assertUserAccess($existing, $actor);
 
         if (isset($payload['pin'])) {
-            $payload['pin_hash'] = $this->pinHasher->hash((string) $payload['pin']);
+            $payload['employee_pin'] = $this->pinHasher->hash($this->resolvedPin((string) $payload['pin']));
             unset($payload['pin']);
         }
         if (isset($payload['password'])) {
@@ -152,11 +165,48 @@ final class UserService
             $payload['phone'] = $payload['phone'] !== null && trim((string) $payload['phone']) !== ''
                 ? $this->normalizePhone((string) $payload['phone'])
                 : null;
+            if (
+                $payload['phone'] !== null
+                && $payload['phone'] !== ($existing['phone'] ?? null)
+                && $this->userRepository->phoneExists($tenantId, $payload['phone'])
+            ) {
+                throw new ValidationException('A user with this phone number already exists for the tenant.');
+            }
         }
         if (array_key_exists('email', $payload)) {
             $payload['email'] = $payload['email'] !== null && trim((string) $payload['email']) !== ''
                 ? strtolower(trim((string) $payload['email']))
                 : null;
+            if (
+                $payload['email'] !== null
+                && $payload['email'] !== ($existing['email'] ?? null)
+                && $this->userRepository->emailExists($tenantId, $payload['email'])
+            ) {
+                throw new ValidationException('A user with this email already exists for the tenant.');
+            }
+        }
+        if (array_key_exists('employee_id', $payload)) {
+            $payload['employee_id'] = $payload['employee_id'] !== null && trim((string) $payload['employee_id']) !== ''
+                ? trim((string) $payload['employee_id'])
+                : null;
+            if (
+                $payload['employee_id'] !== null
+                && $payload['employee_id'] !== ($existing['employee_id'] ?? null)
+                && $this->userRepository->employeeIdExists($tenantId, $payload['employee_id'])
+            ) {
+                throw new ValidationException('An employee with this employee ID already exists for the tenant.');
+            }
+        }
+        foreach (['employment_type', 'uan', 'bank_name', 'bank_account_number', 'ifsc', 'designation'] as $field) {
+            if (array_key_exists($field, $payload)) {
+                $payload[$field] = $this->nullableString($payload[$field]);
+            }
+        }
+        if (array_key_exists('date_of_joining', $payload)) {
+            $payload['date_of_joining'] = $this->normalizeDate($payload['date_of_joining']);
+        }
+        if (array_key_exists('basic_rate', $payload)) {
+            $payload['basic_rate'] = $this->nullableMoney($payload['basic_rate']);
         }
 
         $user = $this->userRepository->update($userId, $tenantId, $payload);
@@ -166,7 +216,7 @@ final class UserService
 
         $this->auditLogger->log($tenantId, $existing['office_id'] !== null ? (int) $existing['office_id'] : null, (int) $actor['id'], 'user.updated', 'user', (string) $userId, array_keys($payload));
 
-        return ['user' => $user];
+        return ['user' => $user !== null ? $this->maskPinForActor($user, $actor) : null];
     }
 
     public function resetPin(int $userId, string $tenantId, array $actor, string $pin): array
@@ -179,14 +229,14 @@ final class UserService
 
         $nextPin = $this->resolvedPin($pin);
         $user = $this->userRepository->update($userId, $tenantId, [
-            'pin_hash' => $this->pinHasher->hash($nextPin),
+            'employee_pin' => $this->pinHasher->hash($nextPin),
             'status' => 'active',
         ]);
 
         $this->auditLogger->log($tenantId, $existing['office_id'] !== null ? (int) $existing['office_id'] : null, (int) $actor['id'], 'employee.pin_reset', 'user', (string) $userId);
 
         return [
-            'user' => $user,
+            'user' => $user !== null ? $this->maskPinForActor($user, $actor) : null,
             'pin_reset' => true,
             'revealed_pin' => $nextPin,
         ];
@@ -216,7 +266,7 @@ final class UserService
         foreach ($employees as $employee) {
             $pin = $this->generatePin();
             $this->userRepository->update((int) $employee['id'], $tenantId, [
-                'pin_hash' => $this->pinHasher->hash($pin),
+                'employee_pin' => $this->pinHasher->hash($pin),
                 'status' => 'active',
             ]);
             $results[] = [
@@ -294,5 +344,51 @@ final class UserService
     private function generatePin(): string
     {
         return str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function nullableMoney(mixed $value): ?float
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        $clean = preg_replace('/[^0-9.\-]/', '', (string) $value) ?? '';
+
+        return $clean === '' ? null : round((float) $clean, 2);
+    }
+
+    private function normalizeDate(mixed $value): ?string
+    {
+        $trimmed = $this->nullableString($value);
+        if ($trimmed === null) {
+            return null;
+        }
+
+        $timestamp = strtotime($trimmed);
+
+        return $timestamp === false ? null : date('Y-m-d', $timestamp);
+    }
+
+    private function maskPinForActor(array $user, array $actor): array
+    {
+        if (
+            ($user['user_type'] ?? '') !== 'employee'
+            || !in_array(($actor['user_type'] ?? ''), ['tenant_owner', 'branch_admin'], true)
+        ) {
+            unset($user['employee_pin']);
+        }
+
+        return $user;
     }
 }

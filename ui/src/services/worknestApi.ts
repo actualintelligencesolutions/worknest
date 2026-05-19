@@ -67,6 +67,8 @@ export type PayrollBatchUploadResult = {
     upload_status: string;
   };
   records_created: number;
+  employees_created?: number;
+  employees_updated?: number;
 };
 
 export type PayrollMissingEmployeeImportResult = {
@@ -163,9 +165,18 @@ export type UserSummary = {
   display_name: string;
   email?: string | null;
   phone?: string | null;
+  employment_type?: string | null;
+  date_of_joining?: string | null;
+  uan?: string | null;
+  bank_name?: string | null;
+  bank_account_number?: string | null;
+  ifsc?: string | null;
+  designation?: string | null;
+  basic_rate?: number | null;
   user_type: 'tenant_owner' | 'branch_admin' | 'site_owner' | 'employee';
   status: string;
   has_pin?: boolean;
+  employee_pin?: string | null;
   created_at?: string;
 };
 
@@ -446,7 +457,7 @@ export function loginAdmin(
 export function loginEmployee(
   tenantId: string,
   payload: {
-    identifier: string;
+    phone: string;
     pin: string;
   },
 ) {
@@ -460,7 +471,7 @@ export function loginEmployeeForSite(
   tenantId: string,
   officeCode: string,
   payload: {
-    identifier: string;
+    phone: string;
     pin: string;
   },
 ) {

@@ -35,7 +35,7 @@ INSERT INTO users (
   email,
   phone,
   password_hash,
-  pin_hash,
+  employee_pin,
   user_type,
   status,
   email_verified_at
