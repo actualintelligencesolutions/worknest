@@ -50,4 +50,12 @@ final class FileStorageService
     {
         return rtrim($this->basePath, '/') . '/' . ltrim($relativePath, '/');
     }
+
+    public function deleteIfExists(string $relativePath): void
+    {
+        $fullPath = $this->absolutePath($relativePath);
+        if (is_file($fullPath)) {
+            @unlink($fullPath);
+        }
+    }
 }

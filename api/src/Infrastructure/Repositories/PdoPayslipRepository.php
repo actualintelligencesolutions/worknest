@@ -145,4 +145,29 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             'period_month' => $periodMonth,
         ]);
     }
+
+    public function listFilePathsForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT file_path FROM payslips
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND period_year = :period_year
+               AND period_month = :period_month
+               AND file_path IS NOT NULL'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+            'period_year' => $periodYear,
+            'period_month' => $periodMonth,
+        ]);
+
+        return array_values(array_filter(
+            array_map(
+                static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? $value : null,
+                $stmt->fetchAll(PDO::FETCH_COLUMN)
+            )
+        ));
+    }
 }

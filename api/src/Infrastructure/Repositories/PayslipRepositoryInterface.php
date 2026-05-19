@@ -15,4 +15,6 @@ interface PayslipRepositoryInterface
     public function markDownloaded(int $payslipId): void;
 
     public function supersedePublishedForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): void;
+
+    public function listFilePathsForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): array;
 }

@@ -65,71 +65,105 @@ final class PayrollService
             . '.' . strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
         $relativePath = 'uploads/payroll/' . $tenantId . '/' . $storedFilename;
         $absolutePath = $this->fileStorage->storeUploadedFile($file, 'uploads/payroll/' . $tenantId, $storedFilename);
-        $parsed = $this->parseFile($absolutePath, (string) ($file['name'] ?? ''));
-
-        $batchId = $this->payrollBatchRepository->create([
-            'tenant_id' => $tenantId,
-            'office_id' => $officeId,
-            'period_year' => $periodYear,
-            'period_month' => $periodMonth,
-            'source_file_name' => (string) $file['name'],
-            'source_file_path' => $relativePath,
-            'source_file_hash' => hash_file('sha256', $absolutePath) ?: hash('sha256', (string) $file['name']),
-            'upload_status' => 'uploaded',
-            'uploaded_by_user_id' => (int) $actor['id'],
-        ]);
-
-        $this->auditLogger->log($tenantId, $officeId, (int) $actor['id'], 'payroll.uploaded', 'payroll_batch', (string) $batchId, ['period_month' => $periodMonth, 'period_year' => $periodYear]);
+        $replacedBatch = $this->payrollBatchRepository->findActiveByOfficeAndPeriod($tenantId, $officeId, $periodYear, $periodMonth);
+        $batchStored = false;
+        $replacedFilePaths = $replacedBatch !== null
+            ? array_values(array_unique(array_filter([
+                (string) ($replacedBatch['source_file_path'] ?? ''),
+                ...$this->payslipRepository->listFilePathsForPeriod($tenantId, $officeId, $periodYear, $periodMonth),
+            ])))
+            : [];
 
         try {
+            $parsed = $this->parseFile($absolutePath, (string) ($file['name'] ?? ''));
             $mapping = $this->autoDetectMapping($parsed['headers']);
             $summary = $this->buildValidationSummary($parsed['rows'], $mapping, $tenantId, $officeId);
+            $records = ($summary['error_rows'] ?? 0) > 0
+                ? []
+                : $this->recordsFromSummary($summary, $tenantId, $officeId);
+
+            $batchId = $this->transactions->run(function () use (
+                $tenantId,
+                $officeId,
+                $periodYear,
+                $periodMonth,
+                $file,
+                $relativePath,
+                $absolutePath,
+                $actor,
+                $mapping,
+                $summary,
+                $records,
+                $replacedBatch
+            ): int {
+                if ($replacedBatch !== null) {
+                    $this->payrollBatchRepository->hardDelete((int) $replacedBatch['id'], $tenantId);
+                }
+
+                $batchId = $this->payrollBatchRepository->create([
+                    'tenant_id' => $tenantId,
+                    'office_id' => $officeId,
+                    'period_year' => $periodYear,
+                    'period_month' => $periodMonth,
+                    'source_file_name' => (string) $file['name'],
+                    'source_file_path' => $relativePath,
+                    'source_file_hash' => hash_file('sha256', $absolutePath) ?: hash('sha256', (string) $file['name']),
+                    'upload_status' => 'uploaded',
+                    'uploaded_by_user_id' => (int) $actor['id'],
+                ]);
+
+                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
+                if ($records !== []) {
+                    $this->payrollRecordRepository->replaceForBatch($batchId, $tenantId, $records);
+                    $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'processed', $summary);
+                } else {
+                    $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+                }
+
+                return $batchId;
+            });
+            $batchStored = true;
+
+            foreach ($replacedFilePaths as $path) {
+                $this->fileStorage->deleteIfExists($path);
+            }
+
+            $this->auditLogger->log(
+                $tenantId,
+                $officeId,
+                (int) $actor['id'],
+                'payroll.uploaded',
+                'payroll_batch',
+                (string) $batchId,
+                [
+                    'period_month' => $periodMonth,
+                    'period_year' => $periodYear,
+                    'replaced_batch_id' => $replacedBatch !== null ? (int) $replacedBatch['id'] : null,
+                ]
+            );
 
             if (($summary['error_rows'] ?? 0) > 0) {
-                $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary): void {
-                    $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
-                    $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
-                });
-
                 throw $this->uploadFailureForSummary($summary);
             }
 
-            $records = $this->recordsFromSummary($summary, $tenantId, $officeId);
-
-            $this->transactions->run(function () use ($batchId, $tenantId, $mapping, $summary, $records): void {
-                $this->payrollBatchRepository->updateMapping($batchId, $tenantId, $mapping);
-                $this->payrollRecordRepository->replaceForBatch($batchId, $tenantId, $records);
-                $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'processed', $summary);
-            });
-        } catch (ValidationException|ApiException $exception) {
-            $summary = $exception->details()['summary'] ?? [
-                'total_rows' => 0,
-                'valid_rows' => 0,
-                'error_rows' => 1,
-                'critical_errors' => [$exception->getMessage()],
-                'normalized_rows' => [],
+            return [
+                'batch' => [
+                    'id' => $batchId,
+                    'upload_status' => 'processed',
+                ],
+                'records_created' => count($records),
             ];
-            $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', $summary);
+        } catch (ValidationException|ApiException $exception) {
+            if (!$batchStored) {
+                $this->fileStorage->deleteIfExists($relativePath);
+            }
             throw $exception;
         } catch (\Throwable $exception) {
-            $this->payrollBatchRepository->updateValidation($batchId, $tenantId, 'failed', [
-                'total_rows' => 0,
-                'valid_rows' => 0,
-                'error_rows' => 0,
-                'critical_errors' => ['Unexpected payroll import failure.'],
-                'normalized_rows' => [],
-            ]);
-
+            if (!$batchStored) {
+                $this->fileStorage->deleteIfExists($relativePath);
+            }
             throw $exception;
         }
-
-        return [
-            'batch' => [
-                'id' => $batchId,
-                'upload_status' => 'processed',
-            ],
-            'records_created' => count($records),
-        ];
     }
 
     public function importMissingEmployees(int $batchId, string $tenantId, array $actor): array
@@ -627,6 +661,10 @@ final class PayrollService
         $seenEmployeeIds = [];
 
         foreach ($rows as $row) {
+            if ($this->shouldSkipRow($row, $mapping)) {
+                continue;
+            }
+
             $normalized = $this->normalizeRow($row, $mapping);
             $errors = $this->validateNormalizedRow($normalized, $seenEmployeeIds);
             $employee = null;
@@ -866,6 +904,35 @@ final class PayrollService
         }
 
         return $normalized;
+    }
+
+    private function shouldSkipRow(array $row, array $mapping): bool
+    {
+        $nonEmptyValues = array_filter(
+            array_map(fn (mixed $value): string => $this->sanitizeCellValue($value), $row),
+            static fn (string $value): bool => $value !== ''
+        );
+        if ($nonEmptyValues === []) {
+            return true;
+        }
+
+        $summaryLabels = [
+            $this->normalizeSummaryLabel($this->cellValue($row, $mapping, 'employee_id')),
+            $this->normalizeSummaryLabel($this->cellValue($row, $mapping, 'employee_name')),
+        ];
+
+        foreach ($summaryLabels as $label) {
+            if (in_array($label, ['total', 'grandtotal', 'subtotal', 'summary'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeSummaryLabel(string $value): string
+    {
+        return strtolower((string) preg_replace('/[^a-z0-9]+/', '', trim($value)));
     }
 
     private function assertParsedSheetIsTwoDimensional(array $parsed): void

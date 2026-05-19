@@ -43,6 +43,28 @@ final class PdoPayrollBatchRepository implements PayrollBatchRepositoryInterface
         return $batch === false ? null : $batch;
     }
 
+    public function findActiveByOfficeAndPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): ?array
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'SELECT * FROM payroll_batches
+             WHERE tenant_id = :tenant_id
+               AND office_id = :office_id
+               AND period_year = :period_year
+               AND period_month = :period_month
+               AND deleted_at IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'tenant_id' => $tenantId,
+            'office_id' => $officeId,
+            'period_year' => $periodYear,
+            'period_month' => $periodMonth,
+        ]);
+        $batch = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $batch === false ? null : $batch;
+    }
+
     public function updateMapping(int $batchId, string $tenantId, array $mapping): void
     {
         $stmt = $this->connection->pdo()->prepare(
@@ -99,6 +121,18 @@ final class PdoPayrollBatchRepository implements PayrollBatchRepositoryInterface
             'id' => $batchId,
             'tenant_id' => $tenantId,
             'published_by_user_id' => $publishedByUserId,
+        ]);
+    }
+
+    public function hardDelete(int $batchId, string $tenantId): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'DELETE FROM payroll_batches
+             WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            'id' => $batchId,
+            'tenant_id' => $tenantId,
         ]);
     }
 
