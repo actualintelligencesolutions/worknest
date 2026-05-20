@@ -52,6 +52,21 @@ export type PayrollBatch = {
     valid_rows?: number;
     error_rows?: number;
     critical_errors?: string[];
+    employee_rows_skipped?: number;
+    employee_sheet_warnings?: Array<{
+      row: number;
+      employee_id?: string;
+      full_name?: string;
+      reason: string;
+      message: string;
+    }>;
+    payroll_rows_skipped?: number;
+    payroll_row_warnings?: Array<{
+      employee_id?: string;
+      employee_name?: string;
+      reason: string;
+      message: string;
+    }>;
     normalized_rows?: Array<{
       data: Record<string, unknown>;
       errors: string[];
@@ -74,6 +89,13 @@ export type PayrollBatchUploadResult = {
     row: number;
     employee_id?: string;
     full_name?: string;
+    reason: string;
+    message: string;
+  }>;
+  payroll_rows_skipped?: number;
+  payroll_row_warnings?: Array<{
+    employee_id?: string;
+    employee_name?: string;
     reason: string;
     message: string;
   }>;

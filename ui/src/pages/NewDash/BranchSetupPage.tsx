@@ -507,15 +507,29 @@ export function BranchSetupPage() {
       setMissingEmployeePromptIds([]);
       setMissingEmployeePromptOpen(false);
       setLastUploadStoredCount(result.records_created);
+      const skippedEmployeeIds = (result.employee_sheet_warnings ?? [])
+        .map((warning) => warning.employee_id)
+        .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+        .slice(0, 8);
+      const skippedPayrollIds = (result.payroll_row_warnings ?? [])
+        .map((warning) => warning.employee_id)
+        .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+        .slice(0, 8);
+      const warningParts: string[] = [];
       if ((result.employee_rows_skipped ?? 0) > 0) {
-        const highlightedIds = (result.employee_sheet_warnings ?? [])
-          .map((warning) => warning.employee_id)
-          .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
-          .slice(0, 8);
-        setUploadWarningMessage(
-          `Ignored ${result.employee_rows_skipped} employee row${result.employee_rows_skipped === 1 ? '' : 's'} without phone number${result.employee_rows_skipped === 1 ? '' : 's'}.`
-          + (highlightedIds.length > 0 ? ` Skipped IDs: ${highlightedIds.join(', ')}.` : ''),
+        warningParts.push(
+          `Ignored ${result.employee_rows_skipped} employee row${result.employee_rows_skipped === 1 ? '' : 's'} without phone number${result.employee_rows_skipped === 1 ? '' : 's'}`
+          + (skippedEmployeeIds.length > 0 ? ` (${skippedEmployeeIds.join(', ')})` : ''),
         );
+      }
+      if ((result.payroll_rows_skipped ?? 0) > 0) {
+        warningParts.push(
+          `Ignored ${result.payroll_rows_skipped} payroll row${result.payroll_rows_skipped === 1 ? '' : 's'} for those employees`
+          + (skippedPayrollIds.length > 0 ? ` (${skippedPayrollIds.join(', ')})` : ''),
+        );
+      }
+      if (warningParts.length > 0) {
+        setUploadWarningMessage(`${warningParts.join('. ')}.`);
       }
       setSelectedFile(null);
       setCurrentStep('review');

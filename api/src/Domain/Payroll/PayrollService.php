@@ -101,7 +101,11 @@ final class PayrollService
                 }
 
                 $this->applyEmployeeSheetChanges($tenantId, $officeId, $actor, $employeeSheetChanges);
-                $summary = $this->buildValidationSummary($payrollSheet['rows'], $mapping, $tenantId, $officeId);
+                $skippedEmployeeIds = array_values(array_filter(array_map(
+                    static fn (array $warning): string => (string) ($warning['employee_id'] ?? ''),
+                    $employeeSheetChanges['skipped_rows'] ?? []
+                )));
+                $summary = $this->buildValidationSummary($payrollSheet['rows'], $mapping, $tenantId, $officeId, $skippedEmployeeIds);
                 if (($employeeSheetChanges['skipped_rows'] ?? []) !== []) {
                     $summary['employee_sheet_warnings'] = $employeeSheetChanges['skipped_rows'];
                     $summary['employee_rows_skipped'] = count($employeeSheetChanges['skipped_rows']);
@@ -142,6 +146,8 @@ final class PayrollService
                     'employees_updated' => count($employeeSheetChanges['updates']),
                     'employee_rows_skipped' => count($employeeSheetChanges['skipped_rows'] ?? []),
                     'employee_sheet_warnings' => array_values($employeeSheetChanges['skipped_rows'] ?? []),
+                    'payroll_rows_skipped' => (int) ($summary['payroll_rows_skipped'] ?? 0),
+                    'payroll_row_warnings' => array_values($summary['payroll_row_warnings'] ?? []),
                 ];
             });
             $batchStored = true;
@@ -165,6 +171,7 @@ final class PayrollService
                     'employees_created' => (int) $result['employees_created'],
                     'employees_updated' => (int) $result['employees_updated'],
                     'employee_rows_skipped' => (int) $result['employee_rows_skipped'],
+                    'payroll_rows_skipped' => (int) $result['payroll_rows_skipped'],
                     'replaced_batch_id' => $replacedBatch !== null ? (int) $replacedBatch['id'] : null,
                 ]
             );
@@ -183,6 +190,8 @@ final class PayrollService
                 'employees_updated' => (int) $result['employees_updated'],
                 'employee_rows_skipped' => (int) $result['employee_rows_skipped'],
                 'employee_sheet_warnings' => $result['employee_sheet_warnings'],
+                'payroll_rows_skipped' => (int) $result['payroll_rows_skipped'],
+                'payroll_row_warnings' => $result['payroll_row_warnings'],
             ];
         } catch (ValidationException|ApiException $exception) {
             if (!$batchStored) {
@@ -732,14 +741,24 @@ final class PayrollService
         return $this->autoDetectMapping($headers);
     }
 
-    private function buildValidationSummary(array $rows, array $mapping, string $tenantId, int $officeId): array
+    private function buildValidationSummary(array $rows, array $mapping, string $tenantId, int $officeId, array $ignoredEmployeeIds = []): array
     {
+        $ignoredEmployeeLookup = [];
+        foreach ($ignoredEmployeeIds as $employeeId) {
+            $normalizedEmployeeId = trim((string) $employeeId);
+            if ($normalizedEmployeeId !== '') {
+                $ignoredEmployeeLookup[$normalizedEmployeeId] = true;
+            }
+        }
+
         $summary = [
             'total_rows' => 0,
             'valid_rows' => 0,
             'error_rows' => 0,
             'critical_errors' => [],
             'normalized_rows' => [],
+            'payroll_rows_skipped' => 0,
+            'payroll_row_warnings' => [],
         ];
         $seenEmployeeIds = [];
 
@@ -749,6 +768,19 @@ final class PayrollService
             }
 
             $normalized = $this->normalizeRow($row, $mapping);
+            if (
+                $normalized['employee_id'] !== ''
+                && isset($ignoredEmployeeLookup[$normalized['employee_id']])
+            ) {
+                $summary['payroll_rows_skipped']++;
+                $summary['payroll_row_warnings'][] = [
+                    'employee_id' => $normalized['employee_id'],
+                    'employee_name' => $normalized['employee_name'],
+                    'reason' => 'employee_missing_phone',
+                    'message' => 'Ignored payroll row because the matching Employees sheet row has no phone number.',
+                ];
+                continue;
+            }
             $errors = $this->validateNormalizedRow($normalized, $seenEmployeeIds);
             $employee = null;
 
