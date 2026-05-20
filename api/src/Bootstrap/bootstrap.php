@@ -88,7 +88,9 @@ function build_app(array $config): App
     $container->singleton(ExcelImportAdapter::class, fn ($c) => new NativeXlsxImportAdapter());
     $container->singleton(FileStorageService::class, fn ($c) => new FileStorageService(dirname(__DIR__, 2) . '/storage'));
     $container->singleton(AuditLogger::class, fn ($c) => new AuditLogger($c->get(AuditLogRepositoryInterface::class)));
-    $container->singleton(PayslipPdfGenerator::class, fn ($c) => new PayslipPdfGenerator());
+    $container->singleton(PayslipPdfGenerator::class, fn ($c) => new PayslipPdfGenerator(
+        $c->get(FileStorageService::class)
+    ));
     $container->singleton(SessionService::class, fn ($c) => new SessionService(
         $c->get(SessionRepositoryInterface::class),
         $c->get(UserRepositoryInterface::class)
@@ -118,6 +120,7 @@ function build_app(array $config): App
         $c->get(TenantRepositoryInterface::class),
         $c->get(RoleRepositoryInterface::class),
         $c->get(PasswordHasher::class),
+        $c->get(FileStorageService::class),
         $c->get(Mailer::class),
         $c->get(SessionService::class),
         $c->get(TransactionManager::class),

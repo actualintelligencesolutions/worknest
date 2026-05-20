@@ -77,6 +77,11 @@ final class Request
             return $this->jsonBody;
         }
 
+        if ($this->postParams !== []) {
+            $this->jsonBody = $this->postParams;
+            return $this->jsonBody;
+        }
+
         if (trim($this->rawBody) === '') {
             $this->jsonBody = [];
             return $this->jsonBody;

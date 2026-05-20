@@ -85,6 +85,7 @@ export function SetupWorkspacePage() {
     email: '',
     phone: '',
   });
+  const [workspaceLogo, setWorkspaceLogo] = useState<File | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [completionResult, setCompletionResult] = useState<OfficeCreationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export function SetupWorkspacePage() {
         admin_name: officeType === 'branch' ? managerDetails.name.trim() : undefined,
         admin_email: officeType === 'branch' ? managerDetails.email.trim() : undefined,
         admin_phone: officeType === 'branch' ? managerDetails.phone.trim() : undefined,
+        logo: workspaceLogo,
       });
     },
     onSuccess: async (result) => {
@@ -324,6 +326,26 @@ export function SetupWorkspacePage() {
               }
               value={officeDetails.name}
             />
+          </label>
+
+          <label className="new-dash-setup-form-full">
+            <span>{t('pages.newDash.setupWizard.officeDetails.logo')}</span>
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              className="new-dash-setup-file-input"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0] ?? null;
+                setWorkspaceLogo(nextFile);
+              }}
+              type="file"
+            />
+            <small className="new-dash-setup-field-note">
+              {workspaceLogo
+                ? t('pages.newDash.setupWizard.officeDetails.logoSelected', {
+                    fileName: workspaceLogo.name,
+                  })
+                : t('pages.newDash.setupWizard.officeDetails.logoHint')}
+            </small>
           </label>
 
           <label>

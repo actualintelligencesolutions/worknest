@@ -301,6 +301,17 @@
   color: var(--color-heading-strong);
 }
 
+.new-dash-setup-form-grid .new-dash-setup-file-input {
+  height: auto;
+  padding: 14px 16px;
+}
+
+.new-dash-setup-field-note {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .new-dash-setup-form-full {
   grid-column: 1 / -1;
 }

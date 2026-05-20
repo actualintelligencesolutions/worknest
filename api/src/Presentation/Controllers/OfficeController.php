@@ -61,7 +61,9 @@ final class OfficeController extends BaseController
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner']);
-        $payload = $this->officeService->createMainOffice($tenantId, $actor, $request->body());
+        $payload = $this->officeService->createMainOffice($tenantId, $actor, array_merge($request->body(), [
+            '_logo_file' => $request->file('logo'),
+        ]));
         return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload, 201);
     }
 
@@ -69,7 +71,9 @@ final class OfficeController extends BaseController
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
-        $payload = $this->officeService->createBranch($tenantId, $actor, $request->body());
+        $payload = $this->officeService->createBranch($tenantId, $actor, array_merge($request->body(), [
+            '_logo_file' => $request->file('logo'),
+        ]));
         return Response::success($this->isV2($request) ? $this->canonicalOfficePayload($payload) : $payload, 201);
     }
 

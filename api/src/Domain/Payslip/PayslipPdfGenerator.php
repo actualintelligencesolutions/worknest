@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Worknest\Api\Domain\Payslip;
 
+use Worknest\Api\Infrastructure\Storage\FileStorageService;
+
 final class PayslipPdfGenerator
 {
     private const PAGE_WIDTH = 595.28;
@@ -15,6 +17,11 @@ final class PayslipPdfGenerator
     private const LAYOUT_SIMPLE = 'simple';
     private const LAYOUT_MINT_MODERN = 'mint_modern';
     private const LAYOUT_STATEMENT_GRID = 'statement_grid';
+
+    public function __construct(
+        private readonly FileStorageService $fileStorage,
+    ) {
+    }
 
     public function generateFromPayslip(array $payslip, ?array $office = null): string
     {
@@ -70,6 +77,7 @@ final class PayslipPdfGenerator
         return [
             'layout' => $layout,
             'company_name' => trim((string) ($office['company_name'] ?? $office['tenant_name'] ?? 'Worknest')),
+            'logo_path' => is_string($settings['workspace_logo_path'] ?? null) ? $settings['workspace_logo_path'] : null,
             'month_label' => $this->formatPeriod($periodYear, $periodMonth),
             'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
             'designation' => trim((string) ($payload['designation_snapshot'] ?? '')),
@@ -140,18 +148,26 @@ final class PayslipPdfGenerator
     {
         $layoutStyles = $this->layoutStyles($model['layout']);
         $commands = [];
+        $logoAsset = $this->loadLogoAsset($model['logo_path'] ?? null);
         $y = self::MARGIN_Y;
         $x = self::MARGIN_X;
         $colWidths = [130.0, 143.0, 130.0, 144.28];
 
         $this->drawFilledRect($commands, $x, $y, self::CONTENT_WIDTH, 44, $layoutStyles['banner_fill']);
         $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, 44, 1.2, $layoutStyles['border']);
+        $brandTextX = $x + 16;
+        if ($logoAsset !== null) {
+            $placement = $this->fitImageBox((float) $logoAsset['width'], (float) $logoAsset['height'], 92.0, 28.0);
+            $logoTop = $y + ((44.0 - $placement['height']) / 2);
+            $this->drawImage($commands, 'Im1', $x + 16, $logoTop, $placement['width'], $placement['height']);
+            $brandTextX += $placement['width'] + 12.0;
+        }
         $this->drawText(
             $commands,
-            $x + 16,
-            $y + 10,
-            strtoupper(trim((string) ($model['company_name'] !== '' ? $model['company_name'] : 'Worknest'))),
-            20,
+            $brandTextX,
+            $y + 13,
+            trim((string) ($model['company_name'] !== '' ? $model['company_name'] : 'Worknest')),
+            18,
             true,
             $layoutStyles['banner_text']
         );
@@ -258,7 +274,7 @@ final class PayslipPdfGenerator
         $noteTop = min($y, self::PAGE_HEIGHT - 64);
         $this->drawText($commands, $x, $noteTop, $model['note'], 10, false, [0.2, 0.2, 0.2]);
 
-        return $this->buildPdf(implode("\n", $commands));
+        return $this->buildPdf(implode("\n", $commands), $logoAsset);
     }
 
     private function drawSimpleRow(
@@ -366,6 +382,24 @@ final class PayslipPdfGenerator
         );
     }
 
+    private function drawImage(
+        array &$commands,
+        string $resourceName,
+        float $x,
+        float $top,
+        float $width,
+        float $height
+    ): void {
+        $commands[] = sprintf(
+            'q %.2F 0 0 %.2F %.2F %.2F cm /%s Do Q',
+            $width,
+            $height,
+            $x,
+            $this->pdfY($top + $height),
+            $resourceName
+        );
+    }
+
     private function drawFilledRect(array &$commands, float $x, float $top, float $width, float $height, array $fillColor): void
     {
         $commands[] = sprintf(
@@ -410,16 +444,32 @@ final class PayslipPdfGenerator
         );
     }
 
-    private function buildPdf(string $stream): string
+    private function buildPdf(string $stream, ?array $logoAsset = null): string
     {
+        $logoObjectId = $logoAsset !== null ? 6 : null;
+        $contentObjectId = $logoAsset !== null ? 7 : 6;
+        $resourceDictionary = '/Font << /F1 4 0 R /F2 5 0 R >>';
+        if ($logoObjectId !== null) {
+            $resourceDictionary .= ' /XObject << /Im1 ' . $logoObjectId . ' 0 R >>';
+        }
+
         $objects = [
             '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
             '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
-            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . self::PAGE_WIDTH . ' ' . self::PAGE_HEIGHT . '] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >> endobj',
+            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . self::PAGE_WIDTH . ' ' . self::PAGE_HEIGHT . '] /Resources << ' . $resourceDictionary . ' >> /Contents ' . $contentObjectId . ' 0 R >> endobj',
             '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
             '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj',
-            '6 0 obj << /Length ' . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj",
         ];
+        if ($logoAsset !== null) {
+            $objects[] = sprintf(
+                '6 0 obj << /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length %d >> stream' . "\n%s\nendstream endobj",
+                (int) $logoAsset['width'],
+                (int) $logoAsset['height'],
+                strlen((string) $logoAsset['data']),
+                (string) $logoAsset['data']
+            );
+        }
+        $objects[] = $contentObjectId . ' 0 obj << /Length ' . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj";
 
         $pdf = "%PDF-1.4\n";
         $offsets = [0];
@@ -436,6 +486,80 @@ final class PayslipPdfGenerator
         $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF";
 
         return $pdf;
+    }
+
+    private function loadLogoAsset(?string $relativePath): ?array
+    {
+        if ($relativePath === null || trim($relativePath) === '') {
+            return null;
+        }
+
+        $absolutePath = $this->fileStorage->absolutePath($relativePath);
+        if (!is_file($absolutePath) || !is_readable($absolutePath)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($absolutePath);
+        if ($contents === false || $contents === '') {
+            return null;
+        }
+
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            return null;
+        }
+
+        $image = @imagecreatefromstring($contents);
+        if ($image === false) {
+            return null;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width <= 0 || $height <= 0) {
+            imagedestroy($image);
+            return null;
+        }
+
+        $canvas = imagecreatetruecolor($width, $height);
+        if ($canvas === false) {
+            imagedestroy($image);
+            return null;
+        }
+
+        $background = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $background);
+        imagecopy($canvas, $image, 0, 0, 0, 0, $width, $height);
+
+        ob_start();
+        imagejpeg($canvas, null, 90);
+        $jpegData = ob_get_clean();
+
+        imagedestroy($canvas);
+        imagedestroy($image);
+
+        if (!is_string($jpegData) || $jpegData === '') {
+            return null;
+        }
+
+        return [
+            'width' => $width,
+            'height' => $height,
+            'data' => $jpegData,
+        ];
+    }
+
+    private function fitImageBox(float $imageWidth, float $imageHeight, float $maxWidth, float $maxHeight): array
+    {
+        if ($imageWidth <= 0 || $imageHeight <= 0) {
+            return ['width' => 0.0, 'height' => 0.0];
+        }
+
+        $scale = min($maxWidth / $imageWidth, $maxHeight / $imageHeight, 1.0);
+
+        return [
+            'width' => round($imageWidth * $scale, 2),
+            'height' => round($imageHeight * $scale, 2),
+        ];
     }
 
     private function layoutStyles(string $layout): array

@@ -21,6 +21,7 @@ use Worknest\Api\Infrastructure\Repositories\TenantRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\RoleRepositoryInterface;
 use Worknest\Api\Infrastructure\Repositories\UserRepositoryInterface;
 use Worknest\Api\Infrastructure\Security\PasswordHasher;
+use Worknest\Api\Infrastructure\Storage\FileStorageService;
 
 final class OfficeService
 {
@@ -33,6 +34,7 @@ final class OfficeService
         private readonly TenantRepositoryInterface $tenantRepository,
         private readonly RoleRepositoryInterface $roleRepository,
         private readonly PasswordHasher $passwordHasher,
+        private readonly FileStorageService $fileStorage,
         private readonly Mailer $mailer,
         private readonly SessionService $sessionService,
         private readonly TransactionManager $transactions,
@@ -558,8 +560,20 @@ final class OfficeService
 
         $mainOffice = $this->officeRepository->findMainOffice($tenantId);
         $parentOfficeId = ($payload['office_type'] ?? '') === 'branch' ? ($mainOffice['id'] ?? null) : null;
+        $settings = is_array($payload['settings'] ?? null) ? $payload['settings'] : [];
+        if (($payload['office_type'] ?? '') === 'branch' && $mainOffice !== null) {
+            $mainOfficeSettings = $this->decodeOfficeSettings($mainOffice['settings_json'] ?? null);
+            foreach (['workspace_logo_path', 'workspace_logo_mime'] as $key) {
+                if (!isset($settings[$key]) && isset($mainOfficeSettings[$key])) {
+                    $settings[$key] = $mainOfficeSettings[$key];
+                }
+            }
+        }
+        if (($payload['_logo_file'] ?? null) !== null) {
+            $settings = $this->storeWorkspaceLogo($tenantId, $payload['_logo_file'], $settings);
+        }
 
-        $created = $this->transactions->run(function ($pdo) use ($tenantId, $actor, $payload, $name, $parentOfficeId, $planId) {
+        $created = $this->transactions->run(function ($pdo) use ($tenantId, $actor, $payload, $name, $parentOfficeId, $planId, $settings) {
             $officeCode = trim((string) ($payload['office_code'] ?? $this->defaultOfficeCode($name, (string) $payload['office_type'])));
             $officeId = $this->officeRepository->create([
                 'tenant_id' => $tenantId,
@@ -578,7 +592,7 @@ final class OfficeService
                 'country' => $payload['country'] ?? null,
                 'timezone' => $payload['timezone'] ?? null,
                 'payroll_day' => $payload['payroll_day'] ?? null,
-                'settings_json' => $payload['settings'] ?? [],
+                'settings_json' => $settings,
             ]);
 
             $pdo->prepare(
@@ -664,6 +678,62 @@ final class OfficeService
             'first_name' => $parts[0] ?? $displayName,
             'last_name' => count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : null,
         ];
+    }
+
+    private function decodeOfficeSettings(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function storeWorkspaceLogo(string $tenantId, array $file, array $settings): array
+    {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE || ($file['size'] ?? 0) <= 0) {
+            return $settings;
+        }
+
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            throw new ValidationException('Workspace logo upload failed.');
+        }
+
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            throw new ValidationException('Workspace logo cannot exceed 2MB.');
+        }
+
+        $imageInfo = is_string($file['tmp_name'] ?? null) && is_file((string) $file['tmp_name'])
+            ? @getimagesize((string) $file['tmp_name'])
+            : false;
+        $detectedMime = is_array($imageInfo) ? strtolower((string) ($imageInfo['mime'] ?? '')) : '';
+        if (!in_array($detectedMime, ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'], true)) {
+            throw new ValidationException('Workspace logo must be a PNG, JPG, or WEBP image.');
+        }
+
+        $extension = match ($detectedMime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        };
+
+        if (isset($settings['workspace_logo_path']) && is_string($settings['workspace_logo_path'])) {
+            $this->fileStorage->deleteIfExists($settings['workspace_logo_path']);
+        }
+
+        $storedFilename = 'workspace-logo-' . bin2hex(random_bytes(8)) . '.' . $extension;
+        $relativePath = 'uploads/workspace-logos/' . $tenantId . '/' . $storedFilename;
+        $this->fileStorage->storeUploadedFile($file, 'uploads/workspace-logos/' . $tenantId, $storedFilename);
+        $settings['workspace_logo_path'] = $relativePath;
+        $settings['workspace_logo_mime'] = $detectedMime;
+
+        return $settings;
     }
 
     private function primaryAdminForOffice(string $tenantId, int $officeId, array $actor): ?array

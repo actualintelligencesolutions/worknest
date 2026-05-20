@@ -306,7 +306,7 @@ final class PayrollService
     public function getBatchDetail(int $batchId, string $tenantId, array $actor): array
     {
         $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
-        $office = $this->officeRepository->findById((int) $batch['office_id'], $tenantId);
+        $office = $this->resolveOfficeBranding($tenantId, (int) $batch['office_id']);
         $records = $this->payrollRecordRepository->listByBatch($batchId, $tenantId);
         $parsed = $this->parseFile(
             $this->fileStorage->absolutePath((string) $batch['source_file_path']),
@@ -572,6 +572,10 @@ final class PayrollService
 
     private function decodeJsonColumn(mixed $value): array
     {
+        if (is_array($value)) {
+            return $value;
+        }
+
         if (!is_string($value) || trim($value) === '') {
             return [];
         }
@@ -590,6 +594,35 @@ final class PayrollService
         if (in_array(($actor['user_type'] ?? ''), ['branch_admin', 'site_owner'], true) && !in_array($officeId, $actor['office_ids'] ?? [], true)) {
             throw new ForbiddenException();
         }
+    }
+
+    private function resolveOfficeBranding(string $tenantId, int $officeId): ?array
+    {
+        $office = $this->officeRepository->findById($officeId, $tenantId);
+        if ($office === null) {
+            return null;
+        }
+
+        $officeSettings = $this->decodeJsonColumn($office['settings_json'] ?? null);
+        if (($officeSettings['workspace_logo_path'] ?? null) !== null) {
+            return $office;
+        }
+
+        $mainOffice = $this->officeRepository->findMainOffice($tenantId);
+        if ($mainOffice === null) {
+            return $office;
+        }
+
+        $mainOfficeSettings = $this->decodeJsonColumn($mainOffice['settings_json'] ?? null);
+        if (($mainOfficeSettings['workspace_logo_path'] ?? null) === null) {
+            return $office;
+        }
+
+        $officeSettings['workspace_logo_path'] = $mainOfficeSettings['workspace_logo_path'];
+        $officeSettings['workspace_logo_mime'] = $mainOfficeSettings['workspace_logo_mime'] ?? null;
+        $office['settings_json'] = $officeSettings;
+
+        return $office;
     }
 
     private function parseFile(string $absolutePath, string $originalFilename): array

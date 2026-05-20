@@ -370,6 +370,7 @@ export type OfficeCreationPayload = {
   admin_name?: string;
   admin_email?: string;
   admin_phone?: string;
+  logo?: File | null;
 };
 
 export type OfficeCreationResult = {
@@ -597,12 +598,41 @@ export function updateOffice(session: AuthSession, id: number, payload: OfficeUp
 }
 
 export function createOffice(session: AuthSession, payload: OfficeCreationPayload) {
+  const body = new FormData();
+  body.set('office_type', payload.office_type);
+  body.set('name', payload.name);
+  body.set('city', payload.city);
+  body.set('state', payload.state);
+  body.set('plan_id', String(payload.plan_id));
+
+  if (payload.country) {
+    body.set('country', payload.country);
+  }
+  if (payload.contact_email) {
+    body.set('contact_email', payload.contact_email);
+  }
+  if (payload.contact_phone) {
+    body.set('contact_phone', payload.contact_phone);
+  }
+  if (payload.admin_name) {
+    body.set('admin_name', payload.admin_name);
+  }
+  if (payload.admin_email) {
+    body.set('admin_email', payload.admin_email);
+  }
+  if (payload.admin_phone) {
+    body.set('admin_phone', payload.admin_phone);
+  }
+  if (payload.logo) {
+    body.set('logo', payload.logo);
+  }
+
   return apiRequest<OfficeCreationResult>(
     `/v2/offices?tenant=${encodeURIComponent(session.tenantId)}`,
     {
       method: 'POST',
       headers: authHeaders(session),
-      body: JSON.stringify(payload),
+      body,
     },
   );
 }

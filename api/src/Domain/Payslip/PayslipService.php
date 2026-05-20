@@ -40,7 +40,7 @@ final class PayslipService
         if ($payslip === null) {
             throw new NotFoundException('No accessible payslip was found.');
         }
-        $office = isset($payslip['office_id']) ? $this->officeRepository->findById((int) $payslip['office_id'], $tenantId) : null;
+        $office = $this->resolveOfficeBranding($tenantId, isset($payslip['office_id']) ? (int) $payslip['office_id'] : null);
         $employeeSlug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', trim((string) ($payslip['employee_id'] ?? ('employee-' . $payslipId)))) ?: ('employee-' . $payslipId);
         $filename = sprintf(
             'worknest-payslip-%s-%04d-%02d.pdf',
@@ -57,5 +57,49 @@ final class PayslipService
             'content' => $content,
             'filename' => $filename,
         ];
+    }
+
+    private function resolveOfficeBranding(string $tenantId, ?int $officeId): ?array
+    {
+        $office = $officeId !== null ? $this->officeRepository->findById($officeId, $tenantId) : null;
+        if ($office === null) {
+            return null;
+        }
+
+        $officeSettings = $this->decodeSettings($office['settings_json'] ?? null);
+        if (($officeSettings['workspace_logo_path'] ?? null) !== null) {
+            return $office;
+        }
+
+        $mainOffice = $this->officeRepository->findMainOffice($tenantId);
+        if ($mainOffice === null) {
+            return $office;
+        }
+
+        $mainSettings = $this->decodeSettings($mainOffice['settings_json'] ?? null);
+        if (($mainSettings['workspace_logo_path'] ?? null) === null) {
+            return $office;
+        }
+
+        $officeSettings['workspace_logo_path'] = $mainSettings['workspace_logo_path'];
+        $officeSettings['workspace_logo_mime'] = $mainSettings['workspace_logo_mime'] ?? null;
+        $office['settings_json'] = $officeSettings;
+
+        return $office;
+    }
+
+    private function decodeSettings(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 }
