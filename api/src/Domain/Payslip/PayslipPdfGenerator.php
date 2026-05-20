@@ -98,62 +98,15 @@ final class PayslipPdfGenerator
     private function buildEarningRows(array $earnings, float $grossPay, ?float $otAmount): array
     {
         $rows = [];
-        $seen = [];
-        $legacyMap = [
-            'basic' => 'Wages Earned',
-            'wages_earned' => 'Wages Earned',
-            'hra' => 'HRA',
-            'allowances' => 'Allowances',
-            'ot_amount' => 'OT Amount',
-            'overtime_amount' => 'OT Amount',
-            'proj_allowance' => 'Proj Allowance',
-            'project_allowance' => 'Proj Allowance',
-            'h_allowance' => 'H Allowance',
-            'housing_allowance' => 'H Allowance',
-            's_allowance' => 'S Allowance',
-            'v_allowance' => 'V Allowance',
-            'sca_da' => 'SCA / DA',
-            'bonus_8_33' => 'Bonus @ 8.33%',
-            'bonus' => 'Bonus @ 8.33%',
-            'area_allowance' => 'Area Allowance',
-            'washing_allowance' => 'Washing Allowance',
-            'performance_allowance' => 'Performance Allowance',
-            'mess_allow' => 'Mess Allow',
-        ];
-
-        foreach ([
-            'basic',
-            'wages_earned',
-            'hra',
-            'allowances',
-            'ot_amount',
-            'overtime_amount',
-            'proj_allowance',
-            'project_allowance',
-            'h_allowance',
-            'housing_allowance',
-            's_allowance',
-            'v_allowance',
-            'sca_da',
-            'bonus_8_33',
-            'bonus',
-            'area_allowance',
-            'washing_allowance',
-            'performance_allowance',
-            'mess_allow',
-        ] as $key) {
-            $amount = $this->amountForKey($earnings, $key);
-            if ($amount === null) {
+        foreach ($earnings as $key => $amount) {
+            if (!is_string($key) || !is_numeric($amount)) {
                 continue;
             }
 
-            $label = $legacyMap[$key] ?? $this->humanizeKey($key);
-            if (isset($seen[$label])) {
-                continue;
-            }
-
-            $rows[] = ['label' => $label, 'amount' => $amount];
-            $seen[$label] = true;
+            $rows[] = [
+                'label' => $this->displayLabelForPayrollHead($key, true),
+                'amount' => round((float) $amount, 2),
+            ];
         }
 
         if ($rows === []) {
@@ -163,77 +116,21 @@ final class PayslipPdfGenerator
             }
         }
 
-        foreach ($earnings as $key => $amount) {
-            if (!is_string($key) || isset($legacyMap[$key])) {
-                continue;
-            }
-            if (!is_numeric($amount)) {
-                continue;
-            }
-
-            $label = $this->humanizeKey($key);
-            if (isset($seen[$label])) {
-                continue;
-            }
-
-            $rows[] = [
-                'label' => $label,
-                'amount' => round((float) $amount, 2),
-            ];
-            $seen[$label] = true;
-        }
-
         return $rows;
     }
 
     private function buildDeductionRows(array $deductions): array
     {
         $rows = [];
-        $seen = [];
-        $legacyMap = [
-            'pf' => 'EPF',
-            'epf' => 'EPF',
-            'esi' => 'ESI',
-            'mess' => 'Mess',
-            'advance' => 'Advance',
-            'professional_tax' => 'Professional Tax',
-            'pt' => 'Professional Tax',
-            'tds' => 'TDS',
-        ];
-
-        foreach (['pf', 'epf', 'esi', 'mess', 'advance', 'professional_tax', 'pt', 'tds'] as $key) {
-            $amount = $this->amountForKey($deductions, $key);
-            if ($amount === null) {
-                continue;
-            }
-
-            $label = $legacyMap[$key] ?? $this->humanizeKey($key);
-            if (isset($seen[$label])) {
-                continue;
-            }
-
-            $rows[] = ['label' => $label, 'amount' => $amount];
-            $seen[$label] = true;
-        }
-
         foreach ($deductions as $key => $amount) {
-            if (!is_string($key) || isset($legacyMap[$key])) {
-                continue;
-            }
-            if (!is_numeric($amount)) {
-                continue;
-            }
-
-            $label = $this->humanizeKey($key);
-            if (isset($seen[$label])) {
+            if (!is_string($key) || !is_numeric($amount)) {
                 continue;
             }
 
             $rows[] = [
-                'label' => $label,
+                'label' => $this->displayLabelForPayrollHead($key, false),
                 'amount' => round((float) $amount, 2),
             ];
-            $seen[$label] = true;
         }
 
         return $rows;
@@ -697,6 +594,55 @@ final class PayslipPdfGenerator
         $prefix = $withSymbol ? strtoupper($currency) . ' ' : '';
 
         return $prefix . number_format($amount, 2, '.', ',');
+    }
+
+    private function displayLabelForPayrollHead(string $value, bool $isEarning): string
+    {
+        $normalized = $this->normalizeKey($value);
+        $legacyMap = $isEarning
+            ? [
+                'basic' => 'Wages Earned',
+                'basicrate' => 'Wages Earned',
+                'basicsalary' => 'Wages Earned',
+                'wagesearned' => 'Wages Earned',
+                'hra' => 'HRA',
+                'allowances' => 'Allowances',
+                'specialallowance' => 'Allowances',
+                'projallowance' => 'Proj Allowance',
+                'projectallowance' => 'Proj Allowance',
+                'vallowance' => 'V Allowance',
+                'otamount' => 'OT Amount',
+                'overtimeamount' => 'OT Amount',
+                'hallowance' => 'H Allowance',
+                'housingallowance' => 'H Allowance',
+                'sallowance' => 'S Allowance',
+                'scada' => 'SCA / DA',
+                'messallow' => 'Mess Allow',
+                'messallowance' => 'Mess Allow',
+                'bonus833' => 'Bonus @ 8.33%',
+                'bonus' => 'Bonus @ 8.33%',
+                'areaallowance' => 'Area Allowance',
+                'washingallowance' => 'Washing Allowance',
+                'performanceallowance' => 'Performance Allowance',
+            ]
+            : [
+                'pf' => 'EPF',
+                'epf' => 'EPF',
+                'esi' => 'ESI',
+                'mess' => 'Mess',
+                'advance' => 'Advance',
+                'professionaltax' => 'Professional Tax',
+                'pt' => 'Professional Tax',
+                'tds' => 'TDS',
+            ];
+
+        if (isset($legacyMap[$normalized])) {
+            return $legacyMap[$normalized];
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : $this->humanizeKey($value);
     }
 
     private function humanizeKey(string $value): string

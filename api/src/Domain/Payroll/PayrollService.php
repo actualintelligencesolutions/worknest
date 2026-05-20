@@ -677,14 +677,14 @@ final class PayrollService
             );
         }
 
-        return $mapping;
+        return $this->attachPayrollBands($headers, $mapping);
     }
 
     private function existingOrDetectedMapping(array $batch, array $headers): array
     {
         $existing = json_decode((string) ($batch['mapping_json'] ?? 'null'), true);
         if (is_array($existing) && $existing !== []) {
-            return $existing;
+            return $this->attachPayrollBands($headers, $existing);
         }
 
         return $this->autoDetectMapping($headers);
@@ -784,33 +784,8 @@ final class PayrollService
         $get = fn (string $field): string => isset($mapping[$field])
             ? $this->sanitizeCellValue($row[$mapping[$field]] ?? '')
             : '';
-        $optionalMoney = fn (string $field): ?float => $this->moneyOrNull($get($field));
-        $earnings = [
-            'basic' => $optionalMoney('basic'),
-            'hra' => $optionalMoney('hra'),
-            'allowances' => $optionalMoney('allowances'),
-            'proj_allowance' => $optionalMoney('proj_allowance'),
-            'v_allowance' => $optionalMoney('v_allowance'),
-            'ot_amount' => $optionalMoney('ot_amount'),
-            'h_allowance' => $optionalMoney('h_allowance'),
-            's_allowance' => $optionalMoney('s_allowance'),
-            'sca_da' => $optionalMoney('sca_da'),
-            'mess_allow' => $optionalMoney('mess_allow'),
-            'bonus_8_33' => $optionalMoney('bonus_8_33'),
-            'area_allowance' => $optionalMoney('area_allowance'),
-            'washing_allowance' => $optionalMoney('washing_allowance'),
-            'performance_allowance' => $optionalMoney('performance_allowance'),
-        ];
-        $deductions = [
-            'pf' => $optionalMoney('pf'),
-            'esi' => $optionalMoney('esi'),
-            'mess' => $optionalMoney('mess'),
-            'advance' => $optionalMoney('advance'),
-            'professional_tax' => $optionalMoney('professional_tax'),
-            'tds' => $optionalMoney('tds'),
-        ];
-        $visibleEarnings = array_filter($earnings, static fn (?float $value): bool => $value !== null);
-        $visibleDeductions = array_filter($deductions, static fn (?float $value): bool => $value !== null);
+        $visibleEarnings = $this->extractDynamicBandValues($row, $mapping['_earnings_headers'] ?? []);
+        $visibleDeductions = $this->extractDynamicBandValues($row, $mapping['_deduction_headers'] ?? []);
         $gross = $get('gross_pay') !== '' ? $this->money($get('gross_pay')) : array_sum($visibleEarnings);
         $deductionTotal = $get('total_deductions') !== '' ? $this->money($get('total_deductions')) : array_sum($visibleDeductions);
 
@@ -1098,9 +1073,14 @@ final class PayrollService
                         'row' => $rowNumber,
                     ]);
                 }
+                $updatePayload = $this->employeeUserPayloadFromSheetRow($tenantId, $officeId, $row, $headerMap, $employeeId, $firstName, $lastName, $fullName, $phone);
+                $sheetPin = $this->sheetCell($row, $headerMap, 'pin');
+                if ($sheetPin !== '') {
+                    $updatePayload['employee_pin'] = $this->employeePinFromSheetValue($sheetPin, $employeeId, $rowNumber);
+                }
                 $updates[] = [
                     'id' => (int) $existingByEmployeeId['id'],
-                    'payload' => $this->employeeUserPayloadFromSheetRow($tenantId, $officeId, $row, $headerMap, $employeeId, $firstName, $lastName, $fullName, $phone),
+                    'payload' => $updatePayload,
                 ];
                 continue;
             }
@@ -1113,7 +1093,12 @@ final class PayrollService
             }
 
             $createPayload = $this->employeeUserPayloadFromSheetRow($tenantId, $officeId, $row, $headerMap, $employeeId, $firstName, $lastName, $fullName, $phone);
-            $createPayload['employee_pin'] = $this->pinHasher->hash($this->generatePin());
+            $createPayload['employee_pin'] = $this->employeePinFromSheetValue(
+                $this->sheetCell($row, $headerMap, 'pin'),
+                $employeeId,
+                $rowNumber,
+                true
+            );
             $creates[] = $createPayload;
         }
 
@@ -1156,6 +1141,7 @@ final class PayrollService
             'employee_id' => ['employee id', 'id'],
             'full_name' => ['full name', 'employee name', 'name'],
             'phone' => ['phone number', 'phone numb', 'phone num', 'phone'],
+            'pin' => ['pin', 'login pin'],
             'status' => ['status'],
             'employment_type' => ['employment'],
             'date_of_joining' => ['date of joining', 'date of joini', 'doj'],
@@ -1244,6 +1230,113 @@ final class PayrollService
             'suspended' => 'suspended',
             default => 'active',
         };
+    }
+
+    private function attachPayrollBands(array $headers, array $mapping): array
+    {
+        $otHoursHeader = $this->headerNameForField($headers, $mapping, 'ot_hours', ['ot hours', 'overtime hours']);
+        $grossHeader = $this->headerNameForField($headers, $mapping, 'gross_pay', ['gross amt', 'gross pay', 'gross salary', 'gross']);
+        $totalDeductionHeader = $this->headerNameForField($headers, $mapping, 'total_deductions', ['total deduction', 'deductions', 'deduction']);
+
+        if ($otHoursHeader === null) {
+            throw new ValidationException('Payroll sheet must contain an OT Hours column.');
+        }
+        if ($grossHeader === null) {
+            throw new ValidationException('Payroll sheet must contain a GROSS AMT column.');
+        }
+        if ($totalDeductionHeader === null) {
+            throw new ValidationException('Payroll sheet must contain a Total Deduction column.');
+        }
+
+        $otHoursIndex = array_search($otHoursHeader, $headers, true);
+        $grossIndex = array_search($grossHeader, $headers, true);
+        $totalDeductionIndex = array_search($totalDeductionHeader, $headers, true);
+
+        if (!is_int($otHoursIndex) || !is_int($grossIndex) || !is_int($totalDeductionIndex)) {
+            throw new ValidationException('Payroll sheet structure could not be resolved from the uploaded headers.');
+        }
+
+        if ($grossIndex <= $otHoursIndex || $totalDeductionIndex <= $grossIndex) {
+            throw new ValidationException('Payroll sheet columns must follow this order: OT Hours, earnings heads, GROSS AMT, deduction heads, Total Deduction.');
+        }
+
+        $mapping['_earnings_headers'] = array_values(array_filter(
+            array_slice($headers, $otHoursIndex + 1, $grossIndex - $otHoursIndex - 1),
+            static fn (mixed $header): bool => is_string($header) && trim($header) !== ''
+        ));
+        $mapping['_deduction_headers'] = array_values(array_filter(
+            array_slice($headers, $grossIndex + 1, $totalDeductionIndex - $grossIndex - 1),
+            static fn (mixed $header): bool => is_string($header) && trim($header) !== ''
+        ));
+
+        return $mapping;
+    }
+
+    private function headerNameForField(array $headers, array $mapping, string $field, array $aliases): ?string
+    {
+        $mappedHeader = $mapping[$field] ?? null;
+        if (is_string($mappedHeader) && in_array($mappedHeader, $headers, true)) {
+            return $mappedHeader;
+        }
+
+        foreach ($headers as $header) {
+            if (!is_string($header)) {
+                continue;
+            }
+
+            $normalized = strtolower(trim($header));
+            foreach ($aliases as $alias) {
+                if ($normalized === $alias || str_contains($normalized, $alias)) {
+                    return $header;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractDynamicBandValues(array $row, array $headers): array
+    {
+        $values = [];
+
+        foreach ($headers as $header) {
+            if (!is_string($header) || trim($header) === '') {
+                continue;
+            }
+
+            $cellValue = $this->sanitizeCellValue($row[$header] ?? '');
+            if ($cellValue === '') {
+                continue;
+            }
+
+            $values[$header] = $this->money($cellValue);
+        }
+
+        return $values;
+    }
+
+    private function employeePinFromSheetValue(string $pinValue, string $employeeId, int $rowNumber, bool $allowEmployeeIdFallback = false): string
+    {
+        $trimmed = trim($pinValue);
+        if ($trimmed === '') {
+            if (!$allowEmployeeIdFallback) {
+                throw new ValidationException('Employees sheet PIN must be blank only for existing employees.', [
+                    'employee_id' => $employeeId,
+                    'row' => $rowNumber,
+                ]);
+            }
+
+            $trimmed = strrev($employeeId);
+        }
+
+        if (!$this->validPin($trimmed)) {
+            throw new ValidationException('Employees sheet PIN must be 4 to 8 digits.', [
+                'employee_id' => $employeeId,
+                'row' => $rowNumber,
+            ]);
+        }
+
+        return $this->pinHasher->hash($trimmed);
     }
 
     private function employeeMetadataPayload(array $employee): array
