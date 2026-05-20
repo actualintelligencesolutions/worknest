@@ -88,7 +88,7 @@ export function EmployeeLoginPage() {
   }
 
   return (
-    <MarketingLayout>
+    <MarketingLayout withoutHeader>
       <section className="employee-portal-auth">
         <div className="employee-portal-auth-card">
           <p className="employee-portal-kicker">Employee documents</p>
@@ -187,7 +187,7 @@ export function EmployeePortalPage() {
 
   if (lacksSession) {
     return (
-      <MarketingLayout>
+      <MarketingLayout withoutHeader>
         <section className="employee-portal-auth">
           <div className="employee-portal-auth-card">
             <p className="employee-portal-kicker">Site Payslip Portal</p>
@@ -205,7 +205,7 @@ export function EmployeePortalPage() {
   }
 
   return (
-    <MarketingLayout>
+    <MarketingLayout withoutHeader>
       <section className="employee-portal-page">
         <div className="employee-portal-page-head">
           <div className="employee-portal-page-copy">

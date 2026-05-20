@@ -439,6 +439,33 @@ function authHeaders(session: AuthSession) {
   };
 }
 
+function normalizeEmployeeLoginPhone(phone: string) {
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D+/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return `+91${digits.slice(1)}`;
+  }
+
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits}`;
+  }
+
+  if (trimmed.startsWith('+')) {
+    return `+${digits}`;
+  }
+
+  return `+${digits}`;
+}
+
 export function registerCompany(payload: {
   company_name: string;
   tenant_id: string;
@@ -487,7 +514,10 @@ export function loginEmployee(
 ) {
   return apiRequest<EmployeeAuthResult>(`/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      phone: normalizeEmployeeLoginPhone(payload.phone),
+    }),
   });
 }
 
@@ -503,7 +533,10 @@ export function loginEmployeeForSite(
     `/v2/auth/employee/login?tenant=${encodeURIComponent(tenantId)}&office_code=${encodeURIComponent(officeCode)}`,
     {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        phone: normalizeEmployeeLoginPhone(payload.phone),
+      }),
     },
   );
 }
