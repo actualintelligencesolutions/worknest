@@ -480,6 +480,12 @@ export function BranchSetupPage() {
     }
   }, [branchState, forceConfiguredShell, isSetupRoute, navigate, officeId]);
 
+  useEffect(() => {
+    if (!latestBatch || missingEmployeePromptIds.length === 0) {
+      setMissingEmployeePromptOpen(false);
+    }
+  }, [latestBatch, missingEmployeePromptIds.length]);
+
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (!session || !selectedFile) {
@@ -547,6 +553,8 @@ export function BranchSetupPage() {
   const importMissingEmployeesMutation = useMutation({
     mutationFn: async () => {
       if (!session || !latestBatch) {
+        setMissingEmployeePromptOpen(false);
+        setMissingEmployeePromptIds([]);
         throw new Error('No payroll batch is available for employee import.');
       }
 
@@ -1134,7 +1142,7 @@ export function BranchSetupPage() {
   }
 
   function renderMissingEmployeesModal() {
-    if (!missingEmployeePromptOpen || missingEmployeePromptIds.length === 0) {
+    if (!missingEmployeePromptOpen || missingEmployeePromptIds.length === 0 || !latestBatch) {
       return null;
     }
 
@@ -1175,7 +1183,7 @@ export function BranchSetupPage() {
               Not now
             </Button>
             <Button
-              disabled={importMissingEmployeesMutation.isPending}
+              disabled={importMissingEmployeesMutation.isPending || !latestBatch}
               onClick={() => void importMissingEmployeesMutation.mutateAsync()}
               type="button"
             >
