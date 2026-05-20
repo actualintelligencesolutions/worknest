@@ -269,6 +269,7 @@ export function BranchSetupPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
   const [payrollPublishMessage, setPayrollPublishMessage] = useState<string | null>(null);
+  const [uploadWarningMessage, setUploadWarningMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
   const [missingEmployeePromptIds, setMissingEmployeePromptIds] = useState<string[]>([]);
   const [missingEmployeePromptOpen, setMissingEmployeePromptOpen] = useState(false);
@@ -496,9 +497,20 @@ export function BranchSetupPage() {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
       setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
       setMissingEmployeePromptIds([]);
       setMissingEmployeePromptOpen(false);
       setLastUploadStoredCount(result.records_created);
+      if ((result.employee_rows_skipped ?? 0) > 0) {
+        const highlightedIds = (result.employee_sheet_warnings ?? [])
+          .map((warning) => warning.employee_id)
+          .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+          .slice(0, 8);
+        setUploadWarningMessage(
+          `Ignored ${result.employee_rows_skipped} employee row${result.employee_rows_skipped === 1 ? '' : 's'} without phone number${result.employee_rows_skipped === 1 ? '' : 's'}.`
+          + (highlightedIds.length > 0 ? ` Skipped IDs: ${highlightedIds.join(', ')}.` : ''),
+        );
+      }
       setSelectedFile(null);
       setCurrentStep('review');
       await Promise.all([
@@ -520,6 +532,7 @@ export function BranchSetupPage() {
       setLastUploadStoredCount(null);
       setImportEmployeesMessage(null);
       setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
       setMissingEmployeePromptIds(promptIds);
       setMissingEmployeePromptOpen(promptIds.length > 0);
       setErrorMessage(formatPayrollUploadError(error) ?? t('pages.newDash.branchInitialization.errors.upload'));
@@ -544,6 +557,7 @@ export function BranchSetupPage() {
       setMissingEmployeePromptOpen(false);
       setMissingEmployeePromptIds([]);
       setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
       setLastUploadStoredCount(result.records_created);
       setImportEmployeesMessage(
         result.batch.upload_status === 'processed'
@@ -561,6 +575,7 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setImportEmployeesMessage(null);
+      setUploadWarningMessage(null);
       setErrorMessage(formatPayrollUploadError(error) ?? 'We could not add the missing employees from this paysheet.');
     },
   });
@@ -576,6 +591,7 @@ export function BranchSetupPage() {
     onSuccess: async (result) => {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
+      setUploadWarningMessage(null);
       setPayrollPublishMessage(
         `Payroll sheet confirmed. ${result.records_created} record${result.records_created === 1 ? '' : 's'} are locked in and ready to publish.`,
       );
@@ -586,6 +602,7 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
       setErrorMessage(error instanceof Error ? error.message : 'We could not confirm this payroll sheet.');
     },
   });
@@ -601,6 +618,7 @@ export function BranchSetupPage() {
     onSuccess: async (result) => {
       setErrorMessage(null);
       setImportEmployeesMessage(null);
+      setUploadWarningMessage(null);
       setPayrollPublishMessage(
         `Payroll published. ${result.summary.payslips_generated} payslip PDF${result.summary.payslips_generated === 1 ? '' : 's'} generated for ${result.summary.employee_count} employee${result.summary.employee_count === 1 ? '' : 's'}.`,
       );
@@ -611,6 +629,7 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
       setErrorMessage(error instanceof Error ? error.message : 'We could not publish this payroll sheet.');
     },
   });
@@ -990,6 +1009,9 @@ export function BranchSetupPage() {
           ) : null}
           {importEmployeesMessage ? (
             <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
+          ) : null}
+          {uploadWarningMessage ? (
+            <p className="branch-setup-inline-warning">{uploadWarningMessage}</p>
           ) : null}
           {showUploadErrorInline ? (
             <p className="branch-setup-error">{errorMessage}</p>
@@ -1491,6 +1513,9 @@ export function BranchSetupPage() {
                 ) : null}
                 {importEmployeesMessage ? (
                   <p className="branch-setup-inline-success">{importEmployeesMessage}</p>
+                ) : null}
+                {uploadWarningMessage ? (
+                  <p className="branch-setup-inline-warning">{uploadWarningMessage}</p>
                 ) : null}
                 {payrollPublishMessage ? (
                   <p className="branch-setup-inline-success">{payrollPublishMessage}</p>

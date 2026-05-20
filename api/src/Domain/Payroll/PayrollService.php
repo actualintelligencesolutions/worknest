@@ -102,6 +102,10 @@ final class PayrollService
 
                 $this->applyEmployeeSheetChanges($tenantId, $officeId, $actor, $employeeSheetChanges);
                 $summary = $this->buildValidationSummary($payrollSheet['rows'], $mapping, $tenantId, $officeId);
+                if (($employeeSheetChanges['skipped_rows'] ?? []) !== []) {
+                    $summary['employee_sheet_warnings'] = $employeeSheetChanges['skipped_rows'];
+                    $summary['employee_rows_skipped'] = count($employeeSheetChanges['skipped_rows']);
+                }
                 $records = ($summary['error_rows'] ?? 0) > 0
                     ? []
                     : $this->recordsFromSummary($summary, $tenantId, $officeId);
@@ -136,6 +140,8 @@ final class PayrollService
                     'records_created' => count($records),
                     'employees_created' => count($employeeSheetChanges['creates']),
                     'employees_updated' => count($employeeSheetChanges['updates']),
+                    'employee_rows_skipped' => count($employeeSheetChanges['skipped_rows'] ?? []),
+                    'employee_sheet_warnings' => array_values($employeeSheetChanges['skipped_rows'] ?? []),
                 ];
             });
             $batchStored = true;
@@ -158,6 +164,7 @@ final class PayrollService
                     'period_year' => $periodYear,
                     'employees_created' => (int) $result['employees_created'],
                     'employees_updated' => (int) $result['employees_updated'],
+                    'employee_rows_skipped' => (int) $result['employee_rows_skipped'],
                     'replaced_batch_id' => $replacedBatch !== null ? (int) $replacedBatch['id'] : null,
                 ]
             );
@@ -174,6 +181,8 @@ final class PayrollService
                 'records_created' => (int) $result['records_created'],
                 'employees_created' => (int) $result['employees_created'],
                 'employees_updated' => (int) $result['employees_updated'],
+                'employee_rows_skipped' => (int) $result['employee_rows_skipped'],
+                'employee_sheet_warnings' => $result['employee_sheet_warnings'],
             ];
         } catch (ValidationException|ApiException $exception) {
             if (!$batchStored) {
@@ -1034,7 +1043,7 @@ final class PayrollService
     private function employeeSheetChangesFromParsed(array $parsed, string $tenantId, int $officeId): array
     {
         if (isset($parsed['headers'], $parsed['rows'])) {
-            return ['creates' => [], 'updates' => []];
+            return ['creates' => [], 'updates' => [], 'skipped_rows' => []];
         }
 
         $sheets = $parsed['sheets'] ?? null;
@@ -1062,6 +1071,7 @@ final class PayrollService
 
         $creates = [];
         $updates = [];
+        $skippedRows = [];
         $seenPhones = [];
         $seenEmployeeIds = [];
 
@@ -1072,13 +1082,24 @@ final class PayrollService
 
             $employeeId = $this->sheetCell($row, $headerMap, 'employee_id');
             $fullName = $this->sheetCell($row, $headerMap, 'full_name');
-            $phone = $this->normalizePhone($this->sheetCell($row, $headerMap, 'phone'));
+            $rawPhone = $this->sheetCell($row, $headerMap, 'phone');
+            $phone = $this->normalizePhone($rawPhone);
             $rowNumber = $index + 2;
 
-            if ($employeeId === '' || $fullName === '' || $phone === '') {
-                throw new ValidationException('Employees sheet rows must include employee ID, full name, and phone number.', [
+            if ($employeeId === '' || $fullName === '') {
+                throw new ValidationException('Employees sheet rows must include employee ID and full name.', [
                     'row' => $rowNumber,
                 ]);
+            }
+            if ($phone === '') {
+                $skippedRows[] = [
+                    'row' => $rowNumber,
+                    'employee_id' => $employeeId,
+                    'full_name' => $fullName,
+                    'reason' => 'missing_phone',
+                    'message' => 'Ignored because the employee sheet row has no phone number.',
+                ];
+                continue;
             }
             if (isset($seenEmployeeIds[$employeeId])) {
                 throw new ValidationException('Duplicate employee ID found in Employees sheet.', [
@@ -1086,21 +1107,24 @@ final class PayrollService
                     'row' => $rowNumber,
                 ]);
             }
-            if (isset($seenPhones[$phone])) {
+            if ($phone !== '' && isset($seenPhones[$phone])) {
                 throw new ValidationException('Duplicate phone number found in Employees sheet.', [
                     'phone' => $phone,
                     'row' => $rowNumber,
                 ]);
             }
             $seenEmployeeIds[$employeeId] = true;
-            $seenPhones[$phone] = true;
+            if ($phone !== '') {
+                $seenPhones[$phone] = true;
+            }
 
             [$firstName, $lastName] = $this->splitDisplayName($fullName);
             $existingByEmployeeId = $this->userRepository->findEmployeeByEmployeeId($tenantId, $employeeId);
+            $existingPhone = $this->normalizePhone((string) ($existingByEmployeeId['phone'] ?? ''));
             $existingByPhone = $this->userRepository->findByPhone($tenantId, $phone);
 
             if ($existingByEmployeeId !== null) {
-                if (($existingByEmployeeId['phone'] ?? null) !== $phone) {
+                if ($existingPhone !== '' && $existingPhone !== $phone) {
                     throw new ValidationException('Employee ID and phone number must match the existing employee record.', [
                         'employee_id' => $employeeId,
                         'row' => $rowNumber,
@@ -1138,6 +1162,7 @@ final class PayrollService
         return [
             'creates' => $creates,
             'updates' => $updates,
+            'skipped_rows' => $skippedRows,
         ];
     }
 

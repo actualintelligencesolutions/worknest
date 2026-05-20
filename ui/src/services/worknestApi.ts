@@ -69,6 +69,14 @@ export type PayrollBatchUploadResult = {
   records_created: number;
   employees_created?: number;
   employees_updated?: number;
+  employee_rows_skipped?: number;
+  employee_sheet_warnings?: Array<{
+    row: number;
+    employee_id?: string;
+    full_name?: string;
+    reason: string;
+    message: string;
+  }>;
 };
 
 export type PayrollMissingEmployeeImportResult = {
