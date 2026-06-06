@@ -82,6 +82,7 @@ final class PayslipPdfGenerator
                 : null,
             'month_label' => $this->formatPeriod($periodYear, $periodMonth),
             'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
+            'father_name' => $this->firstString($payload, ['father_name', 'fathers_name', 'father', 'guardian_name', 'guardian', 'parent_name']),
             'designation' => trim((string) ($payload['designation_snapshot'] ?? '')),
             'employee_id' => trim((string) ($payload['employee_id'] ?? '')),
             'office_name' => trim((string) ($office['name'] ?? 'Worknest')),
@@ -200,8 +201,9 @@ final class PayslipPdfGenerator
             ],
             [
                 ['text' => 'NAME'],
-                ['text' => $model['employee_name'], 'bold' => true, 'colspan' => 2],
-                ['text' => $model['designation'], 'bold' => true],
+                ['text' => $model['employee_name'], 'bold' => true],
+                ['text' => "FATHER'S NAME"],
+                ['text' => $model['father_name'], 'bold' => true],
             ],
             [
                 ['text' => 'ID'],
@@ -217,23 +219,21 @@ final class PayslipPdfGenerator
             ],
             [
                 ['text' => 'D.O.J'],
-                ['text' => $model['doj'], 'bold' => true, 'colspan' => 3],
-            ],
-            [
+                ['text' => $model['doj'], 'bold' => true],
                 ['text' => 'UAN'],
-                ['text' => $model['uan'], 'bold' => true, 'colspan' => 3],
+                ['text' => $model['uan'], 'bold' => true],
             ],
             [
                 ['text' => 'Bank'],
-                ['text' => $model['bank'], 'bold' => true, 'colspan' => 3],
-            ],
-            [
+                ['text' => $model['bank'], 'bold' => true],
                 ['text' => 'A/c No'],
-                ['text' => $model['account_number'], 'bold' => true, 'colspan' => 3],
+                ['text' => $model['account_number'], 'bold' => true],
             ],
             [
                 ['text' => 'IFSC'],
-                ['text' => $model['ifsc'], 'bold' => true, 'colspan' => 3],
+                ['text' => $model['ifsc'], 'bold' => true],
+                ['text' => 'Designation'],
+                ['text' => $model['designation'], 'bold' => true],
             ],
         ];
 
