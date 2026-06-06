@@ -13,7 +13,7 @@ export class ApiRequestError extends Error {
   details?: Record<string, unknown>;
 }
 
-const API_BASE_URL = 'https://www.worknestapp.com/api';
+const API_BASE_URL = 'https://worknestapp.com/api';
 export const RESOLVED_API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? API_BASE_URL;
 
