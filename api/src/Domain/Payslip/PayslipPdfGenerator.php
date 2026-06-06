@@ -77,7 +77,9 @@ final class PayslipPdfGenerator
         return [
             'layout' => $layout,
             'company_name' => trim((string) ($office['company_name'] ?? $office['tenant_name'] ?? 'Worknest')),
-            'logo_path' => is_string($settings['workspace_logo_path'] ?? null) ? $settings['workspace_logo_path'] : null,
+            'payslip_header_image_path' => is_array($settings['payslip_header_image'] ?? null) && is_string(($settings['payslip_header_image']['path'] ?? null))
+                ? $settings['payslip_header_image']['path']
+                : null,
             'month_label' => $this->formatPeriod($periodYear, $periodMonth),
             'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
             'designation' => trim((string) ($payload['designation_snapshot'] ?? '')),
@@ -148,40 +150,43 @@ final class PayslipPdfGenerator
     {
         $layoutStyles = $this->layoutStyles($model['layout']);
         $commands = [];
-        $logoAsset = $this->loadLogoAsset($model['logo_path'] ?? null);
+        $headerAsset = $this->loadHeaderImageAsset($model['payslip_header_image_path'] ?? null);
         $y = self::MARGIN_Y;
         $x = self::MARGIN_X;
         $colWidths = [130.0, 143.0, 130.0, 144.28];
 
-        $this->drawFilledRect($commands, $x, $y, self::CONTENT_WIDTH, 44, $layoutStyles['banner_fill']);
-        $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, 44, 1.2, $layoutStyles['border']);
-        $brandTextX = $x + 16;
-        if ($logoAsset !== null) {
-            $placement = $this->fitImageBox((float) $logoAsset['width'], (float) $logoAsset['height'], 92.0, 28.0);
-            $logoTop = $y + ((44.0 - $placement['height']) / 2);
-            $this->drawImage($commands, 'Im1', $x + 16, $logoTop, $placement['width'], $placement['height']);
-            $brandTextX += $placement['width'] + 12.0;
+        if ($headerAsset !== null) {
+            $placement = $this->fitImageBox((float) $headerAsset['width'], (float) $headerAsset['height'], self::CONTENT_WIDTH, 72.0);
+            $headerHeight = max(44.0, $placement['height']);
+            $headerTop = $y + (($headerHeight - $placement['height']) / 2);
+            $this->drawImage($commands, 'Im1', $x, $headerTop, $placement['width'], $placement['height']);
+            $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, $headerHeight, 0.8, $layoutStyles['border']);
+            $y += $headerHeight;
+        } else {
+            $this->drawFilledRect($commands, $x, $y, self::CONTENT_WIDTH, 44, $layoutStyles['banner_fill']);
+            $this->drawBorder($commands, $x, $y, self::CONTENT_WIDTH, 44, 1.2, $layoutStyles['border']);
+            $brandTextX = $x + 16;
+            $this->drawText(
+                $commands,
+                $brandTextX,
+                $y + 13,
+                trim((string) ($model['company_name'] !== '' ? $model['company_name'] : 'Worknest')),
+                18,
+                true,
+                $layoutStyles['banner_text']
+            );
+            $this->drawText(
+                $commands,
+                $x + self::CONTENT_WIDTH - 16,
+                $y + 14,
+                trim(($model['office_name'] !== '' ? $model['office_name'] : 'Employee Payslip') . ($model['office_code'] !== '' ? ' | ' . $model['office_code'] : '')),
+                10,
+                false,
+                $layoutStyles['banner_text'],
+                'right'
+            );
+            $y += 44;
         }
-        $this->drawText(
-            $commands,
-            $brandTextX,
-            $y + 13,
-            trim((string) ($model['company_name'] !== '' ? $model['company_name'] : 'Worknest')),
-            18,
-            true,
-            $layoutStyles['banner_text']
-        );
-        $this->drawText(
-            $commands,
-            $x + self::CONTENT_WIDTH - 16,
-            $y + 14,
-            trim(($model['office_name'] !== '' ? $model['office_name'] : 'Employee Payslip') . ($model['office_code'] !== '' ? ' | ' . $model['office_code'] : '')),
-            10,
-            false,
-            $layoutStyles['banner_text'],
-            'right'
-        );
-        $y += 44;
 
         $this->drawSimpleRow($commands, $x, $y, $colWidths, [
             ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XI Rules 26(2)' : strtoupper(str_replace('_', ' ', $model['layout'])) . ' PAYSLIP'],
@@ -274,7 +279,7 @@ final class PayslipPdfGenerator
         $noteTop = min($y, self::PAGE_HEIGHT - 64);
         $this->drawText($commands, $x, $noteTop, $model['note'], 10, false, [0.2, 0.2, 0.2]);
 
-        return $this->buildPdf(implode("\n", $commands), $logoAsset);
+        return $this->buildPdf(implode("\n", $commands), $headerAsset);
     }
 
     private function drawSimpleRow(
@@ -444,10 +449,10 @@ final class PayslipPdfGenerator
         );
     }
 
-    private function buildPdf(string $stream, ?array $logoAsset = null): string
+    private function buildPdf(string $stream, ?array $imageAsset = null): string
     {
-        $logoObjectId = $logoAsset !== null ? 6 : null;
-        $contentObjectId = $logoAsset !== null ? 7 : 6;
+        $logoObjectId = $imageAsset !== null ? 6 : null;
+        $contentObjectId = $imageAsset !== null ? 7 : 6;
         $resourceDictionary = '/Font << /F1 4 0 R /F2 5 0 R >>';
         if ($logoObjectId !== null) {
             $resourceDictionary .= ' /XObject << /Im1 ' . $logoObjectId . ' 0 R >>';
@@ -460,13 +465,13 @@ final class PayslipPdfGenerator
             '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
             '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj',
         ];
-        if ($logoAsset !== null) {
+        if ($imageAsset !== null) {
             $objects[] = sprintf(
                 '6 0 obj << /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length %d >> stream' . "\n%s\nendstream endobj",
-                (int) $logoAsset['width'],
-                (int) $logoAsset['height'],
-                strlen((string) $logoAsset['data']),
-                (string) $logoAsset['data']
+                (int) $imageAsset['width'],
+                (int) $imageAsset['height'],
+                strlen((string) $imageAsset['data']),
+                (string) $imageAsset['data']
             );
         }
         $objects[] = $contentObjectId . ' 0 obj << /Length ' . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj";
@@ -495,6 +500,16 @@ final class PayslipPdfGenerator
         }
 
         $absolutePath = $this->fileStorage->absolutePath($relativePath);
+        return $this->loadImageAsset($absolutePath);
+    }
+
+    private function loadHeaderImageAsset(?string $relativePath): ?array
+    {
+        return $this->loadLogoAsset($relativePath);
+    }
+
+    private function loadImageAsset(string $absolutePath): ?array
+    {
         if (!is_file($absolutePath) || !is_readable($absolutePath)) {
             return null;
         }

@@ -274,6 +274,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/v2/offices', fn ($request) => $container->get(OfficeController::class)->create($request));
     $router->add('GET', '/v2/offices/{id}', fn ($request) => $container->get(OfficeController::class)->detail($request));
     $router->add('PATCH', '/v2/offices/{id}', fn ($request) => $container->get(OfficeController::class)->update($request));
+    $router->add('POST', '/v2/offices/{id}/payslip-header-image', fn ($request) => $container->get(OfficeController::class)->uploadPayslipHeaderImage($request));
     $router->add('POST', '/v2/offices/{id}/plan-assignments', fn ($request) => $container->get(OfficeController::class)->assignPlan($request));
     $router->add('GET', '/v2/offices/{id}/plan-assignments', fn ($request) => $container->get(OfficeController::class)->listPlans($request));
     $router->add('POST', '/v2/offices/{id}/admins', fn ($request) => $container->get(OfficeController::class)->assignAdmins($request));

@@ -1,5 +1,6 @@
 import type {
   CompanyLocation,
+  PayslipHeaderImageSettings,
   PayrollBatch,
   UserSummary,
 } from '../../services/worknestApi';
@@ -52,6 +53,7 @@ export const branchPayslipTemplates: BranchTemplateChoice[] = [
 export type BranchInitializationSettings = {
   payslip_template_key?: string | null;
   payslip_template_name?: string | null;
+  payslip_header_image?: PayslipHeaderImageSettings | null;
   branch_initialization_completed_at?: string | null;
   branch_initialization_completed_by_user_id?: number | null;
 };
@@ -103,6 +105,20 @@ function parsedBranchSettings(
     typeof value.payslip_template_name === 'string'
       ? value.payslip_template_name
       : null;
+  const payslipHeaderImage =
+    value.payslip_header_image
+    && typeof value.payslip_header_image === 'object'
+    && typeof (value.payslip_header_image as Record<string, unknown>).path === 'string'
+    && typeof (value.payslip_header_image as Record<string, unknown>).mime === 'string'
+    && typeof (value.payslip_header_image as Record<string, unknown>).original_name === 'string'
+    && typeof (value.payslip_header_image as Record<string, unknown>).updated_at === 'string'
+      ? {
+          path: (value.payslip_header_image as Record<string, unknown>).path as string,
+          mime: (value.payslip_header_image as Record<string, unknown>).mime as string,
+          original_name: (value.payslip_header_image as Record<string, unknown>).original_name as string,
+          updated_at: (value.payslip_header_image as Record<string, unknown>).updated_at as string,
+        }
+      : null;
 
   return {
     payslip_template_key: templateKey,
@@ -110,6 +126,7 @@ function parsedBranchSettings(
       templateKey === 'simple'
         ? 'Simple'
         : templateName,
+    payslip_header_image: payslipHeaderImage,
     branch_initialization_completed_at:
       typeof value.branch_initialization_completed_at === 'string'
         ? value.branch_initialization_completed_at

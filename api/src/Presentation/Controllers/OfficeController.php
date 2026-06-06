@@ -93,6 +93,19 @@ final class OfficeController extends BaseController
         return Response::success($this->officeService->updateOffice((int) $request->attribute('id'), $tenantId, $actor, $request->body()));
     }
 
+    public function uploadPayslipHeaderImage(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin']);
+
+        return Response::success($this->officeService->uploadPayslipHeaderImage(
+            (int) $request->attribute('id'),
+            $tenantId,
+            $actor,
+            $request->file('header_image')
+        ));
+    }
+
     public function assignPlan(Request $request): Response
     {
         $tenantId = (string) $this->tenantResolver->fromRequest($request);

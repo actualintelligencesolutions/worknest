@@ -152,6 +152,31 @@ final class OfficeService
         return ['office' => $office];
     }
 
+    public function uploadPayslipHeaderImage(int $officeId, string $tenantId, array $actor, ?array $file): array
+    {
+        $office = $this->officeRepository->findById($officeId, $tenantId);
+        if ($office === null) {
+            throw new NotFoundException('Office not found.');
+        }
+
+        $this->assertOfficeAccess($officeId, $actor);
+
+        $settings = $this->officeSettings($office);
+        $settings = $this->storePayslipHeaderImage($tenantId, $file, $settings);
+        $updatedOffice = $this->officeRepository->update($officeId, $tenantId, ['settings_json' => $settings]);
+        if ($updatedOffice === null) {
+            throw new NotFoundException('Office not found.');
+        }
+
+        $this->auditLogger->log($tenantId, $officeId, (int) $actor['id'], 'office.payslip_header_image_uploaded', 'office', (string) $officeId, [
+            'path' => $settings['payslip_header_image']['path'] ?? null,
+            'mime' => $settings['payslip_header_image']['mime'] ?? null,
+            'original_name' => $settings['payslip_header_image']['original_name'] ?? null,
+        ]);
+
+        return ['office' => $updatedOffice];
+    }
+
     public function assignPlan(int $officeId, string $tenantId, array $actor, int $planId, ?string $startsOn = null): array
     {
         $office = $this->officeRepository->findById($officeId, $tenantId);
@@ -732,6 +757,52 @@ final class OfficeService
         $this->fileStorage->storeUploadedFile($file, 'uploads/workspace-logos/' . $tenantId, $storedFilename);
         $settings['workspace_logo_path'] = $relativePath;
         $settings['workspace_logo_mime'] = $detectedMime;
+
+        return $settings;
+    }
+
+    private function storePayslipHeaderImage(string $tenantId, ?array $file, array $settings): array
+    {
+        if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE || ($file['size'] ?? 0) <= 0) {
+            throw new ValidationException('Payslip header image is required.');
+        }
+
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            throw new ValidationException('Payslip header image upload failed.');
+        }
+
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            throw new ValidationException('Payslip header image cannot exceed 2MB.');
+        }
+
+        $imageInfo = is_string($file['tmp_name'] ?? null) && is_file((string) $file['tmp_name'])
+            ? @getimagesize((string) $file['tmp_name'])
+            : false;
+        $detectedMime = is_array($imageInfo) ? strtolower((string) ($imageInfo['mime'] ?? '')) : '';
+        if (!in_array($detectedMime, ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'], true)) {
+            throw new ValidationException('Payslip header image must be a PNG, JPG, or WEBP image.');
+        }
+
+        $extension = match ($detectedMime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        };
+
+        $existing = $settings['payslip_header_image'] ?? null;
+        if (is_array($existing) && isset($existing['path']) && is_string($existing['path'])) {
+            $this->fileStorage->deleteIfExists($existing['path']);
+        }
+
+        $storedFilename = 'payslip-header-' . bin2hex(random_bytes(8)) . '.' . $extension;
+        $relativePath = 'uploads/payslip-headers/' . $tenantId . '/' . $storedFilename;
+        $this->fileStorage->storeUploadedFile($file, 'uploads/payslip-headers/' . $tenantId, $storedFilename);
+        $settings['payslip_header_image'] = [
+            'path' => $relativePath,
+            'mime' => $detectedMime,
+            'original_name' => trim((string) ($file['name'] ?? '')) ?: $storedFilename,
+            'updated_at' => gmdate(DATE_ATOM),
+        ];
 
         return $settings;
     }

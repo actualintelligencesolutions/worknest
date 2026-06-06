@@ -30,6 +30,13 @@ export type CompanyLocation = {
   settings_json?: Record<string, unknown> | string | null;
 };
 
+export type PayslipHeaderImageSettings = {
+  path: string;
+  mime: string;
+  original_name: string;
+  updated_at: string;
+};
+
 export type PayrollBatch = {
   id: number;
   tenant_id: string;
@@ -656,6 +663,20 @@ export function updateOffice(session: AuthSession, id: number, payload: OfficeUp
       method: 'PATCH',
       headers: authHeaders(session),
       body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function uploadOfficePayslipHeaderImage(session: AuthSession, officeId: number, file: File) {
+  const body = new FormData();
+  body.set('header_image', file);
+
+  return apiRequest<{ office: CompanyLocation }>(
+    `/v2/offices/${officeId}/payslip-header-image?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body,
     },
   );
 }

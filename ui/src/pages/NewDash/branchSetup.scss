@@ -831,6 +831,46 @@
   color: #207663;
 }
 
+.branch-setup-header-upload-card,
+.branch-setup-header-upload-summary,
+.branch-setup-header-upload-actions {
+  display: grid;
+}
+
+.branch-setup-header-upload-card {
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(104, 144, 129, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.branch-setup-header-upload-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.branch-setup-header-upload-field {
+  display: grid;
+  gap: 8px;
+  color: #124e55;
+  font-weight: 700;
+}
+
+.branch-setup-header-upload-meta,
+.branch-setup-header-upload-success {
+  margin: 0;
+}
+
+.branch-setup-header-upload-meta {
+  color: #5f7b7a;
+  font-size: 0.92rem;
+}
+
+.branch-setup-header-upload-success {
+  color: #207663;
+  font-weight: 700;
+}
+
 @media (max-width: 960px) {
   .branch-shell,
   .branch-setup-overview-grid,
@@ -838,6 +878,7 @@
   .branch-setup-link-grid,
   .branch-setup-pin-toolbar,
   .branch-setup-template-grid,
+  .branch-setup-header-upload-summary,
   .branch-setup-import-summary,
   .branch-setup-publish-status,
   .branch-setup-template-wizard-option,

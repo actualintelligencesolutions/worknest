@@ -26,6 +26,7 @@ import {
   resetOfficeEmployeePins,
   resendSiteOwnerInvite,
   updateOffice,
+  uploadOfficePayslipHeaderImage,
   uploadPayrollBatch,
   type PayrollBatch,
   type UserSummary,
@@ -270,6 +271,8 @@ export function BranchSetupPage() {
   const [importEmployeesMessage, setImportEmployeesMessage] = useState<string | null>(null);
   const [payrollPublishMessage, setPayrollPublishMessage] = useState<string | null>(null);
   const [uploadWarningMessage, setUploadWarningMessage] = useState<string | null>(null);
+  const [payslipHeaderFile, setPayslipHeaderFile] = useState<File | null>(null);
+  const [payslipHeaderMessage, setPayslipHeaderMessage] = useState<string | null>(null);
   const [lastUploadStoredCount, setLastUploadStoredCount] = useState<number | null>(null);
   const [missingEmployeePromptIds, setMissingEmployeePromptIds] = useState<string[]>([]);
   const [missingEmployeePromptOpen, setMissingEmployeePromptOpen] = useState(false);
@@ -370,6 +373,7 @@ export function BranchSetupPage() {
   );
 
   const isTenantOwner = actor?.user_type === 'tenant_owner';
+  const canManagePayslipHeader = actor?.user_type === 'tenant_owner' || actor?.user_type === 'branch_admin';
   const isSetupRoute = location.pathname.endsWith('/setup');
   const currentSection = useMemo(
     () => branchSettingsSectionFromPath(location.pathname, officeId),
@@ -389,6 +393,7 @@ export function BranchSetupPage() {
     [latestValidationSummary],
   );
   const selectedTemplateKey = officeSettings.payslip_template_key ?? null;
+  const payslipHeaderImage = officeSettings.payslip_header_image ?? null;
   const wizardTemplateOptions = branchPayslipTemplates.slice(0, 1);
   const adminLoginUrl = office ? buildTenantLoginUrl(office.tenant_id) : '';
   const sitePortalUrl = office?.office_code ? buildSitePortalUrl(office.tenant_id, office.office_code) : '';
@@ -718,6 +723,29 @@ export function BranchSetupPage() {
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : t('pages.newDash.branchInitialization.errors.ready'));
+    },
+  });
+
+  const payslipHeaderMutation = useMutation({
+    mutationFn: async () => {
+      if (!session || !payslipHeaderFile) {
+        throw new Error('Choose a payslip header image to upload.');
+      }
+
+      return uploadOfficePayslipHeaderImage(session, officeId, payslipHeaderFile);
+    },
+    onSuccess: async () => {
+      setErrorMessage(null);
+      setPayslipHeaderMessage(payslipHeaderImage ? 'Payslip header image updated.' : 'Payslip header image uploaded.');
+      setPayslipHeaderFile(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-office', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-locations', session?.tenantId] }),
+      ]);
+    },
+    onError: (error) => {
+      setPayslipHeaderMessage(null);
+      setErrorMessage(error instanceof Error ? error.message : 'We could not upload the payslip header image.');
     },
   });
 
@@ -1450,6 +1478,63 @@ export function BranchSetupPage() {
               ))}
             </div>
           </section>
+
+          {canManagePayslipHeader ? (
+            <section className="new-dash-panel">
+              <div className="new-dash-panel-head">
+                <h2>Payslip Header Image</h2>
+              </div>
+              <p className="new-dash-panel-copy">
+                Upload a branch-specific header banner for generated payslip PDFs. If nothing is uploaded, the original text-based header will be used automatically.
+              </p>
+              <div className="branch-setup-header-upload-card">
+                <div className="branch-setup-header-upload-summary">
+                  <div className="branch-setup-overview-item">
+                    <span>Status</span>
+                    <strong>{payslipHeaderImage ? 'Uploaded' : 'Not uploaded'}</strong>
+                  </div>
+                  <div className="branch-setup-overview-item">
+                    <span>Current file</span>
+                    <strong>{payslipHeaderImage?.original_name ?? 'Text header fallback'}</strong>
+                  </div>
+                  <div className="branch-setup-overview-item">
+                    <span>Last updated</span>
+                    <strong>{formatShortDate(payslipHeaderImage?.updated_at ?? null)}</strong>
+                  </div>
+                </div>
+                <label className="branch-setup-header-upload-field">
+                  <span>Select image</span>
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    className="branch-setup-wizard-file"
+                    onChange={(event) => {
+                      setErrorMessage(null);
+                      setPayslipHeaderMessage(null);
+                      setPayslipHeaderFile(event.target.files?.[0] ?? null);
+                    }}
+                    type="file"
+                  />
+                </label>
+                <p className="branch-setup-header-upload-meta">
+                  {payslipHeaderFile ? `Selected: ${payslipHeaderFile.name}` : 'PNG, JPG, or WEBP up to 2MB.'}
+                </p>
+                {payslipHeaderMessage ? <p className="branch-setup-header-upload-success">{payslipHeaderMessage}</p> : null}
+                <div className="branch-setup-header-upload-actions">
+                  <Button
+                    disabled={!payslipHeaderFile || payslipHeaderMutation.isPending}
+                    onClick={() => void payslipHeaderMutation.mutateAsync()}
+                    type="button"
+                  >
+                    {payslipHeaderMutation.isPending
+                      ? 'Uploading...'
+                      : payslipHeaderImage
+                        ? 'Replace header image'
+                        : 'Upload header image'}
+                  </Button>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="new-dash-panel">
             <div className="new-dash-panel-head">
