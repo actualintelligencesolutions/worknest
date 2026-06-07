@@ -190,14 +190,13 @@ final class PayslipPdfGenerator
         }
 
         $this->drawSimpleRow($commands, $x, $y, $colWidths, [
-            ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XI Rules 26(2)' : strtoupper(str_replace('_', ' ', $model['layout'])) . ' PAYSLIP'],
+            ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XVI Rule 72(2)' : strtoupper(str_replace('_', ' ', $model['layout'])), 'align' => 'center'],
         ], 22, $layoutStyles, true);
         $y += 22;
 
         $identityRows = [
             [
-                ['text' => 'Pay Slip For The Month', 'colspan' => 3],
-                ['text' => $model['month_label'], 'bold' => true],
+                ['text' => 'WAGE SLIP', 'bold' => true, 'align' => 'center', 'colspan' => 4],
             ],
             [
                 ['text' => 'NAME'],
