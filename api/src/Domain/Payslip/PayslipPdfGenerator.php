@@ -191,7 +191,7 @@ final class PayslipPdfGenerator
         }
 
         $this->drawSimpleRow($commands, $x, $y, $colWidths, [
-            ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XVI Rule 72(2)' : strtoupper(str_replace('_', ' ', $model['layout'])), 'align' => 'center'],
+            ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XVI Rule 72(2)' : strtoupper(str_replace('_', ' ', $model['layout'])), 'align' => 'center', 'colspan' => 4],
         ], 22, $layoutStyles, true);
         $y += 22;
 
