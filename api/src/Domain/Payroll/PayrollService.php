@@ -658,6 +658,7 @@ final class PayrollService
         $targets = [
             'employee_id' => ['id', 'emp id', 'emp code', 'employee code', 'employee id', 'employee number', 'staff id'],
             'employee_name' => ['full name', 'emp name', 'employee name', 'name'],
+            'father_name' => ['father name', "father's name", "father’s name", "father/mother/spouse name", "father's/mother's/spouse's name", "father’s/mother’s/spouse’s name"],
             'phone' => ['phone', 'phone number', 'mobile', 'mobile number', 'contact number'],
             'pin' => ['pin', 'login pin'],
             'gross_pay' => ['gross', 'gross pay', 'gross salary', 'gross amt'],
@@ -866,6 +867,7 @@ final class PayrollService
         return [
             'employee_id' => $get('employee_id'),
             'employee_name' => $get('employee_name'),
+            'father_name' => $get('father_name'),
             'designation' => $get('designation'),
             'days_paid' => $get('days_paid'),
             'ot_hours' => $get('ot_hours'),
@@ -1040,6 +1042,14 @@ final class PayrollService
             if (in_array($label, ['total', 'grandtotal', 'subtotal', 'summary'], true)) {
                 return true;
             }
+        }
+
+        $firstMeaningfulCell = reset($nonEmptyValues);
+        if (
+            is_string($firstMeaningfulCell)
+            && in_array($this->normalizeSummaryLabel($firstMeaningfulCell), ['total', 'grandtotal', 'subtotal', 'summary'], true)
+        ) {
+            return true;
         }
 
         return false;
@@ -1235,6 +1245,7 @@ final class PayrollService
             'status' => ['status'],
             'employment_type' => ['employment'],
             'date_of_joining' => ['date of joining', 'date of joini', 'doj'],
+            'father_name' => ['father name', "father's name", "father’s name", "father/mother/spouse name", "father's/mother's/spouse's name", "father’s/mother’s/spouse’s name"],
             'uan' => ['uan'],
             'bank_name' => ['bank'],
             'ifsc' => ['ifsc'],
@@ -1280,6 +1291,7 @@ final class PayrollService
             'password_hash' => null,
             'employment_type' => $this->nullableString($this->sheetCell($row, $headerMap, 'employment_type')),
             'date_of_joining' => $this->nullableDate($this->sheetCell($row, $headerMap, 'date_of_joining')),
+            'father_name' => $this->nullableString($this->sheetCell($row, $headerMap, 'father_name')),
             'uan' => $this->nullableString($this->sheetCell($row, $headerMap, 'uan')),
             'bank_name' => $this->nullableString($this->sheetCell($row, $headerMap, 'bank_name')),
             'bank_account_number' => $this->nullableString($this->sheetCell($row, $headerMap, 'bank_account_number')),
@@ -1432,6 +1444,7 @@ final class PayrollService
     private function employeeMetadataPayload(array $employee): array
     {
         return [
+            'father_name' => $employee['father_name'] ?? null,
             'date_of_joining' => $employee['date_of_joining'] ?? null,
             'uan' => $employee['uan'] ?? null,
             'bank' => $employee['bank_name'] ?? null,

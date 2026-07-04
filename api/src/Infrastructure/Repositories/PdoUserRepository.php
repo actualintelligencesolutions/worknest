@@ -19,12 +19,12 @@ final class PdoUserRepository implements UserRepositoryInterface
             'INSERT INTO users (
                 tenant_id, office_id, employee_id, first_name, last_name, display_name,
                 email, phone, password_hash, employee_pin, employment_type, date_of_joining,
-                uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                father_name, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
                 user_type, status
              ) VALUES (
                 :tenant_id, :office_id, :employee_id, :first_name, :last_name, :display_name,
                 :email, :phone, :password_hash, :employee_pin, :employment_type, :date_of_joining,
-                :uan, :bank_name, :bank_account_number, :ifsc, :designation, :basic_rate,
+                :father_name, :uan, :bank_name, :bank_account_number, :ifsc, :designation, :basic_rate,
                 :user_type, :status
              )'
         );
@@ -41,6 +41,7 @@ final class PdoUserRepository implements UserRepositoryInterface
             'employee_pin' => $payload['employee_pin'] ?? null,
             'employment_type' => $payload['employment_type'] ?? null,
             'date_of_joining' => $payload['date_of_joining'] ?? null,
+            'father_name' => $payload['father_name'] ?? null,
             'uan' => $payload['uan'] ?? null,
             'bank_name' => $payload['bank_name'] ?? null,
             'bank_account_number' => $payload['bank_account_number'] ?? null,
@@ -208,7 +209,7 @@ final class PdoUserRepository implements UserRepositoryInterface
             ? 'employee_pin'
             : 'NULL AS employee_pin';
         $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone,
-                       employment_type, date_of_joining, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                       employment_type, date_of_joining, father_name, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
                        user_type, status, created_at,
                        CASE WHEN employee_pin IS NULL OR employee_pin = "" THEN 0 ELSE 1 END AS has_pin,
                        ' . $pinSelect . '
@@ -222,7 +223,7 @@ final class PdoUserRepository implements UserRepositoryInterface
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
             $sql = 'SELECT id, tenant_id, office_id, employee_id, first_name, last_name, display_name, email, phone,
-                       employment_type, date_of_joining, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
+                       employment_type, date_of_joining, father_name, uan, bank_name, bank_account_number, ifsc, designation, basic_rate,
                        user_type, status, created_at,
                        CASE WHEN employee_pin IS NULL OR employee_pin = "" THEN 0 ELSE 1 END AS has_pin,
                        ' . $pinSelect . '
@@ -270,6 +271,7 @@ final class PdoUserRepository implements UserRepositoryInterface
             'password_hash',
             'employment_type',
             'date_of_joining',
+            'father_name',
             'uan',
             'bank_name',
             'bank_account_number',

@@ -57,38 +57,21 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
-.marketing-register-progress {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px;
+.marketing-register-card-label {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   margin-bottom: 26px;
+  padding: 12px 14px;
+  border: 1px solid rgba(169, 204, 255, 0.24);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
 }
 
-.marketing-register-step {
-  display: inline-grid;
-  gap: 4px;
-  color: #7e8fad;
-}
-
-.marketing-register-step span {
-  color: var(--color-eyebrow);
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
-.marketing-register-step strong {
-  font-size: 0.95rem;
-}
-
-.marketing-register-step.active {
+.marketing-register-card-label strong {
   color: var(--color-heading-strong);
-}
-
-.marketing-register-progress-line {
-  height: 1px;
-  background: rgba(109, 137, 198, 0.2);
+  font-size: 0.95rem;
 }
 
 .marketing-register-kicker {
@@ -258,9 +241,9 @@
     grid-template-columns: 1fr;
   }
 
+  .marketing-register-card-label,
   .marketing-register-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
   }
 
   .marketing-register-line {

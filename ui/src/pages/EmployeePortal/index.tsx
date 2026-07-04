@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/atoms/Button';
@@ -154,6 +154,7 @@ export function EmployeePortalPage() {
   const session = loadEmployeeSession();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [selectedPayslipId, setSelectedPayslipId] = useState<number | null>(null);
 
   const siteQuery = useQuery({
     queryKey: ['employee-site-portal', tenantId, officeCode],
@@ -168,6 +169,21 @@ export function EmployeePortalPage() {
   });
 
   const lacksSession = !session || session.tenantId !== tenantId;
+  const payslips = payslipsQuery.data?.payslips ?? [];
+  const selectedPayslip = payslips.find((item) => item.id === selectedPayslipId) ?? payslips[0] ?? null;
+
+  useEffect(() => {
+    if (payslips.length === 0) {
+      if (selectedPayslipId !== null) {
+        setSelectedPayslipId(null);
+      }
+      return;
+    }
+
+    if (selectedPayslipId === null || !payslips.some((item) => item.id === selectedPayslipId)) {
+      setSelectedPayslipId(payslips[0].id);
+    }
+  }, [payslips, selectedPayslipId]);
 
   async function handleDownload(payslipId: number, fileLabel: string) {
     if (!session) {
@@ -266,43 +282,59 @@ export function EmployeePortalPage() {
           {downloadError ? <p className="employee-portal-error">{downloadError}</p> : null}
 
           <div className="employee-portal-list">
-            {(payslipsQuery.data?.payslips ?? []).length === 0 ? (
+            {payslips.length === 0 ? (
               <div className="employee-portal-empty">
                 <h3>No published payslips yet</h3>
                 <p>Your payroll team has not published any payslips for this account yet.</p>
               </div>
             ) : (
-              (payslipsQuery.data?.payslips ?? []).map((payslip) => {
-                const label = `${payslip.period_year}-${String(payslip.period_month).padStart(2, '0')}-${payslip.employee_id ?? 'payslip'}`;
-
-                return (
-                  <article className="employee-portal-card" key={payslip.id}>
-                    <div className="employee-portal-card-copy">
-                      <p className="employee-portal-card-kicker">{formatMonth(payslip.period_year, payslip.period_month)}</p>
-                      <h3>{payslip.employee_name_snapshot ?? session.userName ?? 'Payslip'}</h3>
-                      <div className="employee-portal-card-metrics">
-                        <div>
-                          <span>Net pay</span>
-                          <strong>{formatMoney(payslip.net_pay)}</strong>
-                        </div>
-                        <div>
-                          <span>Status</span>
-                          <strong>{payslip.status}</strong>
-                        </div>
+              <article className="employee-portal-card employee-portal-card-selector">
+                <div className="employee-portal-card-copy">
+                  <p className="employee-portal-card-kicker">Selected payslip</p>
+                  <h3>{selectedPayslip?.employee_name_snapshot ?? session.userName ?? 'Payslip'}</h3>
+                  <label className="employee-portal-select-field">
+                    <span>Select month</span>
+                    <select
+                      onChange={(event) => {
+                        setSelectedPayslipId(Number(event.target.value));
+                      }}
+                      value={selectedPayslip?.id ?? ''}
+                    >
+                      {payslips.map((payslip) => (
+                        <option key={payslip.id} value={payslip.id}>
+                          {formatMonth(payslip.period_year, payslip.period_month)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedPayslip ? (
+                    <div className="employee-portal-card-metrics">
+                      <div>
+                        <span>Net pay</span>
+                        <strong>{formatMoney(selectedPayslip.net_pay)}</strong>
+                      </div>
+                      <div>
+                        <span>Status</span>
+                        <strong>{selectedPayslip.status}</strong>
                       </div>
                     </div>
-                    <Button
-                      disabled={downloadingId === payslip.id}
-                      onClick={() => {
-                        void handleDownload(payslip.id, label);
-                      }}
-                      type="button"
-                    >
-                      {downloadingId === payslip.id ? 'Preparing...' : 'Download PDF'}
-                    </Button>
-                  </article>
-                );
-              })
+                  ) : null}
+                </div>
+                <Button
+                  disabled={!selectedPayslip || downloadingId === selectedPayslip.id}
+                  onClick={() => {
+                    if (!selectedPayslip) {
+                      return;
+                    }
+
+                    const label = `${selectedPayslip.period_year}-${String(selectedPayslip.period_month).padStart(2, '0')}-${selectedPayslip.employee_id ?? 'payslip'}`;
+                    void handleDownload(selectedPayslip.id, label);
+                  }}
+                  type="button"
+                >
+                  {selectedPayslip && downloadingId === selectedPayslip.id ? 'Preparing...' : 'Download'}
+                </Button>
+              </article>
             )}
           </div>
         </section>

@@ -63,6 +63,16 @@ function formatShortDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatMonthName(month: number) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+  }).format(new Date(2026, month - 1, 1));
+}
+
+function formatPayrollPeriod(month: number, year: number) {
+  return `${formatMonthName(month)} ${year}`;
+}
+
 function formatPayrollUploadError(error: unknown) {
   if (error instanceof ApiRequestError && error.code === 'VALIDATION_ERROR') {
     const missingFields = Array.isArray(error.details?.missing_fields)
@@ -1007,7 +1017,7 @@ export function BranchSetupPage() {
             >
               {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                 <option key={month} value={month}>
-                  {month}
+                  {formatMonthName(month)}
                 </option>
               ))}
             </select>
@@ -1637,7 +1647,7 @@ export function BranchSetupPage() {
                 <select onChange={(event) => setPeriodMonth(Number(event.target.value))} value={periodMonth}>
                   {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                     <option key={month} value={month}>
-                      {month}
+                      {formatMonthName(month)}
                     </option>
                   ))}
                 </select>
@@ -1760,7 +1770,7 @@ export function BranchSetupPage() {
                   <div className="branch-shell-history-item" key={batch.id}>
                     <div>
                       <strong>{batch.source_file_name}</strong>
-                      <span>{`Period ${batch.period_month}/${batch.period_year}`}</span>
+                      <span>{`Period ${formatPayrollPeriod(batch.period_month, batch.period_year)}`}</span>
                     </div>
                     <div>
                       <strong>{batch.upload_status}</strong>

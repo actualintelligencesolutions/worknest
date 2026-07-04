@@ -138,6 +138,11 @@ export function RegisterPage() {
     }
   }
 
+  function handleBack() {
+    setError(null);
+    setPhase(1);
+  }
+
   return (
     <MarketingLayout>
       <section className="marketing-register">
@@ -148,16 +153,8 @@ export function RegisterPage() {
           <div className="marketing-register-card">
             {success ? (
               <>
-                <div className="marketing-register-progress">
-                  <div className="marketing-register-step active">
-                    <span>01</span>
-                    <strong>Company</strong>
-                  </div>
-                  <div className="marketing-register-progress-line" />
-                  <div className="marketing-register-step active">
-                    <span>02</span>
-                    <strong>Superadmin</strong>
-                  </div>
+                <div className="marketing-register-card-label">
+                  <strong>Workspace ready</strong>
                 </div>
 
                 <h1>Workspace created</h1>
@@ -177,162 +174,141 @@ export function RegisterPage() {
               </>
             ) : (
               <>
-            <div className="marketing-register-progress">
-              <div
-                className={phase === 1 ? 'marketing-register-step active' : 'marketing-register-step'}
-              >
-                <span>01</span>
-                <strong>Company</strong>
-              </div>
-              <div className="marketing-register-progress-line" />
-              <div
-                className={phase === 2 ? 'marketing-register-step active' : 'marketing-register-step'}
-              >
-                <span>02</span>
-                <strong>Superadmin</strong>
-              </div>
-            </div>
-
-            <h1>
-              {phase === 1 ? 'Create your workspace' : 'Set up your owner account'}
-            </h1>
-            <p className="marketing-register-copy">
-              {phase === 1
-                ? 'Start with your company and workspace details so we can provision the right payroll tenant.'
-                : 'Add the primary owner details for the person who will manage offices, admins, and payroll.'}
-            </p>
-
-            {phase === 1 ? (
-              <form className="marketing-register-form">
-                <label className="marketing-register-form-full">
-                  <span>Company name</span>
-                  <input
-                    onChange={(event) => setCompanyName(event.target.value)}
-                    placeholder="Your company"
-                    type="text"
-                    value={companyName}
-                  />
-                </label>
-
-                <label className="marketing-register-form-full">
-                  <span>Workspace slug</span>
-                  <input
-                    onBlur={() => {
-                      if (normalizedWorkspace) {
-                        void verifyWorkspace(normalizedWorkspace);
-                      }
-                    }}
-                    onChange={(event) => {
-                      setHasEditedWorkspace(true);
-                      setWorkspaceSlug(event.target.value);
-                      setWorkspaceStatus({ state: 'idle', message: null });
-                    }}
-                    placeholder="your-company"
-                    type="text"
-                    value={workspaceSlug}
-                  />
-                </label>
-
-                {workspaceStatus.message ? (
-                  <p
-                    className={`marketing-register-workspace-status marketing-register-form-full ${
-                      workspaceStatus.state === 'available'
-                        ? 'is-available'
-                        : workspaceStatus.state === 'taken'
-                          ? 'is-taken'
-                          : ''
-                    }`}
-                  >
-                    {workspaceStatus.message}
-                  </p>
-                ) : null}
-
-                {error ? <p className="marketing-register-error marketing-register-form-full">{error}</p> : null}
-
-                <div className="marketing-register-actions marketing-register-form-full">
-                  <a className="marketing-register-link" href="/login">
-                    Already have access?
-                  </a>
-                  <button
-                    className="marketing-register-submit"
-                    onClick={handlePhaseOneContinue}
-                    type="button"
-                  >
-                    Continue
-                  </button>
+                <div className="marketing-register-card-label">
+                  <strong>{phase === 1 ? 'Company details' : 'Owner account'}</strong>
                 </div>
-              </form>
-            ) : (
-              <form className="marketing-register-form" onSubmit={handleRegisterSubmit}>
-                <label className="marketing-register-form-full">
-                  <span>Full name</span>
-                  <input
-                    onChange={(event) => setFullName(event.target.value)}
-                    placeholder="Demo Owner"
-                    type="text"
-                    value={fullName}
-                  />
-                </label>
 
-                <label>
-                  <span>Work email</span>
-                  <input
-                    onChange={(event) => setAdminEmail(event.target.value)}
-                    placeholder="owner@company.com"
-                    type="email"
-                    value={adminEmail}
-                  />
-                </label>
+                <h1>{phase === 1 ? 'Create your workspace' : 'Set up your owner account'}</h1>
+                <p className="marketing-register-copy">
+                  {phase === 1
+                    ? 'Start with your company and workspace details so we can provision the right payroll tenant.'
+                    : 'Add the primary owner details for the person who will manage offices, admins, and payroll.'}
+                </p>
 
-                <label>
-                  <span>Work phone</span>
-                  <input
-                    onChange={(event) => setAdminPhone(event.target.value)}
-                    placeholder="+91 98765 43210"
-                    type="tel"
-                    value={adminPhone}
-                  />
-                </label>
+                {phase === 1 ? (
+                  <form className="marketing-register-form">
+                    <label className="marketing-register-form-full">
+                      <span>Company name</span>
+                      <input
+                        onChange={(event) => setCompanyName(event.target.value)}
+                        placeholder="Your company"
+                        type="text"
+                        value={companyName}
+                      />
+                    </label>
 
-                <label>
-                  <span>Password</span>
-                  <input
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Create password"
-                    type="password"
-                    value={password}
-                  />
-                </label>
+                    <label className="marketing-register-form-full">
+                      <span>Workspace slug</span>
+                      <input
+                        onBlur={() => {
+                          if (normalizedWorkspace) {
+                            void verifyWorkspace(normalizedWorkspace);
+                          }
+                        }}
+                        onChange={(event) => {
+                          setHasEditedWorkspace(true);
+                          setWorkspaceSlug(event.target.value);
+                          setWorkspaceStatus({ state: 'idle', message: null });
+                        }}
+                        placeholder="your-company"
+                        type="text"
+                        value={workspaceSlug}
+                      />
+                    </label>
 
-                <label>
-                  <span>Confirm password</span>
-                  <input
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Confirm password"
-                    type="password"
-                    value={confirmPassword}
-                  />
-                </label>
+                    {workspaceStatus.message ? (
+                      <p
+                        className={`marketing-register-workspace-status marketing-register-form-full ${
+                          workspaceStatus.state === 'available'
+                            ? 'is-available'
+                            : workspaceStatus.state === 'taken'
+                              ? 'is-taken'
+                              : ''
+                        }`}
+                      >
+                        {workspaceStatus.message}
+                      </p>
+                    ) : null}
 
-                {error ? <p className="marketing-register-error marketing-register-form-full">{error}</p> : null}
+                    {error ? <p className="marketing-register-error marketing-register-form-full">{error}</p> : null}
 
-                <div className="marketing-register-actions marketing-register-form-full">
-                  <button
-                    className="marketing-register-secondary"
-                    onClick={() => {
-                      setError(null);
-                      setPhase(1);
-                    }}
-                    type="button"
-                  >
-                    Back
-                  </button>
-                  <button className="marketing-register-submit" disabled={isSubmitting} type="submit">
-                    {isSubmitting ? 'Creating workspace...' : 'Create workspace'}
-                  </button>
-                </div>
-              </form>
-            )}
+                    <div className="marketing-register-actions marketing-register-form-full">
+                      <a className="marketing-register-link" href="/login">
+                        Already have access?
+                      </a>
+                      <button
+                        className="marketing-register-submit"
+                        onClick={handlePhaseOneContinue}
+                        type="button"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form className="marketing-register-form" onSubmit={handleRegisterSubmit}>
+                    <label className="marketing-register-form-full">
+                      <span>Full name</span>
+                      <input
+                        onChange={(event) => setFullName(event.target.value)}
+                        placeholder="Demo Owner"
+                        type="text"
+                        value={fullName}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Work email</span>
+                      <input
+                        onChange={(event) => setAdminEmail(event.target.value)}
+                        placeholder="owner@company.com"
+                        type="email"
+                        value={adminEmail}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Work phone</span>
+                      <input
+                        onChange={(event) => setAdminPhone(event.target.value)}
+                        placeholder="+91 98765 43210"
+                        type="tel"
+                        value={adminPhone}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Password</span>
+                      <input
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Create password"
+                        type="password"
+                        value={password}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Confirm password</span>
+                      <input
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder="Confirm password"
+                        type="password"
+                        value={confirmPassword}
+                      />
+                    </label>
+
+                    {error ? <p className="marketing-register-error marketing-register-form-full">{error}</p> : null}
+
+                    <div className="marketing-register-actions marketing-register-form-full">
+                      <button className="marketing-register-secondary" onClick={handleBack} type="button">
+                        Back
+                      </button>
+                      <button className="marketing-register-submit" disabled={isSubmitting} type="submit">
+                        {isSubmitting ? 'Creating workspace...' : 'Create workspace'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </>
             )}
           </div>

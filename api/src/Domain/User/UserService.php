@@ -100,6 +100,7 @@ final class UserService
                 'employee_pin' => $userType === 'employee' ? $this->pinHasher->hash($employeePin ?? '') : null,
                 'employment_type' => $this->nullableString($payload['employment_type'] ?? null),
                 'date_of_joining' => $this->normalizeDate($payload['date_of_joining'] ?? null),
+                'father_name' => $this->nullableString($payload['father_name'] ?? null),
                 'uan' => $this->nullableString($payload['uan'] ?? null),
                 'bank_name' => $this->nullableString($payload['bank_name'] ?? null),
                 'bank_account_number' => $this->nullableString($payload['bank_account_number'] ?? null),
@@ -197,7 +198,7 @@ final class UserService
                 throw new ValidationException('An employee with this employee ID already exists for the tenant.');
             }
         }
-        foreach (['employment_type', 'uan', 'bank_name', 'bank_account_number', 'ifsc', 'designation'] as $field) {
+        foreach (['employment_type', 'father_name', 'uan', 'bank_name', 'bank_account_number', 'ifsc', 'designation'] as $field) {
             if (array_key_exists($field, $payload)) {
                 $payload[$field] = $this->nullableString($payload[$field]);
             }

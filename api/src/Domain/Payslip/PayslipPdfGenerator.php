@@ -67,7 +67,8 @@ final class PayslipPdfGenerator
         $layout = $this->resolveLayoutKey(is_string($settings['payslip_template_key'] ?? null) ? $settings['payslip_template_key'] : null);
         $earnings = $this->decodeJson($payload['earnings_json'] ?? ($payload['earnings'] ?? []));
         $deductions = $this->decodeJson($payload['deductions_json'] ?? ($payload['deductions'] ?? []));
-        $basicAmount = $this->firstAmount($earnings, ['basic', 'basic_rate', 'basic_salary', 'wages_earned']);
+        $basicAmount = $this->firstAmount($payload, ['basic_rate'])
+            ?? $this->firstAmount($earnings, ['basic', 'basic_rate', 'basic_salary', 'wages_earned']);
         $otHours = $this->firstString($payload, ['ot_hours', 'overtime_hours']);
         $otAmount = $this->firstAmount($earnings, ['ot_amount', 'overtime_amount']);
 
@@ -154,7 +155,7 @@ final class PayslipPdfGenerator
         $headerAsset = $this->loadHeaderImageAsset($model['payslip_header_image_path'] ?? null);
         $y = self::MARGIN_Y;
         $x = self::MARGIN_X;
-        $colWidths = [130.0, 143.0, 130.0, 144.28];
+        $colWidths = [108.0, 180.0, 112.0, 147.28];
 
         if ($headerAsset !== null) {
             $placement = $this->fitImageBox((float) $headerAsset['width'], (float) $headerAsset['height'], self::CONTENT_WIDTH, 72.0);
@@ -237,8 +238,9 @@ final class PayslipPdfGenerator
         ];
 
         foreach ($identityRows as $row) {
-            $this->drawSimpleRow($commands, $x, $y, $colWidths, $row, 22, $layoutStyles);
-            $y += 22;
+            $rowHeight = $this->measureRowHeight($colWidths, $row, 22.0);
+            $this->drawSimpleRow($commands, $x, $y, $colWidths, $row, $rowHeight, $layoutStyles);
+            $y += $rowHeight;
         }
 
         $this->drawSimpleRow($commands, $x, $y, $colWidths, [
@@ -353,6 +355,25 @@ final class PayslipPdfGenerator
                 $align
             );
         }
+    }
+
+    private function measureRowHeight(array $colWidths, array $cells, float $minimumHeight): float
+    {
+        $fontSize = 10.0;
+        $lineHeight = 11.0;
+        $colIndex = 0;
+        $maxLines = 1;
+
+        foreach ($cells as $cell) {
+            $colspan = max(1, (int) ($cell['colspan'] ?? 1));
+            $width = array_sum(array_slice($colWidths, $colIndex, $colspan));
+            $text = trim((string) ($cell['text'] ?? ''));
+            $lines = $this->wrapText($text, $width - 10, $fontSize);
+            $maxLines = max($maxLines, max(1, count($lines)));
+            $colIndex += $colspan;
+        }
+
+        return max($minimumHeight, 12.0 + ($maxLines * $lineHeight));
     }
 
     private function drawText(
@@ -636,7 +657,7 @@ final class PayslipPdfGenerator
 
     private function estimateTextWidth(string $text, float $fontSize): float
     {
-        return strlen($text) * ($fontSize * 0.52);
+        return strlen($text) * ($fontSize * 0.56);
     }
 
     private function pdfY(float $top): float
