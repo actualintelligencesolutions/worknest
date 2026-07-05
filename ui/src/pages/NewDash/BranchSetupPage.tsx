@@ -21,6 +21,7 @@ import {
   importMissingEmployeesForPayrollBatch,
   listPayrollBatches,
   publishPayrollBatch,
+  unpublishPayrollBatch,
   listUsers,
   resetEmployeePin,
   resetOfficeEmployeePins,
@@ -421,6 +422,7 @@ export function BranchSetupPage() {
   const latestBatchIsPublished = latestBatch?.upload_status === 'published';
   const canConfirmLatestBatch = Boolean(latestBatch && latestBatchIsProcessed);
   const canPublishLatestBatch = Boolean(latestBatch && latestBatchIsConfirmed);
+  const canUnpublishLatestBatch = Boolean(latestBatch && latestBatchIsPublished);
 
   const wizardSteps = useMemo(
     () => (branchState ? visibleWizardSteps(branchState, isTenantOwner) : []),
@@ -668,6 +670,31 @@ export function BranchSetupPage() {
       setPayrollPublishMessage(null);
       setUploadWarningMessage(null);
       setErrorMessage(error instanceof Error ? error.message : 'We could not publish this payroll sheet.');
+    },
+  });
+
+  const unpublishPayrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!session || !latestBatch) {
+        throw new Error('No published payroll batch is available to unpublish.');
+      }
+
+      return unpublishPayrollBatch(session, latestBatch.id);
+    },
+    onSuccess: async () => {
+      setErrorMessage(null);
+      setImportEmployeesMessage(null);
+      setUploadWarningMessage(null);
+      setPayrollPublishMessage('Payroll unpublished. Employee payslip access for this month has been removed.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['branch-setup-batches', session?.tenantId, officeId] }),
+        queryClient.invalidateQueries({ queryKey: ['new-dash-payroll-batches', session?.tenantId] }),
+      ]);
+    },
+    onError: (error) => {
+      setPayrollPublishMessage(null);
+      setUploadWarningMessage(null);
+      setErrorMessage(error instanceof Error ? error.message : 'We could not unpublish this payroll sheet.');
     },
   });
 
@@ -1750,8 +1777,18 @@ export function BranchSetupPage() {
                   >
                     {publishPayrollMutation.isPending ? 'Publishing payslips...' : 'Publish payslips'}
                   </Button>
+                  <Button
+                    disabled={!canUnpublishLatestBatch || unpublishPayrollMutation.isPending || confirmPayrollMutation.isPending || publishPayrollMutation.isPending}
+                    onClick={() => {
+                      void unpublishPayrollMutation.mutateAsync();
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {unpublishPayrollMutation.isPending ? 'Unpublishing...' : 'Unpublish month'}
+                  </Button>
                 </div>
-                {errorMessage && (confirmPayrollMutation.isError || publishPayrollMutation.isError) ? (
+                {errorMessage && (confirmPayrollMutation.isError || publishPayrollMutation.isError || unpublishPayrollMutation.isError) ? (
                   <p className="branch-setup-error">{errorMessage}</p>
                 ) : null}
               </>

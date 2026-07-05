@@ -178,4 +178,19 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             )
         ));
     }
+
+    public function deleteForBatch(int $payrollBatchId, string $tenantId): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'DELETE p FROM payslips p
+             INNER JOIN payroll_records pr ON pr.id = p.payroll_record_id
+             WHERE pr.payroll_batch_id = :batch_id
+               AND p.tenant_id = :tenant_id
+               AND pr.tenant_id = :tenant_id'
+        );
+        $stmt->execute([
+            'batch_id' => $payrollBatchId,
+            'tenant_id' => $tenantId,
+        ]);
+    }
 }

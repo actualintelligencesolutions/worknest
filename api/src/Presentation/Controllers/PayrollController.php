@@ -95,4 +95,11 @@ final class PayrollController extends BaseController
         $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
         return Response::success($this->payrollService->publishBatch((int) $request->attribute('id'), $tenantId, $actor));
     }
+
+    public function unpublish(Request $request): Response
+    {
+        $tenantId = (string) $this->tenantResolver->fromRequest($request);
+        $actor = $this->authService->requireActor($this->bearerToken($request), $tenantId, ['tenant_owner', 'branch_admin', 'site_owner']);
+        return Response::success($this->payrollService->unpublishBatch((int) $request->attribute('id'), $tenantId, $actor));
+    }
 }

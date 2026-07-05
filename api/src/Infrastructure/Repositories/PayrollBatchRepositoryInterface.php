@@ -20,6 +20,8 @@ interface PayrollBatchRepositoryInterface
 
     public function markPublished(int $batchId, string $tenantId, int $publishedByUserId): void;
 
+    public function markUnpublished(int $batchId, string $tenantId): void;
+
     public function hardDelete(int $batchId, string $tenantId): void;
 
     public function listByTenant(string $tenantId, array $actor, array $filters = []): array;

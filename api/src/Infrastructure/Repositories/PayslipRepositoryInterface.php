@@ -17,4 +17,6 @@ interface PayslipRepositoryInterface
     public function supersedePublishedForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): void;
 
     public function listFilePathsForPeriod(string $tenantId, int $officeId, int $periodYear, int $periodMonth): array;
+
+    public function deleteForBatch(int $payrollBatchId, string $tenantId): void;
 }

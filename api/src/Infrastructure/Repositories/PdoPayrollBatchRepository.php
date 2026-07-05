@@ -124,6 +124,20 @@ final class PdoPayrollBatchRepository implements PayrollBatchRepositoryInterface
         ]);
     }
 
+    public function markUnpublished(int $batchId, string $tenantId): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'UPDATE payroll_batches
+             SET upload_status = "confirmed", published_by_user_id = NULL,
+                 published_at = NULL, updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND tenant_id = :tenant_id AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            'id' => $batchId,
+            'tenant_id' => $tenantId,
+        ]);
+    }
+
     public function hardDelete(int $batchId, string $tenantId): void
     {
         $stmt = $this->connection->pdo()->prepare(

@@ -11,4 +11,6 @@ interface PayrollRecordRepositoryInterface
     public function listByBatch(int $batchId, string $tenantId): array;
 
     public function markPublishedByBatch(int $batchId, string $tenantId): void;
+
+    public function markValidByBatch(int $batchId, string $tenantId): void;
 }

@@ -80,4 +80,17 @@ final class PdoPayrollRecordRepository implements PayrollRecordRepositoryInterfa
             'tenant_id' => $tenantId,
         ]);
     }
+
+    public function markValidByBatch(int $batchId, string $tenantId): void
+    {
+        $stmt = $this->connection->pdo()->prepare(
+            'UPDATE payroll_records
+             SET record_status = "valid", updated_at = CURRENT_TIMESTAMP
+             WHERE payroll_batch_id = :batch_id AND tenant_id = :tenant_id'
+        );
+        $stmt->execute([
+            'batch_id' => $batchId,
+            'tenant_id' => $tenantId,
+        ]);
+    }
 }

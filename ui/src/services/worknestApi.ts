@@ -988,3 +988,19 @@ export function publishPayrollBatch(session: AuthSession, batchId: number) {
     },
   );
 }
+
+export function unpublishPayrollBatch(session: AuthSession, batchId: number) {
+  return apiRequest<{
+    batch: {
+      id: number;
+      upload_status: string;
+    };
+  }>(
+    `/v2/payroll/batches/${batchId}/unpublish?tenant=${encodeURIComponent(session.tenantId)}`,
+    {
+      method: 'POST',
+      headers: authHeaders(session),
+      body: JSON.stringify({}),
+    },
+  );
+}

@@ -538,6 +538,40 @@ final class PayrollService
         ];
     }
 
+    public function unpublishBatch(int $batchId, string $tenantId, array $actor): array
+    {
+        $batch = $this->mustFindBatch($batchId, $tenantId, $actor);
+        if (($batch['upload_status'] ?? '') !== 'published') {
+            throw new ValidationException('Only published payroll batches can be unpublished.');
+        }
+
+        $filePaths = $this->payslipRepository->listFilePathsForPeriod(
+            $tenantId,
+            (int) $batch['office_id'],
+            (int) $batch['period_year'],
+            (int) $batch['period_month']
+        );
+
+        $this->transactions->run(function () use ($batchId, $tenantId): void {
+            $this->payslipRepository->deleteForBatch($batchId, $tenantId);
+            $this->payrollRecordRepository->markValidByBatch($batchId, $tenantId);
+            $this->payrollBatchRepository->markUnpublished($batchId, $tenantId);
+        });
+
+        foreach ($filePaths as $path) {
+            $this->fileStorage->deleteIfExists($path);
+        }
+
+        $this->auditLogger->log($tenantId, (int) $batch['office_id'], (int) $actor['id'], 'payroll.unpublished', 'payroll_batch', (string) $batchId);
+
+        return [
+            'batch' => [
+                'id' => $batchId,
+                'upload_status' => 'confirmed',
+            ],
+        ];
+    }
+
     private function mustFindBatch(int $batchId, string $tenantId, array $actor): array
     {
         $batch = $this->payrollBatchRepository->findById($batchId, $tenantId);

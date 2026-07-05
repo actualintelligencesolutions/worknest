@@ -251,6 +251,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/payroll-batches/{id}/import-missing-employees', fn ($request) => $container->get(PayrollController::class)->importMissingEmployees($request));
     $router->add('POST', '/payroll-batches/{id}/confirm', fn ($request) => $container->get(PayrollController::class)->confirm($request));
     $router->add('POST', '/payroll-batches/{id}/publish', fn ($request) => $container->get(PayrollController::class)->publish($request));
+    $router->add('POST', '/payroll-batches/{id}/unpublish', fn ($request) => $container->get(PayrollController::class)->unpublish($request));
 
     $router->add('GET', '/payslips', fn ($request) => $container->get(PayslipController::class)->list($request));
     $router->add('GET', '/payslips/{id}', fn ($request) => $container->get(PayslipController::class)->detail($request));
@@ -299,6 +300,7 @@ function register_routes(Router $router, Container $container): void
     $router->add('POST', '/v2/payroll/batches/{id}/import-missing-employees', fn ($request) => $container->get(PayrollController::class)->importMissingEmployees($request));
     $router->add('POST', '/v2/payroll/batches/{id}/confirm', fn ($request) => $container->get(PayrollController::class)->confirm($request));
     $router->add('POST', '/v2/payroll/batches/{id}/publish', fn ($request) => $container->get(PayrollController::class)->publish($request));
+    $router->add('POST', '/v2/payroll/batches/{id}/unpublish', fn ($request) => $container->get(PayrollController::class)->unpublish($request));
 
     $router->add('GET', '/v2/payslips', fn ($request) => $container->get(PayslipController::class)->list($request));
     $router->add('GET', '/v2/payslips/{id}', fn ($request) => $container->get(PayslipController::class)->detail($request));
