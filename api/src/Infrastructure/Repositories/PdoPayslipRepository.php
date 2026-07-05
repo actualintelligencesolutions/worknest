@@ -46,7 +46,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
     {
         $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
-                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
                        u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
@@ -66,7 +66,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
             $sql = 'SELECT p.id, p.tenant_id, p.office_id, p.payroll_record_id, p.user_id, p.period_year, p.period_month,
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
-                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+                       pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
                        u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
@@ -85,7 +85,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
 
     public function findAccessibleById(int $payslipId, string $tenantId, array $actor): ?array
     {
-        $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+        $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
                        u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p
@@ -106,7 +106,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
                 return null;
             }
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
-            $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.gross_pay, pr.total_deductions, pr.net_pay,
+            $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
                        u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
                 FROM payslips p

@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS payroll_records (
   employee_id VARCHAR(80) NOT NULL,
   employee_name_snapshot VARCHAR(180) NOT NULL,
   designation_snapshot VARCHAR(180) NULL DEFAULT NULL,
+  days_paid VARCHAR(32) NULL DEFAULT NULL,
+  ot_hours VARCHAR(32) NULL DEFAULT NULL,
   gross_pay DECIMAL(12,2) NOT NULL DEFAULT 0,
   total_deductions DECIMAL(12,2) NOT NULL DEFAULT 0,
   net_pay DECIMAL(12,2) NOT NULL DEFAULT 0,

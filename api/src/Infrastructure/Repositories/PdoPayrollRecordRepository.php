@@ -24,11 +24,11 @@ final class PdoPayrollRecordRepository implements PayrollRecordRepositoryInterfa
         $stmt = $pdo->prepare(
             'INSERT INTO payroll_records (
                 tenant_id, office_id, payroll_batch_id, user_id, employee_id, employee_name_snapshot,
-                designation_snapshot, gross_pay, total_deductions, net_pay, earnings_json, deductions_json,
+                designation_snapshot, days_paid, ot_hours, gross_pay, total_deductions, net_pay, earnings_json, deductions_json,
                 currency, record_status, validation_errors_json
              ) VALUES (
                 :tenant_id, :office_id, :payroll_batch_id, :user_id, :employee_id, :employee_name_snapshot,
-                :designation_snapshot, :gross_pay, :total_deductions, :net_pay, :earnings_json, :deductions_json,
+                :designation_snapshot, :days_paid, :ot_hours, :gross_pay, :total_deductions, :net_pay, :earnings_json, :deductions_json,
                 :currency, :record_status, :validation_errors_json
              )'
         );
@@ -42,6 +42,8 @@ final class PdoPayrollRecordRepository implements PayrollRecordRepositoryInterfa
                 'employee_id' => $record['employee_id'],
                 'employee_name_snapshot' => $record['employee_name_snapshot'],
                 'designation_snapshot' => $record['designation_snapshot'] ?? null,
+                'days_paid' => $record['days_paid'] ?? null,
+                'ot_hours' => $record['ot_hours'] ?? null,
                 'gross_pay' => $record['gross_pay'],
                 'total_deductions' => $record['total_deductions'],
                 'net_pay' => $record['net_pay'],
