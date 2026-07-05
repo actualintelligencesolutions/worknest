@@ -84,7 +84,7 @@ final class PayslipPdfGenerator
             'month_label' => $this->formatPeriod($periodYear, $periodMonth),
             'employee_name' => trim((string) ($payload['employee_name_snapshot'] ?? 'Payslip')),
             'father_name' => $this->firstString($payload, ['father_name', 'fathers_name', 'father', 'guardian_name', 'guardian', 'parent_name']),
-            'designation' => trim((string) (($payload['designation_snapshot'] ?? $payload['designation'] ?? ''))),
+            'designation' => $this->firstString($payload, ['designation_snapshot', 'designation']),
             'employee_id' => trim((string) ($payload['employee_id'] ?? '')),
             'office_name' => trim((string) ($office['name'] ?? 'Worknest')),
             'office_code' => trim((string) ($office['office_code'] ?? '')),

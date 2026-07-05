@@ -48,7 +48,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
                        pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
-                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
+                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.designation, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 LEFT JOIN users u ON u.id = p.user_id
@@ -68,7 +68,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
                        p.file_path, p.file_format, p.generated_at, p.published_at, p.status,
                        pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
-                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
+                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.designation, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 LEFT JOIN users u ON u.id = p.user_id
@@ -87,7 +87,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
     {
         $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
-                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
+                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.designation, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 LEFT JOIN users u ON u.id = p.user_id
@@ -108,7 +108,7 @@ final class PdoPayslipRepository implements PayslipRepositoryInterface
             $placeholders = implode(',', array_fill(0, count($officeIds), '?'));
             $sql = 'SELECT p.*, pr.employee_id, pr.employee_name_snapshot, pr.designation_snapshot, pr.days_paid, pr.ot_hours, pr.gross_pay, pr.total_deductions, pr.net_pay,
                        pr.earnings_json, pr.deductions_json, pr.currency,
-                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.basic_rate
+                       u.father_name, u.date_of_joining, u.uan, u.bank_name AS bank, u.bank_account_number AS account_number, u.ifsc, u.designation, u.basic_rate
                 FROM payslips p
                 JOIN payroll_records pr ON pr.id = p.payroll_record_id
                 LEFT JOIN users u ON u.id = p.user_id
