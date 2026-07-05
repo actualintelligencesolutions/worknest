@@ -190,10 +190,12 @@ final class PayslipPdfGenerator
             $y += 44;
         }
 
-        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+        $legalHeaderRow = [
             ['text' => $model['layout'] === self::LAYOUT_SIMPLE ? 'FORM XVI Rule 72(2)' : strtoupper(str_replace('_', ' ', $model['layout'])), 'align' => 'center', 'colspan' => 4],
-        ], 22, $layoutStyles, true);
-        $y += 22;
+        ];
+        $legalHeaderHeight = $this->measureRowHeight($colWidths, $legalHeaderRow, 22.0);
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, $legalHeaderRow, $legalHeaderHeight, $layoutStyles, true);
+        $y += $legalHeaderHeight;
 
         $identityRows = [
             [
@@ -243,39 +245,47 @@ final class PayslipPdfGenerator
             $y += $rowHeight;
         }
 
-        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+        $earningDeductionHeaderRow = [
             ['text' => 'EARNING', 'colspan' => 2, 'bold' => true, 'align' => 'center'],
             ['text' => 'DEDUCTION', 'colspan' => 2, 'bold' => true, 'align' => 'center'],
-        ], 24, $layoutStyles, true);
-        $y += 24;
+        ];
+        $earningDeductionHeaderHeight = $this->measureRowHeight($colWidths, $earningDeductionHeaderRow, 24.0);
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, $earningDeductionHeaderRow, $earningDeductionHeaderHeight, $layoutStyles, true);
+        $y += $earningDeductionHeaderHeight;
 
         $pairedRows = max(count($model['earning_rows']), count($model['deduction_rows']), 4);
         for ($index = 0; $index < $pairedRows; $index++) {
             $earning = $model['earning_rows'][$index] ?? ['label' => '', 'amount' => null];
             $deduction = $model['deduction_rows'][$index] ?? ['label' => '', 'amount' => null];
 
-            $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+            $earningDeductionRow = [
                 ['text' => $earning['label']],
                 ['text' => $this->formatMoney($earning['amount'], $model['currency'], false), 'align' => 'right'],
                 ['text' => $deduction['label']],
                 ['text' => $this->formatMoney($deduction['amount'], $model['currency'], false), 'align' => 'right'],
-            ], 22, $layoutStyles);
-            $y += 22;
+            ];
+            $earningDeductionRowHeight = $this->measureRowHeight($colWidths, $earningDeductionRow, 22.0);
+            $this->drawSimpleRow($commands, $x, $y, $colWidths, $earningDeductionRow, $earningDeductionRowHeight, $layoutStyles);
+            $y += $earningDeductionRowHeight;
         }
 
-        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+        $grossTotalsRow = [
             ['text' => 'GROSS AMT', 'bold' => true],
             ['text' => $this->formatMoney($model['gross_pay'], $model['currency'], false), 'bold' => true, 'align' => 'right'],
             ['text' => 'Total Deduction', 'bold' => true],
             ['text' => $this->formatMoney($model['total_deductions'], $model['currency'], false), 'bold' => true, 'align' => 'right'],
-        ], 24, $layoutStyles, true);
-        $y += 24;
+        ];
+        $grossTotalsHeight = $this->measureRowHeight($colWidths, $grossTotalsRow, 24.0);
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, $grossTotalsRow, $grossTotalsHeight, $layoutStyles, true);
+        $y += $grossTotalsHeight;
 
-        $this->drawSimpleRow($commands, $x, $y, $colWidths, [
+        $netPayRow = [
             ['text' => 'Net Pay Credited to Bank A/c', 'bold' => true, 'colspan' => 2],
             ['text' => $this->formatMoney($model['net_pay'], $model['currency']), 'bold' => true, 'colspan' => 2, 'align' => 'center'],
-        ], 28, $layoutStyles, true);
-        $y += 40;
+        ];
+        $netPayHeight = $this->measureRowHeight($colWidths, $netPayRow, 28.0);
+        $this->drawSimpleRow($commands, $x, $y, $colWidths, $netPayRow, $netPayHeight, $layoutStyles, true);
+        $y += $netPayHeight + 12;
 
         $noteTop = min($y, self::PAGE_HEIGHT - 64);
         $this->drawText($commands, $x, $noteTop, $model['note'], 10, false, [0.2, 0.2, 0.2]);

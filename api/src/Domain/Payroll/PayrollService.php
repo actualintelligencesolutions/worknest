@@ -1483,6 +1483,15 @@ final class PayrollService
             return null;
         }
 
+        if (preg_match('/^\d+(\.\d+)?$/', trim($value)) === 1) {
+            $excelSerial = (float) $value;
+            if ($excelSerial > 0) {
+                $days = (int) floor($excelSerial);
+                $base = new \DateTimeImmutable('1899-12-30');
+                return $base->modify('+' . $days . ' days')->format('Y-m-d');
+            }
+        }
+
         $timestamp = strtotime($value);
 
         return $timestamp === false ? null : date('Y-m-d', $timestamp);
