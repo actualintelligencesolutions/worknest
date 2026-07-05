@@ -91,7 +91,7 @@ final class PayslipPdfGenerator
             'basic_rate' => $basicAmount,
             'days_paid' => $this->firstString($payload, ['days_paid']),
             'ot_hours' => $otHours,
-            'doj' => $this->firstString($payload, ['date_of_joining', 'doj']),
+            'doj' => $this->formatDisplayDate($this->firstString($payload, ['date_of_joining', 'doj'])),
             'uan' => $this->firstString($payload, ['uan']),
             'bank' => $this->firstString($payload, ['bank']),
             'account_number' => $this->firstString($payload, ['account_number', 'bank_account_number']),
@@ -763,6 +763,18 @@ final class PayslipPdfGenerator
         $prefix = $withSymbol ? strtoupper($currency) . ' ' : '';
 
         return $prefix . number_format($amount, 2, '.', ',');
+    }
+
+    private function formatDisplayDate(string $value): string
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $timestamp = strtotime($trimmed);
+
+        return $timestamp === false ? $trimmed : date('d-M-y', $timestamp);
     }
 
     private function displayLabelForPayrollHead(string $value, bool $isEarning): string
