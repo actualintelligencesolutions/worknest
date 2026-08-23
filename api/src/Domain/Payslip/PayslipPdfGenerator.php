@@ -181,7 +181,7 @@ final class PayslipPdfGenerator
                 $commands,
                 $x + self::CONTENT_WIDTH - 16,
                 $y + 14,
-                trim(($model['office_name'] !== '' ? $model['office_name'] : 'Employee Payslip') . ($model['office_code'] !== '' ? ' | ' . $model['office_code'] : '')),
+                'Branch: ' . trim((string) ($model['office_name'] !== '' ? $model['office_name'] : 'Employee Payslip')),
                 10,
                 false,
                 $layoutStyles['banner_text'],
