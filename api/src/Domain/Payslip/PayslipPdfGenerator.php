@@ -199,7 +199,7 @@ final class PayslipPdfGenerator
 
         $identityRows = [
             [
-                ['text' => 'WAGE SLIP', 'bold' => true, 'align' => 'center', 'colspan' => 4],
+                ['text' => 'WAGE SLIP - ' . $model['month_label'], 'bold' => true, 'align' => 'center', 'colspan' => 4],
             ],
             [
                 ['text' => 'NAME'],
